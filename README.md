@@ -155,3 +155,5 @@ make lint           # Verificar qualidade do código
 make test           # Executar testes
 make clean          # Limpar arquivos temporários
 ```
+
+poetry run alembic -x schema=contas revision -m "rev1" --autogenerate

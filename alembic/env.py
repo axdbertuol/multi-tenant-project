@@ -1,12 +1,12 @@
 import os
 import sys
 from logging.config import fileConfig
-from sqlalchemy import engine_from_config, pool
+from sqlalchemy import engine_from_config, pool, text
 from alembic import context
 from dotenv import load_dotenv
 
 # Add src directory to Python path
-sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(__file__)), 'src'))
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(__file__)), "src"))
 
 load_dotenv()
 
@@ -20,8 +20,12 @@ if config.config_file_name is not None:
 
 target_metadata = Base.metadata
 
+
 def get_url():
-    return os.getenv("DATABASE_URL", "postgresql://postgres:password@localhost:5432/ddd_app")
+    return os.getenv(
+        "DATABASE_URL", "postgresql://postgres:password@localhost:5432/ddd_app"
+    )
+
 
 def run_migrations_offline() -> None:
     url = get_url()
@@ -30,10 +34,12 @@ def run_migrations_offline() -> None:
         target_metadata=target_metadata,
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
+        version_table_schema=target_metadata.schema,
     )
 
     with context.begin_transaction():
         context.run_migrations()
+
 
 def run_migrations_online() -> None:
     configuration = config.get_section(config.config_ini_section)
@@ -43,14 +49,26 @@ def run_migrations_online() -> None:
         prefix="sqlalchemy.",
         poolclass=pool.NullPool,
     )
-
+    current_schema = context.get_x_argument(as_dictionary=True).get("schema")
     with connectable.connect() as connection:
+        # Create schema if it doesn't exist
+        if target_metadata.schema:
+            connection.execute(
+                text(f"CREATE SCHEMA IF NOT EXISTS {target_metadata.schema}")
+            )
+            connection.execute(text('set search_path to "%s"' % current_schema))
+            connection.commit()
+        connection.dialect.default_schema_name = current_schema
+
         context.configure(
-            connection=connection, target_metadata=target_metadata
+            connection=connection,
+            target_metadata=target_metadata,
+            # version_table_schema=target_metadata.schema,
         )
 
         with context.begin_transaction():
             context.run_migrations()
+
 
 if context.is_offline_mode():
     run_migrations_offline()
