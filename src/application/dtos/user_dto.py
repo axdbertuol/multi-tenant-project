@@ -7,10 +7,16 @@ from pydantic import BaseModel, EmailStr, Field
 class CreateUserDto(BaseModel):
     email: EmailStr
     name: str = Field(..., min_length=1, max_length=255)
+    password: str = Field(..., min_length=8, max_length=255)
 
 
 class UpdateUserDto(BaseModel):
     name: Optional[str] = Field(None, min_length=1, max_length=255)
+
+
+class ChangePasswordDto(BaseModel):
+    old_password: str = Field(..., min_length=1)
+    new_password: str = Field(..., min_length=8, max_length=255)
 
 
 class UserResponseDto(BaseModel):

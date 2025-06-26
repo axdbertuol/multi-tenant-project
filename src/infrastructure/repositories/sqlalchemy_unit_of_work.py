@@ -3,12 +3,16 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from domain.repositories.unit_of_work import UnitOfWork
 from infrastructure.repositories.user_repository_impl import UserRepositoryImpl
+from infrastructure.repositories.user_session_repository_impl import UserSessionRepositoryImpl
+from infrastructure.repositories.organization_repository_impl import OrganizationRepositoryImpl
 
 
 class SQLAlchemyUnitOfWork(UnitOfWork):
     def __init__(self, session: Session):
         self.session = session
         self.users = UserRepositoryImpl(session)
+        self.user_sessions = UserSessionRepositoryImpl(session)
+        self.organizations = OrganizationRepositoryImpl(session)
         self._committed = False
 
     async def __aenter__(self) -> "SQLAlchemyUnitOfWork":

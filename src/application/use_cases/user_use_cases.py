@@ -3,7 +3,7 @@ from uuid import UUID
 
 from domain.entities.user import User
 from domain.repositories.unit_of_work import UnitOfWork
-from application.dtos.user_dto import CreateUserDto, UpdateUserDto, UserResponseDto
+from application.dtos.user_dto import CreateUserDto, UpdateUserDto, UserResponseDto, ChangePasswordDto
 
 
 class UserUseCases:
@@ -26,7 +26,7 @@ class UserUseCases:
             if existing_user:
                 raise ValueError(f"User with email {create_dto.email} already exists")
 
-            user = User.create(email=create_dto.email, name=create_dto.name)
+            user = User.create(email=create_dto.email, name=create_dto.name, password=create_dto.password)
             created_user = await self.uow.users.create(user)
             return self._to_response_dto(created_user)
 
@@ -81,3 +81,27 @@ class UserUseCases:
             activated_user = user.activate()
             updated_user = await self.uow.users.update(activated_user)
             return self._to_response_dto(updated_user)
+    
+    async def change_password(self, user_id: UUID, change_password_dto: ChangePasswordDto) -> Optional[UserResponseDto]:
+        async with self.uow:
+            user = await self.uow.users.get_by_id(user_id)
+            if not user:
+                return None
+            
+            if not user.verify_password(change_password_dto.old_password):
+                raise ValueError("Invalid old password")
+            
+            updated_user = user.change_password(change_password_dto.new_password)
+            final_user = await self.uow.users.update(updated_user)
+            return self._to_response_dto(final_user)
+    
+    async def verify_user_password(self, email: str, password: str) -> Optional[UserResponseDto]:
+        async with self.uow:
+            user = await self.uow.users.get_by_email(email)
+            if not user:
+                return None
+            
+            if not user.verify_password(password):
+                return None
+            
+            return self._to_response_dto(user)

@@ -2,10 +2,14 @@ from abc import ABC, abstractmethod
 from typing import AsyncContextManager
 
 from domain.repositories.user_repository import UserRepository
+from domain.repositories.user_session_repository import UserSessionRepository
+from domain.repositories.organization_repository import OrganizationRepository
 
 
 class UnitOfWork(ABC):
     users: UserRepository
+    user_sessions: UserSessionRepository
+    organizations: OrganizationRepository
 
     async def __aenter__(self) -> "UnitOfWork":
         return self
