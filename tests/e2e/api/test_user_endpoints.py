@@ -7,7 +7,7 @@ from src.main import app
 class TestUserEndpoints:
     """End-to-end tests for user management endpoints."""
     
-    async def create_authenticated_user(self, client: AsyncClient, email: str = "auth@example.com"):
+    async def create_authenticated_user(self, client, email: str = "auth@example.com"):
         """Helper to create user and return auth headers."""
         signup_data = {
             "email": email,
@@ -19,7 +19,7 @@ class TestUserEndpoints:
         return {"Authorization": f"Bearer {token}"}, signup_response.json()["user"]
     
     @pytest.mark.asyncio
-    async def test_create_user_success(self, async_client: AsyncClient):
+    async def test_create_user_success(self, async_client):
         """Test successful user creation."""
         # Arrange
         user_data = {
@@ -42,7 +42,7 @@ class TestUserEndpoints:
         assert "created_at" in data
     
     @pytest.mark.asyncio
-    async def test_create_user_duplicate_email(self, async_client: AsyncClient):
+    async def test_create_user_duplicate_email(self, async_client):
         """Test creating user with duplicate email."""
         # Arrange
         user_data = {
@@ -65,7 +65,7 @@ class TestUserEndpoints:
         assert "already exists" in response.json()["detail"]
     
     @pytest.mark.asyncio
-    async def test_get_user_by_id_success(self, async_client: AsyncClient):
+    async def test_get_user_by_id_success(self, async_client):
         """Test getting user by ID."""
         # Arrange - Create user first
         user_data = {
@@ -88,7 +88,7 @@ class TestUserEndpoints:
         assert data["name"] == "Get By ID User"
     
     @pytest.mark.asyncio
-    async def test_get_user_by_id_not_found(self, async_client: AsyncClient):
+    async def test_get_user_by_id_not_found(self, async_client):
         """Test getting non-existent user by ID."""
         # Arrange
         fake_uuid = "123e4567-e89b-12d3-a456-426614174000"
@@ -101,7 +101,7 @@ class TestUserEndpoints:
         assert "User not found" in response.json()["detail"]
     
     @pytest.mark.asyncio
-    async def test_get_all_users(self, async_client: AsyncClient):
+    async def test_get_all_users(self, async_client):
         """Test getting all users."""
         # Arrange - Create multiple users
         users_data = [
@@ -127,7 +127,7 @@ class TestUserEndpoints:
         assert "user3@example.com" in emails
     
     @pytest.mark.asyncio
-    async def test_update_user_success(self, async_client: AsyncClient):
+    async def test_update_user_success(self, async_client):
         """Test successful user update."""
         # Arrange - Create user first
         user_data = {
@@ -153,7 +153,7 @@ class TestUserEndpoints:
         assert data["updated_at"] is not None
     
     @pytest.mark.asyncio
-    async def test_update_user_not_found(self, async_client: AsyncClient):
+    async def test_update_user_not_found(self, async_client):
         """Test updating non-existent user."""
         # Arrange
         fake_uuid = "123e4567-e89b-12d3-a456-426614174000"
@@ -166,7 +166,7 @@ class TestUserEndpoints:
         assert response.status_code == 404
     
     @pytest.mark.asyncio
-    async def test_update_user_empty_data(self, async_client: AsyncClient):
+    async def test_update_user_empty_data(self, async_client):
         """Test updating user with empty data."""
         # Arrange - Create user first
         user_data = {
@@ -190,7 +190,7 @@ class TestUserEndpoints:
         assert data["name"] == "Original Name"
     
     @pytest.mark.asyncio
-    async def test_delete_user_success(self, async_client: AsyncClient):
+    async def test_delete_user_success(self, async_client):
         """Test successful user deletion."""
         # Arrange - Create user first
         user_data = {
@@ -212,7 +212,7 @@ class TestUserEndpoints:
         assert get_response.status_code == 404
     
     @pytest.mark.asyncio
-    async def test_delete_user_not_found(self, async_client: AsyncClient):
+    async def test_delete_user_not_found(self, async_client):
         """Test deleting non-existent user."""
         # Arrange
         fake_uuid = "123e4567-e89b-12d3-a456-426614174000"
@@ -224,7 +224,7 @@ class TestUserEndpoints:
         assert response.status_code == 404
     
     @pytest.mark.asyncio
-    async def test_activate_user_success(self, async_client: AsyncClient):
+    async def test_activate_user_success(self, async_client):
         """Test successful user activation."""
         # Arrange - Create and deactivate user first
         user_data = {
@@ -249,7 +249,7 @@ class TestUserEndpoints:
         assert data["updated_at"] is not None
     
     @pytest.mark.asyncio
-    async def test_deactivate_user_success(self, async_client: AsyncClient):
+    async def test_deactivate_user_success(self, async_client):
         """Test successful user deactivation."""
         # Arrange - Create user first
         user_data = {
@@ -271,7 +271,7 @@ class TestUserEndpoints:
         assert data["updated_at"] is not None
     
     @pytest.mark.asyncio
-    async def test_user_validation_errors(self, async_client: AsyncClient):
+    async def test_user_validation_errors(self, async_client):
         """Test user creation with validation errors."""
         # Test invalid email
         invalid_email_data = {
@@ -301,7 +301,7 @@ class TestUserEndpoints:
         assert response.status_code == 422
     
     @pytest.mark.asyncio
-    async def test_user_crud_flow(self, async_client: AsyncClient):
+    async def test_user_crud_flow(self, async_client):
         """Test complete CRUD flow for users."""
         # 1. Create user
         user_data = {

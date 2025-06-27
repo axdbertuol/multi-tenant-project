@@ -1,10 +1,10 @@
 import pytest
+import pytest_asyncio
 import asyncio
 import os
 from typing import AsyncGenerator, Generator
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from httpx import AsyncClient
 from fastapi.testclient import TestClient
 
 from src.main import app
@@ -14,8 +14,7 @@ from src.infrastructure.repositories.sqlalchemy_unit_of_work import SQLAlchemyUn
 
 # Test Database Configuration
 TEST_DATABASE_URL = os.getenv(
-    "TEST_DATABASE_URL", 
-    "postgresql://postgres:password@localhost:5432/ddd_app_test"
+    "TEST_DATABASE_URL", "postgresql://admin:admin123@localhost:5432/ddd_app_test"
 )
 
 test_engine = create_engine(TEST_DATABASE_URL)
@@ -35,7 +34,7 @@ def db_session() -> Generator:
     """Create a fresh database session for each test."""
     # Create tables
     Base.metadata.create_all(bind=test_engine)
-    
+
     session = TestSessionLocal()
     try:
         yield session
@@ -54,54 +53,52 @@ def unit_of_work(db_session) -> SQLAlchemyUnitOfWork:
 @pytest.fixture(scope="function")
 def client(db_session) -> Generator:
     """Create a test client with database dependency override."""
+
     def override_get_db():
         try:
             yield db_session
         finally:
             pass
-    
+
     app.dependency_overrides[get_db] = override_get_db
-    
+
     with TestClient(app) as test_client:
         yield test_client
-    
+
     app.dependency_overrides.clear()
 
 
-@pytest.fixture(scope="function")
-async def async_client(db_session) -> AsyncGenerator:
+@pytest_asyncio.fixture
+async def async_client(db_session):
     """Create an async test client for testing."""
+
     def override_get_db():
         try:
             yield db_session
         finally:
             pass
-    
+
     app.dependency_overrides[get_db] = override_get_db
-    
-    async with AsyncClient(app=app, base_url="http://test") as async_test_client:
-        yield async_test_client
-    
-    app.dependency_overrides.clear()
+    from httpx import AsyncClient, ASGITransport
+
+    transport = ASGITransport(app=app)
+    try:
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            yield client
+    finally:
+        app.dependency_overrides.clear()
 
 
 @pytest.fixture
 def sample_user_data():
     """Sample user data for testing."""
-    return {
-        "email": "test@example.com",
-        "name": "Test User",
-        "password": "password123"
-    }
+    return {"email": "test@example.com", "name": "Test User", "password": "password123"}
 
 
 @pytest.fixture
 def sample_login_data():
     """Sample login data for testing."""
-    return {
-        "email": "test@example.com",
-        "password": "password123"
-    }
+    return {"email": "test@example.com", "password": "password123"}
 
 
 # Pytest markers for different test types
