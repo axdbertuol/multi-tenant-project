@@ -1,0 +1,3036 @@
+from fastapi import FastAPI, Request
+from fastapi.middleware.cors import CORSMiddleware
+import logging
+import time
+
+from infrastructure.database.connection import engine, Base
+from presentation.api.user_routes import router as user_router
+from presentation.api.auth_routes import router as auth_router
+
+# Configurar logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+
+def create_tables():
+    Base.metadata.create_all(bind=engine)
+
+
+def create_app() -> FastAPI:
+    app = FastAPI(
+        title="DDD FastAPI Application",
+        description="A FastAPI application following Domain Driven Design principles",
+        version="1.0.0",
+        redirect_slashes=False  # Desabilita redirecionamento automático de trailing slash
+    )
+
+    @app.middleware("http")
+    async def log_requests(request: Request, call_next):
+        start_time = time.time()
+        
+        # Logar requisições suspeitas para endpoints de IA
+        ai_endpoints = ["/v1/models", "/v1/chat", "/v1/completions", "/models", "/chat"]
+        if any(request.url.path.startswith(endpoint) for endpoint in ai_endpoints):
+            logger.warning(
+                f"AI API request detected: {request.method} {request.url.path} "
+                f"from {request.client.host if request.client else 'unknown'} "
+                f"User-Agent: {request.headers.get('user-agent', 'unknown')}"
+            )
+        
+        response = await call_next(request)
+        process_time = time.time() - start_time
+        
+        # Logar requisições problemáticas e redirecionamentos
+        if response.status_code >= 400 or request.url.path.startswith("/v1/") or response.status_code == 307:
+            status_msg = ""
+            if response.status_code == 307:
+                status_msg = " (REDIRECT - check trailing slash)"
+            
+            logger.info(
+                f"{request.method} {request.url.path} - "
+                f"Status: {response.status_code}{status_msg} - "
+                f"Time: {process_time:.4f}s - "
+                f"Client: {request.client.host if request.client else 'unknown'}"
+            )
+        
+        return response
+
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["*"],
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+
+    app.include_router(user_router, prefix="/api/v1")
+    app.include_router(auth_router, prefix="/api/v1")
+
+    return app
+
+
+app = create_app()
+
+
+@app.on_event("startup")
+async def startup_event():
+    create_tables()
+
+
+@app.get("/")
+async def root():
+    return {"message": "Welcome to DDD FastAPI Application"}
+
+
+@app.get("/health")
+async def health_check():
+    return {"status": "healthy"}
+
+
+@app.get("/v1/models")
+async def models_endpoint():
+    """
+    Endpoint para esclarecer que esta não é uma API de modelos de IA.
+    Algumas ferramentas podem tentar acessar este endpoint pensando que é uma API OpenAI-like.
+    """
+    return {
+        "error": "Not an AI models API",
+        "message": "This is a FastAPI DDD application, not an AI models server",
+        "application": "FastAPI DDD Project",
+        "available_endpoints": [
+            "/docs - API Documentation",
+            "/api/v1/users - User management endpoints",
+            "/api/v1/auth - Authentication endpoints",
+            "/health - Health check"
+        ],
+        "note": "If you're looking for AI models, try OpenAI API, Ollama, or similar services"
+    }
+
+
+@app.post("/v1/chat/completions")
+@app.post("/v1/completions")
+@app.get("/models")
+async def ai_endpoints_handler():
+    """
+    Handler para outros endpoints comuns de APIs de IA
+    """
+    return {
+        "error": "AI API not available",
+        "message": "This is not an AI service. This is a FastAPI DDD application for user management.",
+        "redirect": "Check /docs for available endpoints",
+        "suggestion": "For AI services, try OpenAI, Anthropic, Ollama, or other AI providers"
+    }
+from datetime import datetime
+from uuid import UUID, uuid4
+from typing import Optional, List
+from pydantic import BaseModel
+
+
+class UserOrganizationRole(BaseModel):
+    id: UUID
+    user_id: UUID
+    organization_id: UUID
+    role_id: UUID
+    assigned_at: datetime
+    assigned_by: UUID
+    revoked_at: Optional[datetime] = None
+    revoked_by: Optional[UUID] = None
+    is_active: bool = True
+
+    model_config = {"frozen": True}
+
+    @classmethod
+    def create(cls, user_id: UUID, organization_id: UUID, role_id: UUID, assigned_by: UUID) -> "UserOrganizationRole":
+        return cls(
+            id=uuid4(),
+            user_id=user_id,
+            organization_id=organization_id,
+            role_id=role_id,
+            assigned_by=assigned_by,
+            assigned_at=datetime.utcnow(),
+            is_active=True
+        )
+
+    def revoke(self, revoked_by: UUID) -> "UserOrganizationRole":
+        return self.model_copy(update={
+            "revoked_at": datetime.utcnow(),
+            "revoked_by": revoked_by,
+            "is_active": False
+        })
+
+    def reactivate(self) -> "UserOrganizationRole":
+        return self.model_copy(update={
+            "revoked_at": None,
+            "revoked_by": None,
+            "is_active": True
+        })
+from datetime import datetime
+from uuid import UUID, uuid4
+from typing import Optional
+from pydantic import BaseModel, Field
+
+from domain.value_objects.email import Email
+from domain.value_objects.password import Password
+
+
+class User(BaseModel):
+    id: UUID
+    email: Email
+    name: str
+    password: Password
+    created_at: datetime
+    updated_at: Optional[datetime] = None
+    is_active: bool = True
+
+    model_config = {"arbitrary_types_allowed": True}
+
+    @classmethod
+    def create(cls, email: str, name: str, password: str) -> "User":
+        return cls(
+            id=uuid4(),
+            email=Email(value=email),
+            name=name,
+            password=Password.create(password),
+            created_at=datetime.utcnow(),
+            is_active=True
+        )
+
+    def update_name(self, name: str) -> "User":
+        return self.model_copy(update={
+            "name": name,
+            "updated_at": datetime.utcnow()
+        })
+
+    def deactivate(self) -> "User":
+        return self.model_copy(update={
+            "is_active": False,
+            "updated_at": datetime.utcnow()
+        })
+
+    def activate(self) -> "User":
+        return self.model_copy(update={
+            "is_active": True,
+            "updated_at": datetime.utcnow()
+        })
+    
+    def change_password(self, new_password: str) -> "User":
+        return self.model_copy(update={
+            "password": Password.create(new_password),
+            "updated_at": datetime.utcnow()
+        })
+    
+    def verify_password(self, plain_password: str) -> bool:
+        return self.password.verify(plain_password)
+from datetime import datetime
+from uuid import UUID, uuid4
+from typing import Optional
+from pydantic import BaseModel
+
+
+class Organization(BaseModel):
+    id: UUID
+    name: str
+    description: Optional[str] = None
+    owner_id: UUID
+    created_at: datetime
+    updated_at: Optional[datetime] = None
+    is_active: bool = True
+
+    model_config = {"frozen": True}
+
+    @classmethod
+    def create(cls, name: str, owner_id: UUID, description: Optional[str] = None) -> "Organization":
+        return cls(
+            id=uuid4(),
+            name=name,
+            description=description,
+            owner_id=owner_id,
+            created_at=datetime.utcnow(),
+            is_active=True
+        )
+
+    def update_name(self, name: str) -> "Organization":
+        return self.model_copy(update={
+            "name": name,
+            "updated_at": datetime.utcnow()
+        })
+
+    def update_description(self, description: str) -> "Organization":
+        return self.model_copy(update={
+            "description": description,
+            "updated_at": datetime.utcnow()
+        })
+
+    def transfer_ownership(self, new_owner_id: UUID) -> "Organization":
+        return self.model_copy(update={
+            "owner_id": new_owner_id,
+            "updated_at": datetime.utcnow()
+        })
+
+    def deactivate(self) -> "Organization":
+        return self.model_copy(update={
+            "is_active": False,
+            "updated_at": datetime.utcnow()
+        })
+
+    def activate(self) -> "Organization":
+        return self.model_copy(update={
+            "is_active": True,
+            "updated_at": datetime.utcnow()
+        })
+from datetime import datetime
+from uuid import UUID, uuid4
+from typing import Optional, Dict, Any
+from pydantic import BaseModel
+from enum import Enum
+
+
+class PermissionEffect(str, Enum):
+    ALLOW = "allow"
+    DENY = "deny"
+
+
+class ContextCondition(BaseModel):
+    """Defines conditions that must be met for the permission to apply"""
+    attribute: str  # e.g., "user.department", "resource.project_code", "context.time"
+    operator: str  # e.g., "equals", "in", "contains", "greater_than"
+    value: Any  # e.g., "engineering", ["proj_a", "proj_b"], "2024-01-01"
+
+    model_config = {"frozen": True}
+
+
+class ResourcePermission(BaseModel):
+    """Specific permission for a user/role on a resource with contextual conditions"""
+    id: UUID
+    user_id: Optional[UUID] = None  # Direct user permission
+    role_id: Optional[UUID] = None  # Role-based permission
+    resource_id: UUID
+    permission_id: UUID  # Links to base Permission (read, write, delete, etc.)
+    effect: PermissionEffect = PermissionEffect.ALLOW
+    conditions: list[ContextCondition] = []  # ABAC conditions
+    priority: int = 0  # Higher priority rules override lower ones
+    assigned_at: datetime
+    assigned_by: UUID
+    revoked_at: Optional[datetime] = None
+    revoked_by: Optional[UUID] = None
+    is_active: bool = True
+
+    model_config = {"frozen": True}
+
+    @classmethod
+    def create_user_permission(
+        cls,
+        user_id: UUID,
+        resource_id: UUID,
+        permission_id: UUID,
+        assigned_by: UUID,
+        effect: PermissionEffect = PermissionEffect.ALLOW,
+        conditions: Optional[list[ContextCondition]] = None,
+        priority: int = 0,
+    ) -> "ResourcePermission":
+        return cls(
+            id=uuid4(),
+            user_id=user_id,
+            resource_id=resource_id,
+            permission_id=permission_id,
+            effect=effect,
+            conditions=conditions or [],
+            priority=priority,
+            assigned_at=datetime.utcnow(),
+            assigned_by=assigned_by,
+            is_active=True,
+        )
+
+    @classmethod
+    def create_role_permission(
+        cls,
+        role_id: UUID,
+        resource_id: UUID,
+        permission_id: UUID,
+        assigned_by: UUID,
+        effect: PermissionEffect = PermissionEffect.ALLOW,
+        conditions: Optional[list[ContextCondition]] = None,
+        priority: int = 0,
+    ) -> "ResourcePermission":
+        return cls(
+            id=uuid4(),
+            role_id=role_id,
+            resource_id=resource_id,
+            permission_id=permission_id,
+            effect=effect,
+            conditions=conditions or [],
+            priority=priority,
+            assigned_at=datetime.utcnow(),
+            assigned_by=assigned_by,
+            is_active=True,
+        )
+
+    def revoke(self, revoked_by: UUID) -> "ResourcePermission":
+        return self.model_copy(update={
+            "revoked_at": datetime.utcnow(),
+            "revoked_by": revoked_by,
+            "is_active": False,
+        })
+
+    def update_conditions(self, conditions: list[ContextCondition]) -> "ResourcePermission":
+        return self.model_copy(update={"conditions": conditions})
+
+    def update_priority(self, priority: int) -> "ResourcePermission":
+        return self.model_copy(update={"priority": priority})
+from datetime import datetime
+from uuid import UUID, uuid4
+from typing import Optional
+from pydantic import BaseModel
+
+
+class Permission(BaseModel):
+    id: UUID
+    name: str
+    description: Optional[str] = None
+    resource: str
+    action: str
+    created_at: datetime
+    updated_at: Optional[datetime] = None
+    is_active: bool = True
+
+    model_config = {"frozen": True}
+
+    @classmethod
+    def create(cls, name: str, resource: str, action: str, description: Optional[str] = None) -> "Permission":
+        return cls(
+            id=uuid4(),
+            name=name,
+            resource=resource,
+            action=action,
+            description=description,
+            created_at=datetime.utcnow(),
+            is_active=True
+        )
+
+    def update_name(self, name: str) -> "Permission":
+        return self.model_copy(update={
+            "name": name,
+            "updated_at": datetime.utcnow()
+        })
+
+    def update_description(self, description: str) -> "Permission":
+        return self.model_copy(update={
+            "description": description,
+            "updated_at": datetime.utcnow()
+        })
+
+    def deactivate(self) -> "Permission":
+        return self.model_copy(update={
+            "is_active": False,
+            "updated_at": datetime.utcnow()
+        })
+
+    def activate(self) -> "Permission":
+        return self.model_copy(update={
+            "is_active": True,
+            "updated_at": datetime.utcnow()
+        })
+from datetime import datetime
+from uuid import UUID, uuid4
+from typing import Optional, List
+from pydantic import BaseModel
+
+
+class Role(BaseModel):
+    id: UUID
+    name: str
+    description: Optional[str] = None
+    is_system: bool = False
+    created_at: datetime
+    updated_at: Optional[datetime] = None
+    is_active: bool = True
+
+    model_config = {"frozen": True}
+
+    @classmethod
+    def create(cls, name: str, description: Optional[str] = None, is_system: bool = False) -> "Role":
+        return cls(
+            id=uuid4(),
+            name=name,
+            description=description,
+            is_system=is_system,
+            created_at=datetime.utcnow(),
+            is_active=True
+        )
+
+    def update_name(self, name: str) -> "Role":
+        return self.model_copy(update={
+            "name": name,
+            "updated_at": datetime.utcnow()
+        })
+
+    def update_description(self, description: str) -> "Role":
+        return self.model_copy(update={
+            "description": description,
+            "updated_at": datetime.utcnow()
+        })
+
+    def deactivate(self) -> "Role":
+        return self.model_copy(update={
+            "is_active": False,
+            "updated_at": datetime.utcnow()
+        })
+
+    def activate(self) -> "Role":
+        return self.model_copy(update={
+            "is_active": True,
+            "updated_at": datetime.utcnow()
+        })
+from datetime import datetime
+from uuid import UUID, uuid4
+from typing import Optional, Dict, Any
+from pydantic import BaseModel
+from enum import Enum
+
+
+class ResourceType(str, Enum):
+    PROJECT = "project"
+    DOCUMENT = "document"
+    DATASET = "dataset"
+    REPORT = "report"
+    DASHBOARD = "dashboard"
+    FOLDER = "folder"
+    CUSTOM = "custom"
+
+
+class Resource(BaseModel):
+    id: UUID
+    name: str
+    resource_type: ResourceType
+    description: Optional[str] = None
+    parent_id: Optional[UUID] = None  # For hierarchical resources
+    organization_id: Optional[UUID] = None  # Multi-tenant support
+    metadata: Dict[str, Any] = {}  # Flexible attributes (project_code, department, etc.)
+    created_at: datetime
+    updated_at: Optional[datetime] = None
+    is_active: bool = True
+
+    model_config = {"frozen": True}
+
+    @classmethod
+    def create(
+        cls,
+        name: str,
+        resource_type: ResourceType,
+        description: Optional[str] = None,
+        parent_id: Optional[UUID] = None,
+        organization_id: Optional[UUID] = None,
+        metadata: Optional[Dict[str, Any]] = None,
+    ) -> "Resource":
+        return cls(
+            id=uuid4(),
+            name=name,
+            resource_type=resource_type,
+            description=description,
+            parent_id=parent_id,
+            organization_id=organization_id,
+            metadata=metadata or {},
+            created_at=datetime.utcnow(),
+            is_active=True,
+        )
+
+    def update_metadata(self, metadata: Dict[str, Any]) -> "Resource":
+        return self.model_copy(update={
+            "metadata": {**self.metadata, **metadata},
+            "updated_at": datetime.utcnow()
+        })
+
+    def set_parent(self, parent_id: UUID) -> "Resource":
+        return self.model_copy(update={
+            "parent_id": parent_id,
+            "updated_at": datetime.utcnow()
+        })
+
+    def deactivate(self) -> "Resource":
+        return self.model_copy(update={
+            "is_active": False,
+            "updated_at": datetime.utcnow()
+        })
+
+    def activate(self) -> "Resource":
+        return self.model_copy(update={
+            "is_active": True,
+            "updated_at": datetime.utcnow()
+        })
+from datetime import datetime
+from uuid import UUID
+from typing import Optional, Dict, Any
+from pydantic import BaseModel
+
+
+class AuthorizationContext(BaseModel):
+    """Context information used for ABAC authorization decisions"""
+    user_id: UUID
+    resource_id: Optional[UUID] = None
+    organization_id: Optional[UUID] = None
+    user_attributes: Dict[str, Any] = {}  # department, team, level, etc.
+    resource_attributes: Dict[str, Any] = {}  # project_code, classification, owner, etc.
+    environment_attributes: Dict[str, Any] = {}  # time, ip_address, location, etc.
+    request_attributes: Dict[str, Any] = {}  # action, client_type, etc.
+
+    model_config = {"frozen": True}
+
+    @classmethod
+    def create(
+        cls,
+        user_id: UUID,
+        resource_id: Optional[UUID] = None,
+        organization_id: Optional[UUID] = None,
+        user_attributes: Optional[Dict[str, Any]] = None,
+        resource_attributes: Optional[Dict[str, Any]] = None,
+        environment_attributes: Optional[Dict[str, Any]] = None,
+        request_attributes: Optional[Dict[str, Any]] = None,
+    ) -> "AuthorizationContext":
+        # Add default environment attributes
+        env_attrs = environment_attributes or {}
+        env_attrs.setdefault("timestamp", datetime.utcnow().isoformat())
+        
+        return cls(
+            user_id=user_id,
+            resource_id=resource_id,
+            organization_id=organization_id,
+            user_attributes=user_attributes or {},
+            resource_attributes=resource_attributes or {},
+            environment_attributes=env_attrs,
+            request_attributes=request_attributes or {},
+        )
+
+    def get_attribute(self, attribute_path: str) -> Any:
+        """Get attribute value using dot notation (e.g., 'user.department', 'resource.project_code')"""
+        parts = attribute_path.split('.')
+        if len(parts) != 2:
+            return None
+            
+        category, key = parts
+        if category == "user":
+            return self.user_attributes.get(key)
+        elif category == "resource":
+            return self.resource_attributes.get(key)
+        elif category == "environment":
+            return self.environment_attributes.get(key)
+        elif category == "request":
+            return self.request_attributes.get(key)
+        else:
+            return None
+
+    def with_user_attributes(self, **attributes) -> "AuthorizationContext":
+        return self.model_copy(update={
+            "user_attributes": {**self.user_attributes, **attributes}
+        })
+
+    def with_resource_attributes(self, **attributes) -> "AuthorizationContext":
+        return self.model_copy(update={
+            "resource_attributes": {**self.resource_attributes, **attributes}
+        })
+
+    def with_environment_attributes(self, **attributes) -> "AuthorizationContext":
+        return self.model_copy(update={
+            "environment_attributes": {**self.environment_attributes, **attributes}
+        })
+
+    def with_request_attributes(self, **attributes) -> "AuthorizationContext":
+        return self.model_copy(update={
+            "request_attributes": {**self.request_attributes, **attributes}
+        })
+from datetime import datetime
+from uuid import UUID, uuid4
+from typing import Optional
+from pydantic import BaseModel
+from enum import Enum
+
+
+class SessionStatus(str, Enum):
+    ACTIVE = "active"
+    EXPIRED = "expired"
+    LOGGED_OUT = "logged_out"
+    REVOKED = "revoked"
+
+
+class UserSession(BaseModel):
+    id: UUID
+    user_id: UUID
+    session_token: str
+    status: SessionStatus
+    login_at: datetime
+    logout_at: Optional[datetime] = None
+    expires_at: datetime
+    ip_address: Optional[str] = None
+    user_agent: Optional[str] = None
+    created_at: datetime
+    updated_at: Optional[datetime] = None
+
+    model_config = {"arbitrary_types_allowed": True}
+
+    @classmethod
+    def create(
+        cls,
+        user_id: UUID,
+        session_token: str,
+        expires_at: datetime,
+        ip_address: Optional[str] = None,
+        user_agent: Optional[str] = None
+    ) -> "UserSession":
+        now = datetime.utcnow()
+        return cls(
+            id=uuid4(),
+            user_id=user_id,
+            session_token=session_token,
+            status=SessionStatus.ACTIVE,
+            login_at=now,
+            expires_at=expires_at,
+            ip_address=ip_address,
+            user_agent=user_agent,
+            created_at=now
+        )
+
+    def logout(self) -> "UserSession":
+        """Mark session as logged out."""
+        return self.model_copy(update={
+            "status": SessionStatus.LOGGED_OUT,
+            "logout_at": datetime.utcnow(),
+            "updated_at": datetime.utcnow()
+        })
+
+    def expire(self) -> "UserSession":
+        """Mark session as expired."""
+        return self.model_copy(update={
+            "status": SessionStatus.EXPIRED,
+            "updated_at": datetime.utcnow()
+        })
+
+    def revoke(self) -> "UserSession":
+        """Mark session as revoked (admin action)."""
+        return self.model_copy(update={
+            "status": SessionStatus.REVOKED,
+            "logout_at": datetime.utcnow(),
+            "updated_at": datetime.utcnow()
+        })
+
+    def is_active(self) -> bool:
+        """Check if session is currently active."""
+        if self.status != SessionStatus.ACTIVE:
+            return False
+        
+        return datetime.utcnow() < self.expires_at
+
+    def is_expired(self) -> bool:
+        """Check if session has expired."""
+        return datetime.utcnow() >= self.expires_at
+
+    def get_session_duration(self) -> Optional[int]:
+        """Get session duration in seconds. Returns None if still active."""
+        if not self.logout_at:
+            return None
+        
+        duration = self.logout_at - self.login_at
+        return int(duration.total_seconds())
+
+    def extend_session(self, new_expires_at: datetime) -> "UserSession":
+        """Extend session expiration time."""
+        if self.status != SessionStatus.ACTIVE:
+            raise ValueError("Cannot extend inactive session")
+        
+        return self.model_copy(update={
+            "expires_at": new_expires_at,
+            "updated_at": datetime.utcnow()
+        })
+import re
+from pydantic import BaseModel, field_validator
+from typing import Any
+
+
+class Email(BaseModel):
+    value: str
+
+    model_config = {"frozen": True}
+
+    @field_validator('value')
+    @classmethod
+    def validate_email(cls, v: str) -> str:
+        if not cls._is_valid_email(v):
+            raise ValueError(f"Invalid email format: {v}")
+        return v
+
+    @staticmethod
+    def _is_valid_email(email: str) -> bool:
+        pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+        return re.match(pattern, email) is not None
+
+    def __str__(self) -> str:
+        return self.value
+
+    def __hash__(self) -> int:
+        return hash(self.value)
+
+    def __eq__(self, other: Any) -> bool:
+        if isinstance(other, Email):
+            return self.value == other.value
+        return False
+from pydantic import BaseModel
+from typing import Any
+import bcrypt
+
+
+class Password(BaseModel, frozen=True):
+    """Password value object with bcrypt encryption."""
+    
+    hashed_value: str
+    
+    @classmethod
+    def create(cls, plain_password: str) -> "Password":
+        """Create a new password by hashing the plain text."""
+        if not plain_password or len(plain_password.strip()) == 0:
+            raise ValueError("Password cannot be empty")
+        
+        if len(plain_password) < 8:
+            raise ValueError("Password must be at least 8 characters long")
+        
+        salt = bcrypt.gensalt()
+        hashed = bcrypt.hashpw(plain_password.encode('utf-8'), salt)
+        return cls(hashed_value=hashed.decode('utf-8'))
+    
+    @classmethod
+    def from_hash(cls, hashed_password: str) -> "Password":
+        """Create password object from existing hash."""
+        return cls(hashed_value=hashed_password)
+    
+    def verify(self, plain_password: str) -> bool:
+        """Verify a plain password against this hashed password."""
+        return bcrypt.checkpw(
+            plain_password.encode('utf-8'), 
+            self.hashed_value.encode('utf-8')
+        )
+    
+    def __str__(self) -> str:
+        return "[PROTECTED]"
+    
+    def __repr__(self) -> str:
+        return "Password([PROTECTED])"
+    
+    def __hash__(self) -> int:
+        return hash(self.hashed_value)
+    
+    def __eq__(self, other: Any) -> bool:
+        if not isinstance(other, Password):
+            return False
+        return self.hashed_value == other.hashed_value
+from abc import ABC, abstractmethod
+from typing import Generic, TypeVar, List, Optional
+from uuid import UUID
+
+T = TypeVar('T')
+
+
+class Repository(ABC, Generic[T]):
+    @abstractmethod
+    async def create(self, entity: T) -> T:
+        pass
+
+    @abstractmethod
+    async def get_by_id(self, entity_id: UUID) -> Optional[T]:
+        pass
+
+    @abstractmethod
+    async def get_all(self) -> List[T]:
+        pass
+
+    @abstractmethod
+    async def update(self, entity: T) -> T:
+        pass
+
+    @abstractmethod
+    async def delete(self, entity_id: UUID) -> bool:
+        pass
+from abc import ABC, abstractmethod
+from typing import AsyncContextManager
+
+from domain.repositories.user_repository import UserRepository
+from domain.repositories.user_session_repository import UserSessionRepository
+from domain.repositories.organization_repository import OrganizationRepository
+
+
+class UnitOfWork(ABC):
+    users: UserRepository
+    user_sessions: UserSessionRepository
+    organizations: OrganizationRepository
+
+    async def __aenter__(self) -> "UnitOfWork":
+        return self
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        if exc_type is None:
+            await self.commit()
+        else:
+            await self.rollback()
+
+    @abstractmethod
+    async def commit(self) -> None:
+        pass
+
+    @abstractmethod
+    async def rollback(self) -> None:
+        pass
+from abc import abstractmethod
+from typing import List, Optional
+from uuid import UUID
+
+from ..entities.resource_permission import ResourcePermission, PermissionEffect
+from .base_repository import Repository
+
+
+class ResourcePermissionRepository(Repository[ResourcePermission]):
+    @abstractmethod
+    async def find_by_user_and_resource(self, user_id: UUID, resource_id: UUID) -> List[ResourcePermission]:
+        pass
+
+    @abstractmethod
+    async def find_by_role_and_resource(self, role_id: UUID, resource_id: UUID) -> List[ResourcePermission]:
+        pass
+
+    @abstractmethod
+    async def find_by_user(self, user_id: UUID) -> List[ResourcePermission]:
+        pass
+
+    @abstractmethod
+    async def find_by_resource(self, resource_id: UUID) -> List[ResourcePermission]:
+        pass
+
+    @abstractmethod
+    async def find_by_permission_and_resource(self, permission_id: UUID, resource_id: UUID) -> List[ResourcePermission]:
+        pass
+
+    @abstractmethod
+    async def find_effective_permissions(
+        self,
+        user_id: UUID,
+        resource_id: UUID,
+        permission_id: UUID,
+        user_roles: List[UUID],
+    ) -> List[ResourcePermission]:
+        """Find all permissions (user + role-based) for a specific user, resource, and permission"""
+        pass
+
+    @abstractmethod
+    async def find_active_by_user_and_resource(self, user_id: UUID, resource_id: UUID) -> List[ResourcePermission]:
+        pass
+
+    @abstractmethod
+    async def find_by_effect(self, effect: PermissionEffect) -> List[ResourcePermission]:
+        pass
+from abc import abstractmethod
+from typing import List, Optional
+from uuid import UUID
+
+from ..entities.resource import Resource, ResourceType
+from .base_repository import Repository
+
+
+class ResourceRepository(Repository[Resource]):
+    @abstractmethod
+    async def find_by_name(self, name: str, organization_id: Optional[UUID] = None) -> Optional[Resource]:
+        pass
+
+    @abstractmethod
+    async def find_by_type(self, resource_type: ResourceType, organization_id: Optional[UUID] = None) -> List[Resource]:
+        pass
+
+    @abstractmethod
+    async def find_by_parent_id(self, parent_id: UUID) -> List[Resource]:
+        pass
+
+    @abstractmethod
+    async def find_by_organization(self, organization_id: UUID) -> List[Resource]:
+        pass
+
+    @abstractmethod
+    async def find_by_metadata_attribute(self, key: str, value: str, organization_id: Optional[UUID] = None) -> List[Resource]:
+        pass
+
+    @abstractmethod
+    async def find_hierarchical_children(self, parent_id: UUID, recursive: bool = False) -> List[Resource]:
+        pass
+
+    @abstractmethod
+    async def find_active_resources(self, organization_id: Optional[UUID] = None) -> List[Resource]:
+        pass
+from abc import ABC
+from typing import List, Optional
+from uuid import UUID
+from domain.entities.user_session import UserSession
+from domain.repositories.base_repository import Repository
+
+
+class UserSessionRepository(Repository[UserSession], ABC):
+    """Repository interface for UserSession aggregate."""
+    
+    async def get_by_session_token(self, session_token: str) -> Optional[UserSession]:
+        """Get session by session token."""
+        pass
+    
+    async def get_active_sessions_by_user_id(self, user_id: UUID) -> List[UserSession]:
+        """Get all active sessions for a user."""
+        pass
+    
+    async def get_all_sessions_by_user_id(self, user_id: UUID) -> List[UserSession]:
+        """Get all sessions (active and inactive) for a user."""
+        pass
+    
+    async def expire_sessions_by_user_id(self, user_id: UUID) -> int:
+        """Expire all active sessions for a user. Returns count of expired sessions."""
+        pass
+    
+    async def cleanup_expired_sessions(self) -> int:
+        """Remove expired sessions from storage. Returns count of cleaned sessions."""
+        pass
+from abc import abstractmethod
+from typing import Optional, List
+from uuid import UUID
+
+from domain.repositories.base_repository import Repository
+from domain.entities.organization import Organization
+
+
+class OrganizationRepository(Repository[Organization]):
+    @abstractmethod
+    async def get_by_name(self, name: str) -> Optional[Organization]:
+        pass
+
+    @abstractmethod
+    async def get_by_owner_id(self, owner_id: UUID) -> List[Organization]:
+        pass
+
+    @abstractmethod
+    async def get_organizations_by_user_id(self, user_id: UUID) -> List[Organization]:
+        pass
+
+    @abstractmethod
+    async def add_user_to_organization(self, organization_id: UUID, user_id: UUID) -> None:
+        pass
+
+    @abstractmethod
+    async def remove_user_from_organization(self, organization_id: UUID, user_id: UUID) -> None:
+        pass
+
+    @abstractmethod
+    async def is_user_in_organization(self, organization_id: UUID, user_id: UUID) -> bool:
+        pass
+from abc import abstractmethod
+from typing import Optional
+
+from domain.repositories.base_repository import Repository
+from domain.entities.user import User
+
+
+class UserRepository(Repository[User]):
+    @abstractmethod
+    async def get_by_email(self, email: str) -> Optional[User]:
+        pass
+from typing import List
+from uuid import UUID
+from fastapi import APIRouter, Depends, HTTPException, status
+
+from application.dtos.user_dto import CreateUserDto, UpdateUserDto, UserResponseDto
+from application.services.user_service import UserService
+from infrastructure.database.dependencies import get_unit_of_work
+from infrastructure.repositories.sqlalchemy_unit_of_work import SQLAlchemyUnitOfWork
+
+router = APIRouter(prefix="/users", tags=["users"])
+
+
+def get_user_service(uow: SQLAlchemyUnitOfWork = Depends(get_unit_of_work)) -> UserService:
+    return UserService(uow)
+
+
+@router.post("/", response_model=UserResponseDto, status_code=status.HTTP_201_CREATED)
+@router.post("", response_model=UserResponseDto, status_code=status.HTTP_201_CREATED)  # Sem trailing slash
+async def create_user(
+    create_dto: CreateUserDto,
+    user_service: UserService = Depends(get_user_service)
+):
+    try:
+        return await user_service.create_user(create_dto)
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+
+
+@router.get("/{user_id}", response_model=UserResponseDto)
+async def get_user_by_id(
+    user_id: UUID,
+    user_service: UserService = Depends(get_user_service)
+):
+    user = await user_service.get_user_by_id(user_id)
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+    return user
+
+
+@router.get("/", response_model=List[UserResponseDto])
+async def get_all_users(
+    user_service: UserService = Depends(get_user_service)
+):
+    return await user_service.get_all_users()
+
+
+@router.put("/{user_id}", response_model=UserResponseDto)
+async def update_user(
+    user_id: UUID,
+    update_dto: UpdateUserDto,
+    user_service: UserService = Depends(get_user_service)
+):
+    user = await user_service.update_user(user_id, update_dto)
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+    return user
+
+
+@router.delete("/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_user(
+    user_id: UUID,
+    user_service: UserService = Depends(get_user_service)
+):
+    success = await user_service.delete_user(user_id)
+    if not success:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+
+
+@router.patch("/{user_id}/deactivate", response_model=UserResponseDto)
+async def deactivate_user(
+    user_id: UUID,
+    user_service: UserService = Depends(get_user_service)
+):
+    user = await user_service.deactivate_user(user_id)
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+    return user
+
+
+@router.patch("/{user_id}/activate", response_model=UserResponseDto)
+async def activate_user(
+    user_id: UUID,
+    user_service: UserService = Depends(get_user_service)
+):
+    user = await user_service.activate_user(user_id)
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+    return user
+from fastapi import APIRouter, HTTPException, Depends, status, Request
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from typing import Optional
+
+from application.use_cases.auth_use_cases import AuthUseCases
+from application.use_cases.session_use_cases import SessionUseCases
+from application.dtos.auth_dto import SignupDto, LoginDto, AuthResponseDto, UserInfoDto
+from application.dtos.session_dto import LogoutDto, LogoutResponseDto, UserSessionsResponseDto
+from application.services.jwt_service import JWTService
+from domain.repositories.unit_of_work import UnitOfWork
+from infrastructure.repositories.sqlalchemy_unit_of_work import SQLAlchemyUnitOfWork
+from infrastructure.database.connection import get_db
+
+router = APIRouter(prefix="/auth", tags=["Authentication"])
+security = HTTPBearer()
+
+
+def get_unit_of_work(db=Depends(get_db)) -> UnitOfWork:
+    return SQLAlchemyUnitOfWork(db)
+
+
+def get_jwt_service() -> JWTService:
+    return JWTService()
+
+
+def get_auth_use_cases(
+    uow: UnitOfWork = Depends(get_unit_of_work),
+    jwt_service: JWTService = Depends(get_jwt_service)
+) -> AuthUseCases:
+    return AuthUseCases(uow, jwt_service)
+
+
+def get_session_use_cases(
+    uow: UnitOfWork = Depends(get_unit_of_work),
+    jwt_service: JWTService = Depends(get_jwt_service)
+) -> SessionUseCases:
+    return SessionUseCases(uow, jwt_service)
+
+
+async def get_current_user(
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    auth_use_cases: AuthUseCases = Depends(get_auth_use_cases)
+) -> UserInfoDto:
+    token = credentials.credentials
+    user = await auth_use_cases.get_current_user(token)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid authentication credentials",
+            headers={"WWW-Authenticate": "Bearer"}
+        )
+    return user
+
+
+@router.post("/signup", response_model=AuthResponseDto, status_code=status.HTTP_201_CREATED)
+async def signup(
+    signup_dto: SignupDto,
+    request: Request,
+    auth_use_cases: AuthUseCases = Depends(get_auth_use_cases)
+):
+    try:
+        ip_address = request.client.host if request.client else None
+        user_agent = request.headers.get("user-agent")
+        
+        return await auth_use_cases.signup(signup_dto, ip_address, user_agent)
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal server error during signup"
+        )
+
+
+@router.post("/login", response_model=AuthResponseDto)
+async def login(
+    login_dto: LoginDto,
+    request: Request,
+    auth_use_cases: AuthUseCases = Depends(get_auth_use_cases)
+):
+    try:
+        ip_address = request.client.host if request.client else None
+        user_agent = request.headers.get("user-agent")
+        
+        auth_response = await auth_use_cases.login(login_dto, ip_address, user_agent)
+        if not auth_response:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid email or password"
+            )
+        return auth_response
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal server error during login"
+        )
+
+
+@router.get("/me", response_model=UserInfoDto)
+async def get_current_user_info(
+    current_user: UserInfoDto = Depends(get_current_user)
+):
+    return current_user
+
+
+@router.post("/verify-token")
+async def verify_token(
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    auth_use_cases: AuthUseCases = Depends(get_auth_use_cases)
+):
+    token = credentials.credentials
+    is_valid = await auth_use_cases.verify_token(token)
+    if not is_valid:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or expired token"
+        )
+    return {"valid": True}
+
+
+@router.post("/logout", response_model=LogoutResponseDto)
+async def logout(
+    logout_dto: LogoutDto,
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    current_user: UserInfoDto = Depends(get_current_user),
+    session_use_cases: SessionUseCases = Depends(get_session_use_cases)
+):
+    try:
+        token = credentials.credentials
+        
+        if logout_dto.revoke_all_sessions:
+            # Get current session ID from token to exclude it
+            jwt_service = JWTService()
+            token_payload = jwt_service.verify_token(token)
+            current_session_id = token_payload.session_id if token_payload else None
+            
+            return await session_use_cases.logout_all_sessions(
+                user_id=current_user.id,
+                except_session_id=current_session_id
+            )
+        else:
+            return await session_use_cases.logout_session(token)
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal server error during logout"
+        )
+
+
+@router.get("/sessions", response_model=UserSessionsResponseDto)
+async def get_user_sessions(
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    current_user: UserInfoDto = Depends(get_current_user),
+    session_use_cases: SessionUseCases = Depends(get_session_use_cases)
+):
+    try:
+        token = credentials.credentials
+        return await session_use_cases.get_user_sessions(
+            user_id=current_user.id,
+            current_session_token=token
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal server error while fetching sessions"
+        )
+
+
+@router.post("/logout-all", response_model=LogoutResponseDto)
+async def logout_all_sessions(
+    current_user: UserInfoDto = Depends(get_current_user),
+    session_use_cases: SessionUseCases = Depends(get_session_use_cases)
+):
+    try:
+        return await session_use_cases.logout_all_sessions(current_user.id)
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal server error during logout"
+        )
+from typing import Optional
+from application.use_cases.auth_use_cases import AuthUseCases
+from application.dtos.auth_dto import SignupDto, LoginDto, AuthResponseDto, UserInfoDto
+
+
+class AuthService:
+    """Application service facade for authentication operations."""
+    
+    def __init__(self, auth_use_cases: AuthUseCases):
+        self.auth_use_cases = auth_use_cases
+    
+    async def signup(self, signup_dto: SignupDto) -> AuthResponseDto:
+        return await self.auth_use_cases.signup(signup_dto)
+    
+    async def login(self, login_dto: LoginDto) -> Optional[AuthResponseDto]:
+        return await self.auth_use_cases.login(login_dto)
+    
+    async def get_current_user(self, token: str) -> Optional[UserInfoDto]:
+        return await self.auth_use_cases.get_current_user(token)
+    
+    def verify_token(self, token: str) -> bool:
+        return self.auth_use_cases.verify_token(token)
+import os
+from datetime import datetime, timedelta
+from typing import Optional
+from uuid import UUID
+from jose import JWTError, jwt
+from application.dtos.auth_dto import TokenPayloadDto
+
+
+class JWTService:
+    def __init__(self):
+        self.secret_key = os.getenv("JWT_SECRET_KEY", "your-secret-key-change-in-production")
+        self.algorithm = "HS256"
+        self.access_token_expire_minutes = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "60"))
+    
+    def create_access_token(self, user_id: UUID, email: str, session_id: Optional[UUID] = None) -> tuple[str, datetime]:
+        now = datetime.utcnow()
+        expire = now + timedelta(minutes=self.access_token_expire_minutes)
+        
+        payload = {
+            "user_id": str(user_id),
+            "email": email,
+            "exp": expire,
+            "iat": now
+        }
+        
+        if session_id:
+            payload["session_id"] = str(session_id)
+        
+        token = jwt.encode(payload, self.secret_key, algorithm=self.algorithm)
+        return token, expire
+    
+    def verify_token(self, token: str) -> Optional[TokenPayloadDto]:
+        try:
+            payload = jwt.decode(token, self.secret_key, algorithms=[self.algorithm])
+            
+            user_id = UUID(payload.get("user_id"))
+            email = payload.get("email")
+            session_id = UUID(payload.get("session_id")) if payload.get("session_id") else None
+            exp = datetime.fromtimestamp(payload.get("exp"))
+            iat = datetime.fromtimestamp(payload.get("iat"))
+            
+            if not user_id or not email:
+                return None
+                
+            return TokenPayloadDto(
+                user_id=user_id,
+                email=email,
+                session_id=session_id,
+                exp=exp,
+                iat=iat
+            )
+        except (JWTError, ValueError, TypeError):
+            return None
+    
+    def is_token_expired(self, token: str) -> bool:
+        payload_data = self.verify_token(token)
+        if not payload_data:
+            return True
+        
+        return datetime.utcnow() > payload_data.exp
+from typing import List, Dict, Any, Optional
+from uuid import UUID
+from datetime import datetime
+
+from domain.entities.authorization_context import AuthorizationContext
+from domain.entities.resource_permission import ResourcePermission, PermissionEffect, ContextCondition
+from domain.entities.permission import Permission
+from domain.entities.role import Role
+from domain.repositories.unit_of_work import UnitOfWork
+from domain.repositories.resource_permission_repository import ResourcePermissionRepository
+from domain.repositories.resource_repository import ResourceRepository
+from application.services.permission_service import PermissionService
+
+
+class AuthorizationDecision:
+    def __init__(self, allowed: bool, reason: str, applied_rules: List[str]):
+        self.allowed = allowed
+        self.reason = reason
+        self.applied_rules = applied_rules
+
+
+class ConditionEvaluator:
+    """Evaluates ABAC conditions against authorization context"""
+    
+    @staticmethod
+    def evaluate_condition(condition: ContextCondition, context: AuthorizationContext) -> bool:
+        """Evaluate a single condition against the context"""
+        actual_value = context.get_attribute(condition.attribute)
+        expected_value = condition.value
+        
+        if actual_value is None:
+            return False
+            
+        operator = condition.operator.lower()
+        
+        if operator == "equals":
+            return actual_value == expected_value
+        elif operator == "not_equals":
+            return actual_value != expected_value
+        elif operator == "in":
+            return actual_value in expected_value if isinstance(expected_value, (list, tuple, set)) else False
+        elif operator == "not_in":
+            return actual_value not in expected_value if isinstance(expected_value, (list, tuple, set)) else True
+        elif operator == "contains":
+            return expected_value in str(actual_value)
+        elif operator == "not_contains":
+            return expected_value not in str(actual_value)
+        elif operator == "starts_with":
+            return str(actual_value).startswith(str(expected_value))
+        elif operator == "ends_with":
+            return str(actual_value).endswith(str(expected_value))
+        elif operator == "greater_than":
+            try:
+                return float(actual_value) > float(expected_value)
+            except (ValueError, TypeError):
+                return False
+        elif operator == "less_than":
+            try:
+                return float(actual_value) < float(expected_value)
+            except (ValueError, TypeError):
+                return False
+        elif operator == "greater_equal":
+            try:
+                return float(actual_value) >= float(expected_value)
+            except (ValueError, TypeError):
+                return False
+        elif operator == "less_equal":
+            try:
+                return float(actual_value) <= float(expected_value)
+            except (ValueError, TypeError):
+                return False
+        else:
+            return False
+    
+    @classmethod
+    def evaluate_conditions(cls, conditions: List[ContextCondition], context: AuthorizationContext) -> bool:
+        """Evaluate all conditions (AND logic)"""
+        return all(cls.evaluate_condition(condition, context) for condition in conditions)
+
+
+class HybridAuthorizationService:
+    """
+    Hybrid RBAC + ABAC authorization service
+    
+    Decision flow:
+    1. Check role-based permissions (RBAC)
+    2. Check resource-specific permissions (ABAC)
+    3. Evaluate contextual conditions
+    4. Apply priority and effect rules (ALLOW/DENY)
+    """
+    
+    def __init__(self, uow: UnitOfWork, permission_service: PermissionService):
+        self.uow = uow
+        self.permission_service = permission_service
+        self.condition_evaluator = ConditionEvaluator()
+
+    async def is_authorized(
+        self,
+        context: AuthorizationContext,
+        permission_name: str,
+        resource_id: Optional[UUID] = None,
+    ) -> AuthorizationDecision:
+        """
+        Main authorization method that combines RBAC and ABAC
+        
+        Args:
+            context: Authorization context with user, resource, and environment info
+            permission_name: Name of the permission to check (e.g., "read", "write", "delete")
+            resource_id: Optional specific resource ID to check
+            
+        Returns:
+            AuthorizationDecision with result and reasoning
+        """
+        async with self.uow:
+            # Get the permission by name
+            permission = await self.uow.permissions.find_by_name(permission_name)
+            if not permission:
+                return AuthorizationDecision(
+                    allowed=False,
+                    reason=f"Permission '{permission_name}' not found",
+                    applied_rules=[]
+                )
+
+            # Step 1: Check basic RBAC permissions (role-based)
+            rbac_decision = await self._check_rbac_permissions(context, permission)
+            
+            # Step 2: Check resource-specific permissions (ABAC)
+            if resource_id:
+                abac_decision = await self._check_abac_permissions(context, permission, resource_id)
+                
+                # Combine RBAC and ABAC decisions
+                return self._combine_decisions(rbac_decision, abac_decision)
+            else:
+                # No specific resource, rely on RBAC only
+                return rbac_decision
+
+    async def _check_rbac_permissions(
+        self,
+        context: AuthorizationContext,
+        permission: Permission,
+    ) -> AuthorizationDecision:
+        """Check traditional role-based permissions"""
+        # Get all user permissions (from roles, groups, and direct assignments)
+        user_permissions = await self.permission_service.get_all_user_permissions(context.user_id)
+        
+        # Check if user has the required permission
+        has_permission = any(perm.name == permission.name for perm in user_permissions)
+        
+        if has_permission:
+            return AuthorizationDecision(
+                allowed=True,
+                reason=f"User has role-based permission '{permission.name}'",
+                applied_rules=["RBAC_ALLOW"]
+            )
+        else:
+            return AuthorizationDecision(
+                allowed=False,
+                reason=f"User lacks role-based permission '{permission.name}'",
+                applied_rules=["RBAC_DENY"]
+            )
+
+    async def _check_abac_permissions(
+        self,
+        context: AuthorizationContext,
+        permission: Permission,
+        resource_id: UUID,
+    ) -> AuthorizationDecision:
+        """Check attribute-based permissions for specific resources"""
+        # Get user roles for role-based resource permissions
+        user_roles = await self.permission_service.get_user_roles(context.user_id)
+        user_role_ids = [role.id for role in await self._get_role_entities(user_roles)]
+        
+        # Get all applicable resource permissions
+        resource_permissions = await self.uow.resource_permissions.find_effective_permissions(
+            user_id=context.user_id,
+            resource_id=resource_id,
+            permission_id=permission.id,
+            user_roles=user_role_ids,
+        )
+        
+        if not resource_permissions:
+            return AuthorizationDecision(
+                allowed=False,
+                reason=f"No resource-specific permissions found for resource {resource_id}",
+                applied_rules=["ABAC_NO_RULES"]
+            )
+        
+        # Evaluate each permission with its conditions
+        applicable_permissions = []
+        for res_perm in resource_permissions:
+            if res_perm.conditions:
+                # Evaluate ABAC conditions
+                conditions_met = self.condition_evaluator.evaluate_conditions(res_perm.conditions, context)
+                if conditions_met:
+                    applicable_permissions.append(res_perm)
+            else:
+                # No conditions, permission applies
+                applicable_permissions.append(res_perm)
+        
+        if not applicable_permissions:
+            return AuthorizationDecision(
+                allowed=False,
+                reason="Resource permissions exist but conditions not met",
+                applied_rules=["ABAC_CONDITIONS_NOT_MET"]
+            )
+        
+        # Sort by priority (higher first) and apply effect logic
+        applicable_permissions.sort(key=lambda p: p.priority, reverse=True)
+        
+        # Apply the highest priority rule
+        highest_priority = applicable_permissions[0]
+        
+        if highest_priority.effect == PermissionEffect.ALLOW:
+            return AuthorizationDecision(
+                allowed=True,
+                reason=f"Resource permission allows access (priority: {highest_priority.priority})",
+                applied_rules=[f"ABAC_ALLOW_P{highest_priority.priority}"]
+            )
+        else:
+            return AuthorizationDecision(
+                allowed=False,
+                reason=f"Resource permission denies access (priority: {highest_priority.priority})",
+                applied_rules=[f"ABAC_DENY_P{highest_priority.priority}"]
+            )
+
+    def _combine_decisions(
+        self,
+        rbac_decision: AuthorizationDecision,
+        abac_decision: AuthorizationDecision,
+    ) -> AuthorizationDecision:
+        """
+        Combine RBAC and ABAC decisions
+        
+        Logic:
+        - If ABAC explicitly denies, deny (ABAC override)
+        - If ABAC allows, allow regardless of RBAC (resource-specific override)
+        - If ABAC has no rules, fall back to RBAC
+        """
+        combined_rules = rbac_decision.applied_rules + abac_decision.applied_rules
+        
+        # ABAC DENY has highest priority
+        if abac_decision.applied_rules and any("DENY" in rule for rule in abac_decision.applied_rules):
+            return AuthorizationDecision(
+                allowed=False,
+                reason=f"ABAC DENY overrides RBAC: {abac_decision.reason}",
+                applied_rules=combined_rules
+            )
+        
+        # ABAC ALLOW overrides RBAC DENY
+        if abac_decision.allowed:
+            return AuthorizationDecision(
+                allowed=True,
+                reason=f"ABAC ALLOW: {abac_decision.reason}",
+                applied_rules=combined_rules
+            )
+        
+        # No specific ABAC rules or conditions not met, fall back to RBAC
+        if "ABAC_NO_RULES" in abac_decision.applied_rules or "ABAC_CONDITIONS_NOT_MET" in abac_decision.applied_rules:
+            return AuthorizationDecision(
+                allowed=rbac_decision.allowed,
+                reason=f"RBAC fallback: {rbac_decision.reason}",
+                applied_rules=combined_rules
+            )
+        
+        # Default to most restrictive
+        return AuthorizationDecision(
+            allowed=False,
+            reason="Combined decision: access denied",
+            applied_rules=combined_rules
+        )
+
+    async def _get_role_entities(self, role_names: List[str]) -> List[Role]:
+        """Helper to get Role entities from role names"""
+        roles = []
+        for name in role_names:
+            role = await self.uow.roles.find_by_name(name)
+            if role:
+                roles.append(role)
+        return roles
+
+    async def get_accessible_resources(
+        self,
+        context: AuthorizationContext,
+        permission_name: str,
+        resource_type: Optional[str] = None,
+    ) -> List[UUID]:
+        """Get list of resource IDs that user can access with given permission"""
+        async with self.uow:
+            permission = await self.uow.permissions.find_by_name(permission_name)
+            if not permission:
+                return []
+            
+            # Get all resources (optionally filtered by type)
+            if resource_type:
+                from domain.entities.resource import ResourceType
+                resources = await self.uow.resources.find_by_type(ResourceType(resource_type))
+            else:
+                resources = await self.uow.resources.find_active_resources()
+            
+            accessible_resources = []
+            for resource in resources:
+                decision = await self.is_authorized(
+                    context.with_resource_attributes(**resource.metadata),
+                    permission_name,
+                    resource.id
+                )
+                if decision.allowed:
+                    accessible_resources.append(resource.id)
+            
+            return accessible_resources
+from typing import List, Optional
+from uuid import UUID
+
+from domain.repositories.unit_of_work import UnitOfWork
+from application.dtos.user_dto import CreateUserDto, UpdateUserDto, UserResponseDto
+from application.use_cases.user_use_cases import UserUseCases
+
+
+class UserService:
+    def __init__(self, uow: UnitOfWork):
+        self.user_use_cases = UserUseCases(uow)
+
+    async def create_user(self, create_dto: CreateUserDto) -> UserResponseDto:
+        return await self.user_use_cases.create_user(create_dto)
+
+    async def get_user_by_id(self, user_id: UUID) -> Optional[UserResponseDto]:
+        return await self.user_use_cases.get_user_by_id(user_id)
+
+    async def get_user_by_email(self, email: str) -> Optional[UserResponseDto]:
+        return await self.user_use_cases.get_user_by_email(email)
+
+    async def get_all_users(self) -> List[UserResponseDto]:
+        return await self.user_use_cases.get_all_users()
+
+    async def update_user(self, user_id: UUID, update_dto: UpdateUserDto) -> Optional[UserResponseDto]:
+        return await self.user_use_cases.update_user(user_id, update_dto)
+
+    async def delete_user(self, user_id: UUID) -> bool:
+        return await self.user_use_cases.delete_user(user_id)
+
+    async def deactivate_user(self, user_id: UUID) -> Optional[UserResponseDto]:
+        return await self.user_use_cases.deactivate_user(user_id)
+
+    async def activate_user(self, user_id: UUID) -> Optional[UserResponseDto]:
+        return await self.user_use_cases.activate_user(user_id)
+from datetime import datetime
+from typing import Optional
+from uuid import UUID
+from pydantic import BaseModel, EmailStr, Field
+
+
+class SignupDto(BaseModel):
+    email: EmailStr
+    name: str = Field(..., min_length=1, max_length=255)
+    password: str = Field(..., min_length=8, max_length=255)
+
+
+class LoginDto(BaseModel):
+    email: EmailStr
+    password: str = Field(..., min_length=1)
+
+
+class AuthResponseDto(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+    expires_in: int
+    user: "UserInfoDto"
+
+
+class UserInfoDto(BaseModel):
+    id: UUID
+    email: str
+    name: str
+    is_active: bool
+    created_at: datetime
+    updated_at: Optional[datetime]
+
+
+class TokenPayloadDto(BaseModel):
+    user_id: UUID
+    email: str
+    session_id: Optional[UUID] = None
+    exp: datetime
+    iat: datetime
+from datetime import datetime
+from typing import Optional
+from uuid import UUID
+from pydantic import BaseModel, EmailStr, Field
+
+
+class CreateUserDto(BaseModel):
+    email: EmailStr
+    name: str = Field(..., min_length=1, max_length=255)
+    password: str = Field(..., min_length=8, max_length=255)
+
+
+class UpdateUserDto(BaseModel):
+    name: Optional[str] = Field(None, min_length=1, max_length=255)
+
+
+class ChangePasswordDto(BaseModel):
+    old_password: str = Field(..., min_length=1)
+    new_password: str = Field(..., min_length=8, max_length=255)
+
+
+class UserResponseDto(BaseModel):
+    id: UUID
+    email: str
+    name: str
+    created_at: datetime
+    updated_at: Optional[datetime]
+    is_active: bool
+
+    model_config = {"from_attributes": True}
+from datetime import datetime
+from typing import Optional
+from uuid import UUID
+from pydantic import BaseModel, Field
+
+
+class CreateOrganizationDto(BaseModel):
+    name: str = Field(..., min_length=1, max_length=255)
+    description: Optional[str] = Field(None, max_length=1000)
+
+
+class UpdateOrganizationDto(BaseModel):
+    name: Optional[str] = Field(None, min_length=1, max_length=255)
+    description: Optional[str] = Field(None, max_length=1000)
+
+
+class TransferOwnershipDto(BaseModel):
+    new_owner_id: UUID
+
+
+class AddUserToOrganizationDto(BaseModel):
+    user_id: UUID
+
+
+class OrganizationResponseDto(BaseModel):
+    id: UUID
+    name: str
+    description: Optional[str]
+    owner_id: UUID
+    created_at: datetime
+    updated_at: Optional[datetime]
+    is_active: bool
+
+    model_config = {"from_attributes": True}
+
+
+class OrganizationMembershipDto(BaseModel):
+    organization: OrganizationResponseDto
+    joined_at: datetime
+
+    model_config = {"from_attributes": True}
+from datetime import datetime
+from typing import Optional, List
+from uuid import UUID
+from pydantic import BaseModel
+from domain.entities.user_session import SessionStatus
+
+
+class SessionInfoDto(BaseModel):
+    id: UUID
+    user_id: UUID
+    status: SessionStatus
+    login_at: datetime
+    logout_at: Optional[datetime]
+    expires_at: datetime
+    ip_address: Optional[str]
+    user_agent: Optional[str]
+    is_current: bool = False
+    session_duration: Optional[int] = None
+
+
+class UserSessionsResponseDto(BaseModel):
+    sessions: List[SessionInfoDto]
+    total_sessions: int
+    active_sessions: int
+
+
+class LogoutDto(BaseModel):
+    revoke_all_sessions: bool = False
+
+
+class LogoutResponseDto(BaseModel):
+    message: str
+    revoked_sessions_count: int
+
+
+class SessionStatsDto(BaseModel):
+    total_sessions: int
+    active_sessions: int
+    expired_sessions: int
+    logged_out_sessions: int
+    revoked_sessions: int
+from typing import Optional
+from domain.repositories.unit_of_work import UnitOfWork
+from domain.entities.user import User
+from application.dtos.auth_dto import SignupDto, LoginDto, AuthResponseDto, UserInfoDto
+from application.services.jwt_service import JWTService
+from application.use_cases.session_use_cases import SessionUseCases
+
+
+class AuthUseCases:
+    def __init__(self, uow: UnitOfWork, jwt_service: JWTService):
+        self.uow = uow
+        self.jwt_service = jwt_service
+        self.session_use_cases = SessionUseCases(uow, jwt_service)
+    
+    def _to_user_info_dto(self, user: User) -> UserInfoDto:
+        return UserInfoDto(
+            id=user.id,
+            email=str(user.email.value),
+            name=user.name,
+            is_active=user.is_active,
+            created_at=user.created_at,
+            updated_at=user.updated_at
+        )
+    
+    async def signup(self, signup_dto: SignupDto, ip_address: Optional[str] = None, user_agent: Optional[str] = None) -> AuthResponseDto:
+        async with self.uow:
+            existing_user = await self.uow.users.get_by_email(signup_dto.email)
+            if existing_user:
+                raise ValueError(f"User with email {signup_dto.email} already exists")
+            
+            user = User.create(
+                email=signup_dto.email,
+                name=signup_dto.name,
+                password=signup_dto.password
+            )
+            
+            created_user = await self.uow.users.create(user)
+            
+            # Create session for the new user
+            session, access_token = await self.session_use_cases.create_session(
+                user_id=created_user.id,
+                ip_address=ip_address,
+                user_agent=user_agent
+            )
+            
+            return AuthResponseDto(
+                access_token=access_token,
+                token_type="bearer",
+                expires_in=self.jwt_service.access_token_expire_minutes * 60,
+                user=self._to_user_info_dto(created_user)
+            )
+    
+    async def login(self, login_dto: LoginDto, ip_address: Optional[str] = None, user_agent: Optional[str] = None) -> Optional[AuthResponseDto]:
+        async with self.uow:
+            user = await self.uow.users.get_by_email(login_dto.email)
+            if not user:
+                return None
+            
+            if not user.is_active:
+                raise ValueError("User account is deactivated")
+            
+            if not user.verify_password(login_dto.password):
+                return None
+            
+            # Create session for the login
+            session, access_token = await self.session_use_cases.create_session(
+                user_id=user.id,
+                ip_address=ip_address,
+                user_agent=user_agent
+            )
+            
+            return AuthResponseDto(
+                access_token=access_token,
+                token_type="bearer",
+                expires_in=self.jwt_service.access_token_expire_minutes * 60,
+                user=self._to_user_info_dto(user)
+            )
+    
+    async def get_current_user(self, token: str) -> Optional[UserInfoDto]:
+        # Validate session first
+        session = await self.session_use_cases.validate_session(token)
+        if not session:
+            return None
+        
+        token_payload = self.jwt_service.verify_token(token)
+        if not token_payload:
+            return None
+        
+        async with self.uow:
+            user = await self.uow.users.get_by_id(token_payload.user_id)
+            if not user or not user.is_active:
+                return None
+            
+            return self._to_user_info_dto(user)
+    
+    async def verify_token(self, token: str) -> bool:
+        session = await self.session_use_cases.validate_session(token)
+        return session is not None
+    
+    async def logout(self, token: str) -> bool:
+        """Logout current session."""
+        try:
+            await self.session_use_cases.logout_session(token)
+            return True
+        except ValueError:
+            return False
+from typing import List, Optional
+from uuid import UUID
+
+from domain.entities.user import User
+from domain.repositories.unit_of_work import UnitOfWork
+from application.dtos.user_dto import CreateUserDto, UpdateUserDto, UserResponseDto, ChangePasswordDto
+
+
+class UserUseCases:
+    def __init__(self, uow: UnitOfWork):
+        self.uow = uow
+
+    def _to_response_dto(self, user: User) -> UserResponseDto:
+        return UserResponseDto(
+            id=user.id,
+            email=str(user.email.value),
+            name=user.name,
+            created_at=user.created_at,
+            updated_at=user.updated_at,
+            is_active=user.is_active
+        )
+
+    async def create_user(self, create_dto: CreateUserDto) -> UserResponseDto:
+        async with self.uow:
+            existing_user = await self.uow.users.get_by_email(create_dto.email)
+            if existing_user:
+                raise ValueError(f"User with email {create_dto.email} already exists")
+
+            user = User.create(email=create_dto.email, name=create_dto.name, password=create_dto.password)
+            created_user = await self.uow.users.create(user)
+            return self._to_response_dto(created_user)
+
+    async def get_user_by_id(self, user_id: UUID) -> Optional[UserResponseDto]:
+        async with self.uow:
+            user = await self.uow.users.get_by_id(user_id)
+            return self._to_response_dto(user) if user else None
+
+    async def get_user_by_email(self, email: str) -> Optional[UserResponseDto]:
+        async with self.uow:
+            user = await self.uow.users.get_by_email(email)
+            return self._to_response_dto(user) if user else None
+
+    async def get_all_users(self) -> List[UserResponseDto]:
+        async with self.uow:
+            users = await self.uow.users.get_all()
+            return [self._to_response_dto(user) for user in users]
+
+    async def update_user(self, user_id: UUID, update_dto: UpdateUserDto) -> Optional[UserResponseDto]:
+        async with self.uow:
+            user = await self.uow.users.get_by_id(user_id)
+            if not user:
+                return None
+
+            updated_user = user
+            if update_dto.name:
+                updated_user = user.update_name(update_dto.name)
+
+            final_user = await self.uow.users.update(updated_user)
+            return self._to_response_dto(final_user)
+
+    async def delete_user(self, user_id: UUID) -> bool:
+        async with self.uow:
+            return await self.uow.users.delete(user_id)
+
+    async def deactivate_user(self, user_id: UUID) -> Optional[UserResponseDto]:
+        async with self.uow:
+            user = await self.uow.users.get_by_id(user_id)
+            if not user:
+                return None
+
+            deactivated_user = user.deactivate()
+            updated_user = await self.uow.users.update(deactivated_user)
+            return self._to_response_dto(updated_user)
+
+    async def activate_user(self, user_id: UUID) -> Optional[UserResponseDto]:
+        async with self.uow:
+            user = await self.uow.users.get_by_id(user_id)
+            if not user:
+                return None
+
+            activated_user = user.activate()
+            updated_user = await self.uow.users.update(activated_user)
+            return self._to_response_dto(updated_user)
+    
+    async def change_password(self, user_id: UUID, change_password_dto: ChangePasswordDto) -> Optional[UserResponseDto]:
+        async with self.uow:
+            user = await self.uow.users.get_by_id(user_id)
+            if not user:
+                return None
+            
+            if not user.verify_password(change_password_dto.old_password):
+                raise ValueError("Invalid old password")
+            
+            updated_user = user.change_password(change_password_dto.new_password)
+            final_user = await self.uow.users.update(updated_user)
+            return self._to_response_dto(final_user)
+    
+    async def verify_user_password(self, email: str, password: str) -> Optional[UserResponseDto]:
+        async with self.uow:
+            user = await self.uow.users.get_by_email(email)
+            if not user:
+                return None
+            
+            if not user.verify_password(password):
+                return None
+            
+            return self._to_response_dto(user)
+from typing import List, Optional
+from uuid import UUID
+
+from domain.entities.organization import Organization
+from domain.repositories.unit_of_work import UnitOfWork
+from application.dtos.organization_dto import (
+    CreateOrganizationDto,
+    UpdateOrganizationDto,
+    TransferOwnershipDto,
+    AddUserToOrganizationDto,
+    OrganizationResponseDto
+)
+
+
+class OrganizationUseCases:
+    def __init__(self, uow: UnitOfWork):
+        self.uow = uow
+
+    def _to_response_dto(self, organization: Organization) -> OrganizationResponseDto:
+        return OrganizationResponseDto(
+            id=organization.id,
+            name=organization.name,
+            description=organization.description,
+            owner_id=organization.owner_id,
+            created_at=organization.created_at,
+            updated_at=organization.updated_at,
+            is_active=organization.is_active
+        )
+
+    async def create_organization(self, owner_id: UUID, create_dto: CreateOrganizationDto) -> OrganizationResponseDto:
+        async with self.uow:
+            existing_org = await self.uow.organizations.get_by_name(create_dto.name)
+            if existing_org:
+                raise ValueError(f"Organization with name {create_dto.name} already exists")
+
+            user = await self.uow.users.get_by_id(owner_id)
+            if not user:
+                raise ValueError(f"User with id {owner_id} does not exist")
+
+            organization = Organization.create(
+                name=create_dto.name,
+                owner_id=owner_id,
+                description=create_dto.description
+            )
+            created_org = await self.uow.organizations.create(organization)
+            
+            await self.uow.organizations.add_user_to_organization(created_org.id, owner_id)
+            
+            return self._to_response_dto(created_org)
+
+    async def get_organization_by_id(self, organization_id: UUID) -> Optional[OrganizationResponseDto]:
+        async with self.uow:
+            organization = await self.uow.organizations.get_by_id(organization_id)
+            return self._to_response_dto(organization) if organization else None
+
+    async def get_organization_by_name(self, name: str) -> Optional[OrganizationResponseDto]:
+        async with self.uow:
+            organization = await self.uow.organizations.get_by_name(name)
+            return self._to_response_dto(organization) if organization else None
+
+    async def get_organizations_by_owner(self, owner_id: UUID) -> List[OrganizationResponseDto]:
+        async with self.uow:
+            organizations = await self.uow.organizations.get_by_owner_id(owner_id)
+            return [self._to_response_dto(org) for org in organizations]
+
+    async def get_user_organizations(self, user_id: UUID) -> List[OrganizationResponseDto]:
+        async with self.uow:
+            organizations = await self.uow.organizations.get_organizations_by_user_id(user_id)
+            return [self._to_response_dto(org) for org in organizations]
+
+    async def update_organization(self, organization_id: UUID, update_dto: UpdateOrganizationDto, requester_id: UUID) -> Optional[OrganizationResponseDto]:
+        async with self.uow:
+            organization = await self.uow.organizations.get_by_id(organization_id)
+            if not organization:
+                return None
+
+            if organization.owner_id != requester_id:
+                raise PermissionError("Only the organization owner can update the organization")
+
+            updated_org = organization
+            if update_dto.name:
+                existing_org = await self.uow.organizations.get_by_name(update_dto.name)
+                if existing_org and existing_org.id != organization_id:
+                    raise ValueError(f"Organization with name {update_dto.name} already exists")
+                updated_org = updated_org.update_name(update_dto.name)
+
+            if update_dto.description is not None:
+                updated_org = updated_org.update_description(update_dto.description)
+
+            final_org = await self.uow.organizations.update(updated_org)
+            return self._to_response_dto(final_org)
+
+    async def transfer_ownership(self, organization_id: UUID, transfer_dto: TransferOwnershipDto, current_owner_id: UUID) -> Optional[OrganizationResponseDto]:
+        async with self.uow:
+            organization = await self.uow.organizations.get_by_id(organization_id)
+            if not organization:
+                return None
+
+            if organization.owner_id != current_owner_id:
+                raise PermissionError("Only the current owner can transfer ownership")
+
+            new_owner = await self.uow.users.get_by_id(transfer_dto.new_owner_id)
+            if not new_owner:
+                raise ValueError(f"User with id {transfer_dto.new_owner_id} does not exist")
+
+            is_member = await self.uow.organizations.is_user_in_organization(organization_id, transfer_dto.new_owner_id)
+            if not is_member:
+                await self.uow.organizations.add_user_to_organization(organization_id, transfer_dto.new_owner_id)
+
+            transferred_org = organization.transfer_ownership(transfer_dto.new_owner_id)
+            final_org = await self.uow.organizations.update(transferred_org)
+            return self._to_response_dto(final_org)
+
+    async def add_user_to_organization(self, organization_id: UUID, add_user_dto: AddUserToOrganizationDto, requester_id: UUID) -> bool:
+        async with self.uow:
+            organization = await self.uow.organizations.get_by_id(organization_id)
+            if not organization:
+                raise ValueError(f"Organization with id {organization_id} does not exist")
+
+            if organization.owner_id != requester_id:
+                raise PermissionError("Only the organization owner can add users")
+
+            user = await self.uow.users.get_by_id(add_user_dto.user_id)
+            if not user:
+                raise ValueError(f"User with id {add_user_dto.user_id} does not exist")
+
+            is_already_member = await self.uow.organizations.is_user_in_organization(organization_id, add_user_dto.user_id)
+            if is_already_member:
+                raise ValueError("User is already a member of this organization")
+
+            await self.uow.organizations.add_user_to_organization(organization_id, add_user_dto.user_id)
+            return True
+
+    async def remove_user_from_organization(self, organization_id: UUID, user_id: UUID, requester_id: UUID) -> bool:
+        async with self.uow:
+            organization = await self.uow.organizations.get_by_id(organization_id)
+            if not organization:
+                raise ValueError(f"Organization with id {organization_id} does not exist")
+
+            if organization.owner_id != requester_id and requester_id != user_id:
+                raise PermissionError("Only the organization owner or the user themselves can remove membership")
+
+            if organization.owner_id == user_id:
+                raise ValueError("The organization owner cannot be removed from the organization")
+
+            is_member = await self.uow.organizations.is_user_in_organization(organization_id, user_id)
+            if not is_member:
+                raise ValueError("User is not a member of this organization")
+
+            await self.uow.organizations.remove_user_from_organization(organization_id, user_id)
+            return True
+
+    async def deactivate_organization(self, organization_id: UUID, requester_id: UUID) -> Optional[OrganizationResponseDto]:
+        async with self.uow:
+            organization = await self.uow.organizations.get_by_id(organization_id)
+            if not organization:
+                return None
+
+            if organization.owner_id != requester_id:
+                raise PermissionError("Only the organization owner can deactivate the organization")
+
+            deactivated_org = organization.deactivate()
+            updated_org = await self.uow.organizations.update(deactivated_org)
+            return self._to_response_dto(updated_org)
+
+    async def activate_organization(self, organization_id: UUID, requester_id: UUID) -> Optional[OrganizationResponseDto]:
+        async with self.uow:
+            organization = await self.uow.organizations.get_by_id(organization_id)
+            if not organization:
+                return None
+
+            if organization.owner_id != requester_id:
+                raise PermissionError("Only the organization owner can activate the organization")
+
+            activated_org = organization.activate()
+            updated_org = await self.uow.organizations.update(activated_org)
+            return self._to_response_dto(updated_org)
+from typing import List, Optional
+from uuid import UUID
+from datetime import datetime, timedelta
+from fastapi import Request
+
+from domain.repositories.unit_of_work import UnitOfWork
+from domain.entities.user_session import UserSession
+from application.dtos.session_dto import (
+    SessionInfoDto, UserSessionsResponseDto, LogoutDto, 
+    LogoutResponseDto, SessionStatsDto
+)
+from application.services.jwt_service import JWTService
+
+
+class SessionUseCases:
+    def __init__(self, uow: UnitOfWork, jwt_service: JWTService):
+        self.uow = uow
+        self.jwt_service = jwt_service
+
+    def _to_session_info_dto(self, session: UserSession, current_session_id: Optional[UUID] = None) -> SessionInfoDto:
+        return SessionInfoDto(
+            id=session.id,
+            user_id=session.user_id,
+            status=session.status,
+            login_at=session.login_at,
+            logout_at=session.logout_at,
+            expires_at=session.expires_at,
+            ip_address=session.ip_address,
+            user_agent=session.user_agent,
+            is_current=session.id == current_session_id,
+            session_duration=session.get_session_duration()
+        )
+
+    async def create_session(
+        self, 
+        user_id: UUID, 
+        ip_address: Optional[str] = None, 
+        user_agent: Optional[str] = None
+    ) -> tuple[UserSession, str]:
+        """Create a new user session and return session with JWT token."""
+        async with self.uow:
+            # Calculate expiration time
+            expires_at = datetime.utcnow() + timedelta(minutes=self.jwt_service.access_token_expire_minutes)
+            
+            # Create session without token first
+            session = UserSession.create(
+                user_id=user_id,
+                session_token="",  # Will be updated with actual JWT
+                expires_at=expires_at,
+                ip_address=ip_address,
+                user_agent=user_agent
+            )
+            
+            # Create the session in database to get the ID
+            created_session = await self.uow.user_sessions.create(session)
+            
+            # Get user for JWT creation
+            user = await self.uow.users.get_by_id(user_id)
+            if not user:
+                raise ValueError("User not found")
+            
+            # Create JWT token with session ID
+            access_token, _ = self.jwt_service.create_access_token(
+                user_id=user.id,
+                email=str(user.email.value),
+                session_id=created_session.id
+            )
+            
+            # Update session with the actual JWT token
+            updated_session = created_session.model_copy(update={
+                "session_token": access_token,
+                "updated_at": datetime.utcnow()
+            })
+            
+            final_session = await self.uow.user_sessions.update(updated_session)
+            return final_session, access_token
+
+    async def logout_session(self, session_token: str) -> LogoutResponseDto:
+        """Logout a specific session."""
+        async with self.uow:
+            session = await self.uow.user_sessions.get_by_session_token(session_token)
+            if not session:
+                raise ValueError("Session not found")
+            
+            if not session.is_active():
+                raise ValueError("Session is not active")
+            
+            logged_out_session = session.logout()
+            await self.uow.user_sessions.update(logged_out_session)
+            
+            return LogoutResponseDto(
+                message="Session logged out successfully",
+                revoked_sessions_count=1
+            )
+
+    async def logout_all_sessions(self, user_id: UUID, except_session_id: Optional[UUID] = None) -> LogoutResponseDto:
+        """Logout all sessions for a user, optionally excluding current session."""
+        async with self.uow:
+            if except_session_id:
+                # Get all active sessions except the current one
+                all_sessions = await self.uow.user_sessions.get_active_sessions_by_user_id(user_id)
+                sessions_to_logout = [s for s in all_sessions if s.id != except_session_id]
+                
+                count = 0
+                for session in sessions_to_logout:
+                    logged_out_session = session.logout()
+                    await self.uow.user_sessions.update(logged_out_session)
+                    count += 1
+                
+                return LogoutResponseDto(
+                    message=f"Logged out {count} other sessions",
+                    revoked_sessions_count=count
+                )
+            else:
+                # Logout all sessions using repository method
+                count = await self.uow.user_sessions.expire_sessions_by_user_id(user_id)
+                return LogoutResponseDto(
+                    message=f"Logged out all {count} sessions",
+                    revoked_sessions_count=count
+                )
+
+    async def get_user_sessions(self, user_id: UUID, current_session_token: Optional[str] = None) -> UserSessionsResponseDto:
+        """Get all sessions for a user."""
+        async with self.uow:
+            sessions = await self.uow.user_sessions.get_all_sessions_by_user_id(user_id)
+            
+            # Determine current session ID from token
+            current_session_id = None
+            if current_session_token:
+                token_payload = self.jwt_service.verify_token(current_session_token)
+                if token_payload and token_payload.session_id:
+                    current_session_id = token_payload.session_id
+            
+            session_dtos = [
+                self._to_session_info_dto(session, current_session_id) 
+                for session in sessions
+            ]
+            
+            active_count = sum(1 for session in sessions if session.is_active())
+            
+            return UserSessionsResponseDto(
+                sessions=session_dtos,
+                total_sessions=len(sessions),
+                active_sessions=active_count
+            )
+
+    async def revoke_session(self, session_id: UUID, admin_user_id: UUID) -> LogoutResponseDto:
+        """Revoke a session (admin action)."""
+        async with self.uow:
+            session = await self.uow.user_sessions.get_by_id(session_id)
+            if not session:
+                raise ValueError("Session not found")
+            
+            revoked_session = session.revoke()
+            await self.uow.user_sessions.update(revoked_session)
+            
+            return LogoutResponseDto(
+                message="Session revoked by admin",
+                revoked_sessions_count=1
+            )
+
+    async def cleanup_expired_sessions(self) -> int:
+        """Clean up expired sessions."""
+        async with self.uow:
+            return await self.uow.user_sessions.cleanup_expired_sessions()
+
+    async def get_session_stats(self, user_id: UUID) -> SessionStatsDto:
+        """Get session statistics for a user."""
+        async with self.uow:
+            sessions = await self.uow.user_sessions.get_all_sessions_by_user_id(user_id)
+            
+            stats = {
+                "total_sessions": len(sessions),
+                "active_sessions": 0,
+                "expired_sessions": 0,
+                "logged_out_sessions": 0,
+                "revoked_sessions": 0
+            }
+            
+            for session in sessions:
+                if session.status.value == "active" and session.is_active():
+                    stats["active_sessions"] += 1
+                elif session.status.value == "expired" or (session.status.value == "active" and session.is_expired()):
+                    stats["expired_sessions"] += 1
+                elif session.status.value == "logged_out":
+                    stats["logged_out_sessions"] += 1
+                elif session.status.value == "revoked":
+                    stats["revoked_sessions"] += 1
+            
+            return SessionStatsDto(**stats)
+
+    async def validate_session(self, session_token: str) -> Optional[UserSession]:
+        """Validate if a session is still active and not expired."""
+        async with self.uow:
+            session = await self.uow.user_sessions.get_by_session_token(session_token)
+            if not session:
+                return None
+            
+            if not session.is_active():
+                return None
+            
+            # Auto-expire if needed
+            if session.is_expired():
+                expired_session = session.expire()
+                await self.uow.user_sessions.update(expired_session)
+                return None
+            
+            return session
+import os
+from sqlalchemy import create_engine, MetaData
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import sessionmaker
+from dotenv import load_dotenv
+
+load_dotenv()
+
+DATABASE_URL = os.getenv(
+    "DATABASE_URL",
+    "postgresql://postgres:password@localhost:5432/ddd_app"
+)
+
+SCHEMA_NAME = "contas"
+
+engine = create_engine(DATABASE_URL)
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+# Create Base with schema support
+metadata = MetaData(schema=SCHEMA_NAME)
+Base = declarative_base(metadata=metadata)
+
+
+def get_db():
+    """Legacy dependency - use get_unit_of_work instead for new code."""
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+from sqlalchemy import Column, String, DateTime, Boolean, ForeignKey, Enum, Table, Text, Integer, JSON
+from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.sql import func
+import uuid
+import enum
+
+from .connection import Base
+
+
+class SessionStatusEnum(enum.Enum):
+    ACTIVE = "active"
+    EXPIRED = "expired"
+    LOGGED_OUT = "logged_out"
+    REVOKED = "revoked"
+
+
+class ResourceTypeEnum(enum.Enum):
+    PROJECT = "project"
+    DOCUMENT = "document"
+    DATASET = "dataset"
+    REPORT = "report"
+    DASHBOARD = "dashboard"
+    FOLDER = "folder"
+    CUSTOM = "custom"
+
+
+class PermissionEffectEnum(enum.Enum):
+    ALLOW = "allow"
+    DENY = "deny"
+
+
+class UserModel(Base):
+    __tablename__ = "users"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    email = Column(String(255), unique=True, nullable=False, index=True)
+    name = Column(String(255), nullable=False)
+    password = Column(String(255), nullable=False)
+    cpf = Column(String(255), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    is_active = Column(Boolean, default=False)
+
+
+class UserSessionModel(Base):
+    __tablename__ = "user_sessions"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
+    session_token = Column(String(500), nullable=False, unique=True, index=True)
+    status = Column(Enum(SessionStatusEnum), nullable=False, default=SessionStatusEnum.ACTIVE, index=True)
+    login_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    logout_at = Column(DateTime(timezone=True), nullable=True)
+    expires_at = Column(DateTime(timezone=True), nullable=False, index=True)
+    ip_address = Column(String(45), nullable=True)
+    user_agent = Column(String(500), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
+
+user_organization_association = Table(
+    'user_organizations',
+    Base.metadata,
+    Column('user_id', UUID(as_uuid=True), ForeignKey('users.id'), primary_key=True),
+    Column('organization_id', UUID(as_uuid=True), ForeignKey('organizations.id'), primary_key=True),
+    Column('joined_at', DateTime(timezone=True), server_default=func.now())
+)
+
+
+class OrganizationModel(Base):
+    __tablename__ = "organizations"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    name = Column(String(255), nullable=False, index=True)
+    description = Column(Text, nullable=True)
+    owner_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    is_active = Column(Boolean, default=True)
+
+
+class RoleModel(Base):
+    __tablename__ = "roles"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    name = Column(String(255), nullable=False, unique=True, index=True)
+    description = Column(Text, nullable=True)
+    is_system = Column(Boolean, default=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    is_active = Column(Boolean, default=True)
+
+
+class PermissionModel(Base):
+    __tablename__ = "permissions"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    name = Column(String(255), nullable=False, unique=True, index=True)
+    description = Column(Text, nullable=True)
+    resource = Column(String(255), nullable=False, index=True)
+    action = Column(String(255), nullable=False, index=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    is_active = Column(Boolean, default=True)
+
+
+role_permission_association = Table(
+    'role_permissions',
+    Base.metadata,
+    Column('role_id', UUID(as_uuid=True), ForeignKey('roles.id'), primary_key=True),
+    Column('permission_id', UUID(as_uuid=True), ForeignKey('permissions.id'), primary_key=True),
+    Column('assigned_at', DateTime(timezone=True), server_default=func.now())
+)
+
+
+class UserOrganizationRoleModel(Base):
+    __tablename__ = "user_organization_roles"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
+    organization_id = Column(UUID(as_uuid=True), ForeignKey("organizations.id"), nullable=False, index=True)
+    role_id = Column(UUID(as_uuid=True), ForeignKey("roles.id"), nullable=False, index=True)
+    assigned_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    assigned_by = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    revoked_at = Column(DateTime(timezone=True), nullable=True)
+    revoked_by = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    is_active = Column(Boolean, default=True)
+
+
+# RBAC + ABAC Models
+class ResourceModel(Base):
+    __tablename__ = "resources"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    name = Column(String(255), nullable=False, index=True)
+    resource_type = Column(Enum(ResourceTypeEnum), nullable=False, index=True)
+    description = Column(Text, nullable=True)
+    parent_id = Column(UUID(as_uuid=True), ForeignKey("resources.id"), nullable=True, index=True)
+    organization_id = Column(UUID(as_uuid=True), ForeignKey("organizations.id"), nullable=True, index=True)
+    metadata = Column(JSON, nullable=False, default={})  # Flexible attributes for ABAC
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    is_active = Column(Boolean, default=True)
+
+
+class ResourcePermissionModel(Base):
+    __tablename__ = "resource_permissions"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True, index=True)  # Direct user permission
+    role_id = Column(UUID(as_uuid=True), ForeignKey("roles.id"), nullable=True, index=True)  # Role-based permission
+    resource_id = Column(UUID(as_uuid=True), ForeignKey("resources.id"), nullable=False, index=True)
+    permission_id = Column(UUID(as_uuid=True), ForeignKey("permissions.id"), nullable=False, index=True)
+    effect = Column(Enum(PermissionEffectEnum), nullable=False, default=PermissionEffectEnum.ALLOW)
+    conditions = Column(JSON, nullable=False, default=[])  # ABAC conditions
+    priority = Column(Integer, nullable=False, default=0)  # Rule priority
+    assigned_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    assigned_by = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    revoked_at = Column(DateTime(timezone=True), nullable=True)
+    revoked_by = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    is_active = Column(Boolean, default=True)
+from sqlalchemy.orm import Session
+from fastapi import Depends
+
+from infrastructure.database.connection import SessionLocal
+from infrastructure.repositories.sqlalchemy_unit_of_work import SQLAlchemyUnitOfWork
+
+
+def get_db_session() -> Session:
+    """Get a new database session."""
+    db = SessionLocal()
+    return db
+
+
+def get_unit_of_work(db: Session = Depends(get_db_session)) -> SQLAlchemyUnitOfWork:
+    """Get a UnitOfWork instance with the current database session."""
+    return SQLAlchemyUnitOfWork(db)
+from abc import abstractmethod
+from typing import Generic, TypeVar, List, Optional, Type
+from uuid import UUID
+from sqlalchemy.orm import Session
+
+from domain.repositories.base_repository import Repository
+
+DomainEntity = TypeVar('DomainEntity')
+DatabaseModel = TypeVar('DatabaseModel')
+
+
+class SQLAlchemyRepository(Repository[DomainEntity], Generic[DomainEntity, DatabaseModel]):
+    def __init__(self, db: Session, model_class: Type[DatabaseModel]):
+        self.db = db
+        self.model_class = model_class
+
+    @abstractmethod
+    def _to_domain(self, model: DatabaseModel) -> DomainEntity:
+        pass
+
+    @abstractmethod
+    def _to_model(self, entity: DomainEntity) -> DatabaseModel:
+        pass
+
+    @abstractmethod
+    def _update_model(self, model: DatabaseModel, entity: DomainEntity) -> DatabaseModel:
+        pass
+
+    async def create(self, entity: DomainEntity) -> DomainEntity:
+        model = self._to_model(entity)
+        self.db.add(model)
+        self.db.flush()  # Flush to get the ID but don't commit
+        self.db.refresh(model)
+        return self._to_domain(model)
+
+    async def get_by_id(self, entity_id: UUID) -> Optional[DomainEntity]:
+        model = self.db.query(self.model_class).filter(self.model_class.id == entity_id).first()
+        return self._to_domain(model) if model else None
+
+    async def get_all(self) -> List[DomainEntity]:
+        models = self.db.query(self.model_class).all()
+        return [self._to_domain(model) for model in models]
+
+    async def update(self, entity: DomainEntity) -> DomainEntity:
+        model = self.db.query(self.model_class).filter(self.model_class.id == entity.id).first()
+        if model:
+            updated_model = self._update_model(model, entity)
+            self.db.flush()  # Flush changes but don't commit
+            self.db.refresh(updated_model)
+            return self._to_domain(updated_model)
+        raise ValueError(f"Entity with id {entity.id} not found")
+
+    async def delete(self, entity_id: UUID) -> bool:
+        model = self.db.query(self.model_class).filter(self.model_class.id == entity_id).first()
+        if model:
+            self.db.delete(model)
+            self.db.flush()  # Flush changes but don't commit
+            return True
+        return False
+from typing import Optional
+from sqlalchemy.orm import Session
+
+from domain.entities.user import User
+from domain.repositories.user_repository import UserRepository
+from domain.value_objects.email import Email
+from domain.value_objects.password import Password
+from infrastructure.database.models import UserModel
+from infrastructure.repositories.base_sqlalchemy_repository import SQLAlchemyRepository
+
+
+class UserRepositoryImpl(SQLAlchemyRepository[User, UserModel], UserRepository):
+    def __init__(self, db: Session):
+        super().__init__(db, UserModel)
+
+    def _to_domain(self, model: UserModel) -> User:
+        return User(
+            id=model.id,
+            email=Email(value=model.email),
+            name=model.name,
+            password=Password.from_hash(model.password),
+            created_at=model.created_at,
+            updated_at=model.updated_at,
+            is_active=model.is_active,
+        )
+
+    def _to_model(self, user: User) -> UserModel:
+        return UserModel(
+            id=user.id,
+            email=str(user.email.value),
+            name=user.name,
+            password=user.password.hashed_value,
+            created_at=user.created_at,
+            updated_at=user.updated_at,
+            is_active=user.is_active,
+        )
+
+    def _update_model(self, model: UserModel, user: User) -> UserModel:
+        model.email = str(user.email.value)
+        model.name = user.name
+        model.password = user.password.hashed_value
+        model.updated_at = user.updated_at
+        model.is_active = user.is_active
+        return model
+
+    async def get_by_email(self, email: str) -> Optional[User]:
+        model = self.db.query(UserModel).filter(UserModel.email == email).first()
+        return self._to_domain(model) if model else None
+from typing import List, Optional
+from uuid import UUID
+from sqlalchemy.orm import Session
+from sqlalchemy import and_
+from datetime import datetime
+
+from domain.entities.user_session import UserSession, SessionStatus
+from domain.repositories.user_session_repository import UserSessionRepository
+from infrastructure.database.models import UserSessionModel, SessionStatusEnum
+from infrastructure.repositories.base_sqlalchemy_repository import SQLAlchemyRepository
+
+
+class UserSessionRepositoryImpl(SQLAlchemyRepository[UserSession, UserSessionModel], UserSessionRepository):
+    def __init__(self, db: Session):
+        super().__init__(db, UserSessionModel)
+
+    def _to_domain(self, model: UserSessionModel) -> UserSession:
+        return UserSession(
+            id=model.id,
+            user_id=model.user_id,
+            session_token=model.session_token,
+            status=SessionStatus(model.status.value),
+            login_at=model.login_at,
+            logout_at=model.logout_at,
+            expires_at=model.expires_at,
+            ip_address=model.ip_address,
+            user_agent=model.user_agent,
+            created_at=model.created_at,
+            updated_at=model.updated_at,
+        )
+
+    def _to_model(self, session: UserSession) -> UserSessionModel:
+        return UserSessionModel(
+            id=session.id,
+            user_id=session.user_id,
+            session_token=session.session_token,
+            status=SessionStatusEnum(session.status.value),
+            login_at=session.login_at,
+            logout_at=session.logout_at,
+            expires_at=session.expires_at,
+            ip_address=session.ip_address,
+            user_agent=session.user_agent,
+            created_at=session.created_at,
+            updated_at=session.updated_at,
+        )
+
+    def _update_model(self, model: UserSessionModel, session: UserSession) -> UserSessionModel:
+        model.status = SessionStatusEnum(session.status.value)
+        model.logout_at = session.logout_at
+        model.expires_at = session.expires_at
+        model.ip_address = session.ip_address
+        model.user_agent = session.user_agent
+        model.updated_at = session.updated_at
+        return model
+
+    async def get_by_session_token(self, session_token: str) -> Optional[UserSession]:
+        model = self.db.query(UserSessionModel).filter(
+            UserSessionModel.session_token == session_token
+        ).first()
+        return self._to_domain(model) if model else None
+
+    async def get_active_sessions_by_user_id(self, user_id: UUID) -> List[UserSession]:
+        models = self.db.query(UserSessionModel).filter(
+            and_(
+                UserSessionModel.user_id == user_id,
+                UserSessionModel.status == SessionStatusEnum.ACTIVE,
+                UserSessionModel.expires_at > datetime.utcnow()
+            )
+        ).all()
+        return [self._to_domain(model) for model in models]
+
+    async def get_all_sessions_by_user_id(self, user_id: UUID) -> List[UserSession]:
+        models = self.db.query(UserSessionModel).filter(
+            UserSessionModel.user_id == user_id
+        ).order_by(UserSessionModel.login_at.desc()).all()
+        return [self._to_domain(model) for model in models]
+
+    async def expire_sessions_by_user_id(self, user_id: UUID) -> int:
+        count = self.db.query(UserSessionModel).filter(
+            and_(
+                UserSessionModel.user_id == user_id,
+                UserSessionModel.status == SessionStatusEnum.ACTIVE
+            )
+        ).update({
+            UserSessionModel.status: SessionStatusEnum.EXPIRED,
+            UserSessionModel.logout_at: datetime.utcnow(),
+            UserSessionModel.updated_at: datetime.utcnow()
+        })
+        self.db.commit()
+        return count
+
+    async def cleanup_expired_sessions(self) -> int:
+        # Mark expired sessions based on expires_at timestamp
+        count = self.db.query(UserSessionModel).filter(
+            and_(
+                UserSessionModel.status == SessionStatusEnum.ACTIVE,
+                UserSessionModel.expires_at <= datetime.utcnow()
+            )
+        ).update({
+            UserSessionModel.status: SessionStatusEnum.EXPIRED,
+            UserSessionModel.updated_at: datetime.utcnow()
+        })
+        self.db.commit()
+        return count
+from typing import Optional, List
+from uuid import UUID
+from sqlalchemy.orm import Session
+from sqlalchemy import and_
+
+from domain.entities.organization import Organization
+from domain.repositories.organization_repository import OrganizationRepository
+from infrastructure.database.models import OrganizationModel, user_organization_association
+from infrastructure.repositories.base_sqlalchemy_repository import SQLAlchemyRepository
+
+
+class OrganizationRepositoryImpl(SQLAlchemyRepository[Organization, OrganizationModel], OrganizationRepository):
+    def __init__(self, db: Session):
+        super().__init__(db, OrganizationModel)
+
+    def _to_domain(self, model: OrganizationModel) -> Organization:
+        return Organization(
+            id=model.id,
+            name=model.name,
+            description=model.description,
+            owner_id=model.owner_id,
+            created_at=model.created_at,
+            updated_at=model.updated_at,
+            is_active=model.is_active,
+        )
+
+    def _to_model(self, organization: Organization) -> OrganizationModel:
+        return OrganizationModel(
+            id=organization.id,
+            name=organization.name,
+            description=organization.description,
+            owner_id=organization.owner_id,
+            created_at=organization.created_at,
+            updated_at=organization.updated_at,
+            is_active=organization.is_active,
+        )
+
+    def _update_model(self, model: OrganizationModel, organization: Organization) -> OrganizationModel:
+        model.name = organization.name
+        model.description = organization.description
+        model.owner_id = organization.owner_id
+        model.updated_at = organization.updated_at
+        model.is_active = organization.is_active
+        return model
+
+    async def get_by_name(self, name: str) -> Optional[Organization]:
+        model = self.db.query(OrganizationModel).filter(OrganizationModel.name == name).first()
+        return self._to_domain(model) if model else None
+
+    async def get_by_owner_id(self, owner_id: UUID) -> List[Organization]:
+        models = self.db.query(OrganizationModel).filter(OrganizationModel.owner_id == owner_id).all()
+        return [self._to_domain(model) for model in models]
+
+    async def get_organizations_by_user_id(self, user_id: UUID) -> List[Organization]:
+        models = (
+            self.db.query(OrganizationModel)
+            .join(user_organization_association)
+            .filter(user_organization_association.c.user_id == user_id)
+            .all()
+        )
+        return [self._to_domain(model) for model in models]
+
+    async def add_user_to_organization(self, organization_id: UUID, user_id: UUID) -> None:
+        insert_stmt = user_organization_association.insert().values(
+            user_id=user_id,
+            organization_id=organization_id
+        )
+        self.db.execute(insert_stmt)
+
+    async def remove_user_from_organization(self, organization_id: UUID, user_id: UUID) -> None:
+        delete_stmt = user_organization_association.delete().where(
+            and_(
+                user_organization_association.c.user_id == user_id,
+                user_organization_association.c.organization_id == organization_id
+            )
+        )
+        self.db.execute(delete_stmt)
+
+    async def is_user_in_organization(self, organization_id: UUID, user_id: UUID) -> bool:
+        result = self.db.query(user_organization_association).filter(
+            and_(
+                user_organization_association.c.user_id == user_id,
+                user_organization_association.c.organization_id == organization_id
+            )
+        ).first()
+        return result is not None
+from sqlalchemy.orm import Session
+from sqlalchemy.exc import SQLAlchemyError
+
+from domain.repositories.unit_of_work import UnitOfWork
+from infrastructure.repositories.user_repository_impl import UserRepositoryImpl
+from infrastructure.repositories.user_session_repository_impl import UserSessionRepositoryImpl
+from infrastructure.repositories.organization_repository_impl import OrganizationRepositoryImpl
+
+
+class SQLAlchemyUnitOfWork(UnitOfWork):
+    def __init__(self, session: Session):
+        self.session = session
+        self.users = UserRepositoryImpl(session)
+        self.user_sessions = UserSessionRepositoryImpl(session)
+        self.organizations = OrganizationRepositoryImpl(session)
+        self._committed = False
+
+    async def __aenter__(self) -> "SQLAlchemyUnitOfWork":
+        return self
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        if exc_type is None:
+            try:
+                await self.commit()
+            except SQLAlchemyError:
+                await self.rollback()
+                raise
+        else:
+            await self.rollback()
+        self.session.close()
+
+    async def commit(self) -> None:
+        if not self._committed:
+            try:
+                self.session.commit()
+                self._committed = True
+            except SQLAlchemyError:
+                await self.rollback()
+                raise
+
+    async def rollback(self) -> None:
+        self.session.rollback()
+        self._committed = False

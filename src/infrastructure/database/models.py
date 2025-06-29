@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, DateTime, Boolean, ForeignKey, Enum, Table, Text
+from sqlalchemy import Column, String, DateTime, Boolean, ForeignKey, Enum, Table, Text, Integer, JSON
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.sql import func
 import uuid
@@ -12,6 +12,21 @@ class SessionStatusEnum(enum.Enum):
     EXPIRED = "expired"
     LOGGED_OUT = "logged_out"
     REVOKED = "revoked"
+
+
+class ResourceTypeEnum(enum.Enum):
+    PROJECT = "project"
+    DOCUMENT = "document"
+    DATASET = "dataset"
+    REPORT = "report"
+    DASHBOARD = "dashboard"
+    FOLDER = "folder"
+    CUSTOM = "custom"
+
+
+class PermissionEffectEnum(enum.Enum):
+    ALLOW = "allow"
+    DENY = "deny"
 
 
 class UserModel(Base):
@@ -105,6 +120,40 @@ class UserOrganizationRoleModel(Base):
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
     organization_id = Column(UUID(as_uuid=True), ForeignKey("organizations.id"), nullable=False, index=True)
     role_id = Column(UUID(as_uuid=True), ForeignKey("roles.id"), nullable=False, index=True)
+    assigned_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    assigned_by = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    revoked_at = Column(DateTime(timezone=True), nullable=True)
+    revoked_by = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    is_active = Column(Boolean, default=True)
+
+
+# RBAC + ABAC Models
+class ResourceModel(Base):
+    __tablename__ = "resources"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    name = Column(String(255), nullable=False, index=True)
+    resource_type = Column(Enum(ResourceTypeEnum), nullable=False, index=True)
+    description = Column(Text, nullable=True)
+    parent_id = Column(UUID(as_uuid=True), ForeignKey("resources.id"), nullable=True, index=True)
+    organization_id = Column(UUID(as_uuid=True), ForeignKey("organizations.id"), nullable=True, index=True)
+    metadata = Column(JSON, nullable=False, default={})  # Flexible attributes for ABAC
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    is_active = Column(Boolean, default=True)
+
+
+class ResourcePermissionModel(Base):
+    __tablename__ = "resource_permissions"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True, index=True)  # Direct user permission
+    role_id = Column(UUID(as_uuid=True), ForeignKey("roles.id"), nullable=True, index=True)  # Role-based permission
+    resource_id = Column(UUID(as_uuid=True), ForeignKey("resources.id"), nullable=False, index=True)
+    permission_id = Column(UUID(as_uuid=True), ForeignKey("permissions.id"), nullable=False, index=True)
+    effect = Column(Enum(PermissionEffectEnum), nullable=False, default=PermissionEffectEnum.ALLOW)
+    conditions = Column(JSON, nullable=False, default=[])  # ABAC conditions
+    priority = Column(Integer, nullable=False, default=0)  # Rule priority
     assigned_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
     assigned_by = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
     revoked_at = Column(DateTime(timezone=True), nullable=True)
