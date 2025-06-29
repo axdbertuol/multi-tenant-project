@@ -21,21 +21,21 @@ class TestOrganizationUseCasesIntegration:
         return OrganizationUseCases(unit_of_work)
     
     @pytest.fixture
-    async def sample_owner(self, unit_of_work):
+     def sample_owner(self, unit_of_work):
         """Create a sample user to act as organization owner."""
         user = UserFactory.create_user(email="owner@example.com")
-        async with unit_of_work:
-            return await unit_of_work.users.create(user)
+         with unit_of_work:
+            return  unit_of_work.users.create(user)
     
     @pytest.fixture
-    async def sample_user(self, unit_of_work):
+     def sample_user(self, unit_of_work):
         """Create a sample user for testing memberships."""
         user = UserFactory.create_user(email="member@example.com")
-        async with unit_of_work:
-            return await unit_of_work.users.create(user)
+         with unit_of_work:
+            return  unit_of_work.users.create(user)
     
-    @pytest.mark.asyncio
-    async def test_create_organization_full_flow(self, organization_use_cases, sample_owner):
+    @pytest.mark.io
+     def test_create_organization_full_flow(self, organization_use_cases, sample_owner):
         """Test complete organization creation flow."""
         # Arrange
         create_dto = CreateOrganizationDto(
@@ -44,7 +44,7 @@ class TestOrganizationUseCasesIntegration:
         )
         
         # Act
-        result = await organization_use_cases.create_organization(sample_owner.id, create_dto)
+        result =  organization_use_cases.create_organization(sample_owner.id, create_dto)
         
         # Assert
         assert result is not None
@@ -54,56 +54,56 @@ class TestOrganizationUseCasesIntegration:
         assert result.is_active is True
         
         # Verify owner is automatically added as member
-        member_orgs = await organization_use_cases.get_user_organizations(sample_owner.id)
+        member_orgs =  organization_use_cases.get_user_organizations(sample_owner.id)
         assert len(member_orgs) == 1
         assert member_orgs[0].id == result.id
     
-    @pytest.mark.asyncio
-    async def test_organization_lifecycle(self, organization_use_cases, sample_owner):
+    @pytest.mark.io
+     def test_organization_lifecycle(self, organization_use_cases, sample_owner):
         """Test complete organization lifecycle: create, update, deactivate, activate."""
         # Create
         create_dto = CreateOrganizationDto(name="Lifecycle Org", description="Original description")
-        created_org = await organization_use_cases.create_organization(sample_owner.id, create_dto)
+        created_org =  organization_use_cases.create_organization(sample_owner.id, create_dto)
         
         # Update
         update_dto = UpdateOrganizationDto(name="Updated Lifecycle Org", description="Updated description")
-        updated_org = await organization_use_cases.update_organization(
+        updated_org =  organization_use_cases.update_organization(
             created_org.id, update_dto, sample_owner.id
         )
         assert updated_org.name == "Updated Lifecycle Org"
         assert updated_org.description == "Updated description"
         
         # Deactivate
-        deactivated_org = await organization_use_cases.deactivate_organization(
+        deactivated_org =  organization_use_cases.deactivate_organization(
             created_org.id, sample_owner.id
         )
         assert deactivated_org.is_active is False
         
         # Activate
-        activated_org = await organization_use_cases.activate_organization(
+        activated_org =  organization_use_cases.activate_organization(
             created_org.id, sample_owner.id
         )
         assert activated_org.is_active is True
     
-    @pytest.mark.asyncio
-    async def test_ownership_transfer_flow(self, organization_use_cases, unit_of_work):
+    @pytest.mark.io
+     def test_ownership_transfer_flow(self, organization_use_cases, unit_of_work):
         """Test complete ownership transfer flow."""
         # Create users
-        async with unit_of_work:
-            original_owner = await unit_of_work.users.create(
+         with unit_of_work:
+            original_owner =  unit_of_work.users.create(
                 UserFactory.create_user(email="original@example.com")
             )
-            new_owner = await unit_of_work.users.create(
+            new_owner =  unit_of_work.users.create(
                 UserFactory.create_user(email="newowner@example.com")
             )
         
         # Create organization
         create_dto = CreateOrganizationDto(name="Transfer Test Org")
-        org = await organization_use_cases.create_organization(original_owner.id, create_dto)
+        org =  organization_use_cases.create_organization(original_owner.id, create_dto)
         
         # Transfer ownership
         transfer_dto = TransferOwnershipDto(new_owner_id=new_owner.id)
-        transferred_org = await organization_use_cases.transfer_ownership(
+        transferred_org =  organization_use_cases.transfer_ownership(
             org.id, transfer_dto, original_owner.id
         )
         
@@ -112,49 +112,49 @@ class TestOrganizationUseCasesIntegration:
         
         # Verify new owner can update organization
         update_dto = UpdateOrganizationDto(name="Updated by New Owner")
-        updated_org = await organization_use_cases.update_organization(
+        updated_org =  organization_use_cases.update_organization(
             org.id, update_dto, new_owner.id
         )
         assert updated_org.name == "Updated by New Owner"
         
         # Verify original owner can no longer update
         with pytest.raises(PermissionError):
-            await organization_use_cases.update_organization(
+             organization_use_cases.update_organization(
                 org.id, UpdateOrganizationDto(name="Should Fail"), original_owner.id
             )
     
-    @pytest.mark.asyncio
-    async def test_user_membership_management(self, organization_use_cases, unit_of_work):
+    @pytest.mark.io
+     def test_user_membership_management(self, organization_use_cases, unit_of_work):
         """Test complete user membership management flow."""
         # Create users
-        async with unit_of_work:
-            owner = await unit_of_work.users.create(
+         with unit_of_work:
+            owner =  unit_of_work.users.create(
                 UserFactory.create_user(email="owner@example.com")
             )
-            user1 = await unit_of_work.users.create(
+            user1 =  unit_of_work.users.create(
                 UserFactory.create_user(email="user1@example.com")
             )
-            user2 = await unit_of_work.users.create(
+            user2 =  unit_of_work.users.create(
                 UserFactory.create_user(email="user2@example.com")
             )
         
         # Create organization
         create_dto = CreateOrganizationDto(name="Membership Test Org")
-        org = await organization_use_cases.create_organization(owner.id, create_dto)
+        org =  organization_use_cases.create_organization(owner.id, create_dto)
         
         # Add users to organization
         add_user1_dto = AddUserToOrganizationDto(user_id=user1.id)
         add_user2_dto = AddUserToOrganizationDto(user_id=user2.id)
         
-        result1 = await organization_use_cases.add_user_to_organization(org.id, add_user1_dto, owner.id)
-        result2 = await organization_use_cases.add_user_to_organization(org.id, add_user2_dto, owner.id)
+        result1 =  organization_use_cases.add_user_to_organization(org.id, add_user1_dto, owner.id)
+        result2 =  organization_use_cases.add_user_to_organization(org.id, add_user2_dto, owner.id)
         
         assert result1 is True
         assert result2 is True
         
         # Verify memberships
-        user1_orgs = await organization_use_cases.get_user_organizations(user1.id)
-        user2_orgs = await organization_use_cases.get_user_organizations(user2.id)
+        user1_orgs =  organization_use_cases.get_user_organizations(user1.id)
+        user2_orgs =  organization_use_cases.get_user_organizations(user2.id)
         
         assert len(user1_orgs) == 1
         assert len(user2_orgs) == 1
@@ -162,32 +162,32 @@ class TestOrganizationUseCasesIntegration:
         assert user2_orgs[0].id == org.id
         
         # Remove user1 (by owner)
-        result = await organization_use_cases.remove_user_from_organization(org.id, user1.id, owner.id)
+        result =  organization_use_cases.remove_user_from_organization(org.id, user1.id, owner.id)
         assert result is True
         
         # Remove user2 (by themselves)
-        result = await organization_use_cases.remove_user_from_organization(org.id, user2.id, user2.id)
+        result =  organization_use_cases.remove_user_from_organization(org.id, user2.id, user2.id)
         assert result is True
         
         # Verify removals
-        user1_orgs_after = await organization_use_cases.get_user_organizations(user1.id)
-        user2_orgs_after = await organization_use_cases.get_user_organizations(user2.id)
+        user1_orgs_after =  organization_use_cases.get_user_organizations(user1.id)
+        user2_orgs_after =  organization_use_cases.get_user_organizations(user2.id)
         
         assert len(user1_orgs_after) == 0
         assert len(user2_orgs_after) == 0
     
-    @pytest.mark.asyncio
-    async def test_multiple_organizations_same_owner(self, organization_use_cases, sample_owner):
+    @pytest.mark.io
+     def test_multiple_organizations_same_owner(self, organization_use_cases, sample_owner):
         """Test owner having multiple organizations."""
         # Create multiple organizations
         orgs = []
         for i in range(3):
             create_dto = CreateOrganizationDto(name=f"Multi Org {i+1}")
-            org = await organization_use_cases.create_organization(sample_owner.id, create_dto)
+            org =  organization_use_cases.create_organization(sample_owner.id, create_dto)
             orgs.append(org)
         
         # Verify owner has all organizations
-        owner_orgs = await organization_use_cases.get_organizations_by_owner(sample_owner.id)
+        owner_orgs =  organization_use_cases.get_organizations_by_owner(sample_owner.id)
         assert len(owner_orgs) == 3
         
         org_names = [org.name for org in owner_orgs]
@@ -196,157 +196,157 @@ class TestOrganizationUseCasesIntegration:
         assert "Multi Org 3" in org_names
         
         # Verify owner is member of all organizations
-        member_orgs = await organization_use_cases.get_user_organizations(sample_owner.id)
+        member_orgs =  organization_use_cases.get_user_organizations(sample_owner.id)
         assert len(member_orgs) == 3
     
-    @pytest.mark.asyncio
-    async def test_user_multiple_organization_memberships(self, organization_use_cases, unit_of_work):
+    @pytest.mark.io
+     def test_user_multiple_organization_memberships(self, organization_use_cases, unit_of_work):
         """Test user being member of multiple organizations."""
         # Create multiple owners and a member
-        async with unit_of_work:
-            owner1 = await unit_of_work.users.create(
+         with unit_of_work:
+            owner1 =  unit_of_work.users.create(
                 UserFactory.create_user(email="owner1@example.com")
             )
-            owner2 = await unit_of_work.users.create(
+            owner2 =  unit_of_work.users.create(
                 UserFactory.create_user(email="owner2@example.com")
             )
-            member = await unit_of_work.users.create(
+            member =  unit_of_work.users.create(
                 UserFactory.create_user(email="member@example.com")
             )
         
         # Create organizations
-        org1 = await organization_use_cases.create_organization(
+        org1 =  organization_use_cases.create_organization(
             owner1.id, CreateOrganizationDto(name="Org 1")
         )
-        org2 = await organization_use_cases.create_organization(
+        org2 =  organization_use_cases.create_organization(
             owner2.id, CreateOrganizationDto(name="Org 2")
         )
         
         # Add member to both organizations
-        await organization_use_cases.add_user_to_organization(
+         organization_use_cases.add_user_to_organization(
             org1.id, AddUserToOrganizationDto(user_id=member.id), owner1.id
         )
-        await organization_use_cases.add_user_to_organization(
+         organization_use_cases.add_user_to_organization(
             org2.id, AddUserToOrganizationDto(user_id=member.id), owner2.id
         )
         
         # Verify member is in both organizations
-        member_orgs = await organization_use_cases.get_user_organizations(member.id)
+        member_orgs =  organization_use_cases.get_user_organizations(member.id)
         assert len(member_orgs) == 2
         
         org_names = [org.name for org in member_orgs]
         assert "Org 1" in org_names
         assert "Org 2" in org_names
     
-    @pytest.mark.asyncio
-    async def test_error_scenarios_and_rollback(self, organization_use_cases, unit_of_work):
+    @pytest.mark.io
+     def test_error_scenarios_and_rollback(self, organization_use_cases, unit_of_work):
         """Test error scenarios and transaction rollback."""
         # Create owner
-        async with unit_of_work:
-            owner = await unit_of_work.users.create(
+         with unit_of_work:
+            owner =  unit_of_work.users.create(
                 UserFactory.create_user(email="error@example.com")
             )
         
         # Test: Create organization with duplicate name
-        org1 = await organization_use_cases.create_organization(
+        org1 =  organization_use_cases.create_organization(
             owner.id, CreateOrganizationDto(name="Duplicate Name Org")
         )
         
         with pytest.raises(ValueError, match="Organization with name Duplicate Name Org already exists"):
-            await organization_use_cases.create_organization(
+             organization_use_cases.create_organization(
                 owner.id, CreateOrganizationDto(name="Duplicate Name Org")
             )
         
         # Test: Update with non-existent organization
         non_existent_id = uuid4()
-        result = await organization_use_cases.update_organization(
+        result =  organization_use_cases.update_organization(
             non_existent_id, UpdateOrganizationDto(name="Should Fail"), owner.id
         )
         assert result is None
         
         # Test: Add non-existent user to organization
         with pytest.raises(ValueError, match="does not exist"):
-            await organization_use_cases.add_user_to_organization(
+             organization_use_cases.add_user_to_organization(
                 org1.id, AddUserToOrganizationDto(user_id=uuid4()), owner.id
             )
     
-    @pytest.mark.asyncio
-    async def test_permission_enforcement(self, organization_use_cases, unit_of_work):
+    @pytest.mark.io
+     def test_permission_enforcement(self, organization_use_cases, unit_of_work):
         """Test permission enforcement across different operations."""
         # Create users
-        async with unit_of_work:
-            owner = await unit_of_work.users.create(
+         with unit_of_work:
+            owner =  unit_of_work.users.create(
                 UserFactory.create_user(email="owner@example.com")
             )
-            non_owner = await unit_of_work.users.create(
+            non_owner =  unit_of_work.users.create(
                 UserFactory.create_user(email="nonowner@example.com")
             )
         
         # Create organization
-        org = await organization_use_cases.create_organization(
+        org =  organization_use_cases.create_organization(
             owner.id, CreateOrganizationDto(name="Permission Test Org")
         )
         
         # Test: Non-owner cannot update
         with pytest.raises(PermissionError):
-            await organization_use_cases.update_organization(
+             organization_use_cases.update_organization(
                 org.id, UpdateOrganizationDto(name="Unauthorized Update"), non_owner.id
             )
         
         # Test: Non-owner cannot add users
         with pytest.raises(PermissionError):
-            await organization_use_cases.add_user_to_organization(
+             organization_use_cases.add_user_to_organization(
                 org.id, AddUserToOrganizationDto(user_id=non_owner.id), non_owner.id
             )
         
         # Test: Non-owner cannot transfer ownership
         with pytest.raises(PermissionError):
-            await organization_use_cases.transfer_ownership(
+             organization_use_cases.transfer_ownership(
                 org.id, TransferOwnershipDto(new_owner_id=non_owner.id), non_owner.id
             )
         
         # Test: Non-owner cannot deactivate
         with pytest.raises(PermissionError):
-            await organization_use_cases.deactivate_organization(org.id, non_owner.id)
+             organization_use_cases.deactivate_organization(org.id, non_owner.id)
     
-    @pytest.mark.asyncio
-    async def test_organization_search_and_retrieval(self, organization_use_cases, sample_owner):
+    @pytest.mark.io
+     def test_organization_search_and_retrieval(self, organization_use_cases, sample_owner):
         """Test organization search and retrieval operations."""
         # Create organizations with distinct names
-        org1 = await organization_use_cases.create_organization(
+        org1 =  organization_use_cases.create_organization(
             sample_owner.id, CreateOrganizationDto(name="Search Test Org 1")
         )
-        org2 = await organization_use_cases.create_organization(
+        org2 =  organization_use_cases.create_organization(
             sample_owner.id, CreateOrganizationDto(name="Search Test Org 2")
         )
         
         # Test: Get by ID
-        retrieved_org1 = await organization_use_cases.get_organization_by_id(org1.id)
+        retrieved_org1 =  organization_use_cases.get_organization_by_id(org1.id)
         assert retrieved_org1 is not None
         assert retrieved_org1.name == "Search Test Org 1"
         
         # Test: Get by name
-        retrieved_org2 = await organization_use_cases.get_organization_by_name("Search Test Org 2")
+        retrieved_org2 =  organization_use_cases.get_organization_by_name("Search Test Org 2")
         assert retrieved_org2 is not None
         assert retrieved_org2.id == org2.id
         
         # Test: Get non-existent
-        non_existent = await organization_use_cases.get_organization_by_id(uuid4())
+        non_existent =  organization_use_cases.get_organization_by_id(uuid4())
         assert non_existent is None
         
-        non_existent_name = await organization_use_cases.get_organization_by_name("Non Existent Org")
+        non_existent_name =  organization_use_cases.get_organization_by_name("Non Existent Org")
         assert non_existent_name is None
     
-    @pytest.mark.asyncio
-    async def test_concurrent_organization_operations(self, organization_use_cases, unit_of_work):
+    @pytest.mark.io
+     def test_concurrent_organization_operations(self, organization_use_cases, unit_of_work):
         """Test concurrent operations on organizations."""
         # Create owner and organization
-        async with unit_of_work:
-            owner = await unit_of_work.users.create(
+         with unit_of_work:
+            owner =  unit_of_work.users.create(
                 UserFactory.create_user(email="concurrent@example.com")
             )
         
-        org = await organization_use_cases.create_organization(
+        org =  organization_use_cases.create_organization(
             owner.id, CreateOrganizationDto(name="Concurrent Test Org")
         )
         
@@ -355,8 +355,8 @@ class TestOrganizationUseCasesIntegration:
         update2_dto = UpdateOrganizationDto(description="Concurrent Description Update")
         
         # Both updates should succeed when done sequentially
-        result1 = await organization_use_cases.update_organization(org.id, update1_dto, owner.id)
-        result2 = await organization_use_cases.update_organization(org.id, update2_dto, owner.id)
+        result1 =  organization_use_cases.update_organization(org.id, update1_dto, owner.id)
+        result2 =  organization_use_cases.update_organization(org.id, update2_dto, owner.id)
         
         assert result1.name == "Concurrent Update 1"
         assert result2.description == "Concurrent Description Update"

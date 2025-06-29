@@ -121,7 +121,7 @@ poetry run pytest -x
 - Test discovery patterns
 - Markers for test categorization
 - Warning filters
-- Async test support
+-  test support
 
 ### Fixtures (`conftest.py`)
 - Database session management
@@ -193,7 +193,7 @@ Tests are designed to run in CI environments with:
 - `@pytest.mark.integration` - Integration tests  
 - `@pytest.mark.e2e` - End-to-end tests
 - `@pytest.mark.slow` - Slow-running tests
-- `@pytest.mark.asyncio` - Async tests
+- `@pytest.mark.io` -  tests
 
 ## Coverage Goals
 

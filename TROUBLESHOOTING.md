@@ -38,7 +38,7 @@ app = FastAPI(redirect_slashes=False)
 ```python
 @router.post("/")     # /api/v1/users/
 @router.post("")      # /api/v1/users
-async def create_user(...):
+ def create_user(...):
 ```
 
 ### Endpoints Corretos

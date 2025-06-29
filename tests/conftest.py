@@ -1,8 +1,8 @@
 import pytest
-import pytest_asyncio
-import asyncio
+import pytest_io
+import io
 import os
-from typing import AsyncGenerator, Generator
+from typing import Generator, Generator
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from fastapi.testclient import TestClient
@@ -24,7 +24,7 @@ TestSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=test_eng
 @pytest.fixture(scope="session")
 def event_loop():
     """Create an instance of the default event loop for the test session."""
-    loop = asyncio.get_event_loop_policy().new_event_loop()
+    loop = io.get_event_loop_policy().new_event_loop()
     yield loop
     loop.close()
 
@@ -68,9 +68,9 @@ def client(db_session) -> Generator:
     app.dependency_overrides.clear()
 
 
-@pytest_asyncio.fixture
-async def async_client(db_session):
-    """Create an async test client for testing."""
+@pytest_io.fixture
+ def _client(db_session):
+    """Create an  test client for testing."""
 
     def override_get_db():
         try:
@@ -79,11 +79,11 @@ async def async_client(db_session):
             pass
 
     app.dependency_overrides[get_db] = override_get_db
-    from httpx import AsyncClient, ASGITransport
+    from httpx import Client, ASGITransport
 
     transport = ASGITransport(app=app)
     try:
-        async with AsyncClient(transport=transport, base_url="http://test") as client:
+         with Client(transport=transport, base_url="http://test") as client:
             yield client
     finally:
         app.dependency_overrides.clear()
@@ -102,4 +102,4 @@ def sample_login_data():
 
 
 # Pytest markers for different test types
-pytestmark = pytest.mark.asyncio
+pytestmark = pytest.mark.io
