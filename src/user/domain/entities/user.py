@@ -8,6 +8,7 @@ from ..value_objects.password import Password
 
 
 class User(BaseModel):
+    """Entidade de domínio do Usuário."""
     id: UUID
     email: Email
     name: str
@@ -21,6 +22,7 @@ class User(BaseModel):
 
     @classmethod
     def create(cls, email: str, name: str, password: str) -> "User":
+        """Cria uma nova instância de Usuário."""
         return cls(
             id=uuid4(),
             email=Email(value=email),
@@ -32,19 +34,23 @@ class User(BaseModel):
         )
 
     def update_name(self, name: str) -> "User":
+        """Atualiza o nome do usuário."""
         return self.model_copy(update={"name": name, "updated_at": datetime.utcnow()})
 
     def deactivate(self) -> "User":
+        """Desativa a conta do usuário."""
         return self.model_copy(
             update={"is_active": False, "updated_at": datetime.utcnow()}
         )
 
     def activate(self) -> "User":
+        """Ativa a conta do usuário."""
         return self.model_copy(
             update={"is_active": True, "updated_at": datetime.utcnow()}
         )
 
     def change_password(self, new_password: str) -> "User":
+        """Altera a senha do usuário."""
         return self.model_copy(
             update={
                 "password": Password.create(new_password),
@@ -53,14 +59,15 @@ class User(BaseModel):
         )
 
     def verify_password(self, plain_password: str) -> bool:
+        """Verifica se a senha fornecida corresponde à senha hash do usuário."""
         return self.password.verify(plain_password)
 
     def update_last_login(self, login_time: datetime) -> "User":
-        """Update user's last login timestamp."""
+        """Atualiza o timestamp do último login do usuário."""
         return self.model_copy(
             update={"last_login_at": login_time, "updated_at": datetime.utcnow()}
         )
 
     def can_access_organization(self, organization_id: UUID) -> bool:
-        """Domain rule: User can access organization they belong to"""
+        """Regra de domínio: O usuário pode acessar a organização à qual pertence."""
         return self.is_active

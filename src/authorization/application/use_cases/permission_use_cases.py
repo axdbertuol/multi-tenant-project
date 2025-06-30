@@ -33,7 +33,7 @@ class PermissionUseCase:
         permission = Permission(
             name=dto.name,
             description=dto.description,
-            permission_type=dto.permission_type,
+            action=dto.action,
             resource_type=dto.resource_type,
             created_at=datetime.now(timezone.utc),
         )
@@ -86,7 +86,7 @@ class PermissionUseCase:
         permissions, total = self.permission_repository.search(
             query=search_dto.query,
             resource_type=search_dto.resource_type,
-            permission_type=search_dto.permission_type,
+            action=search_dto.action,
             is_active=search_dto.is_active,
             offset=offset,
             limit=page_size,
@@ -167,7 +167,7 @@ class PermissionUseCase:
             permission = Permission(
                 name=dto.name,
                 description=dto.description,
-                permission_type=dto.permission_type,
+                action=dto.action,
                 resource_type=dto.resource_type,
                 created_at=datetime.now(timezone.utc),
             )
@@ -195,9 +195,9 @@ class PermissionUseCase:
             id=permission.id,
             name=permission.name,
             description=permission.description,
-            permission_type=permission.permission_type,
+            action=permission.action,
             resource_type=permission.resource_type,
-            full_name=permission.full_name,
+            full_name=permission.get_full_name(),
             created_at=permission.created_at,
             updated_at=permission.updated_at,
             is_active=permission.is_active,

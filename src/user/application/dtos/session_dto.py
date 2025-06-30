@@ -5,15 +5,15 @@ from pydantic import BaseModel, Field
 
 
 class SessionCreateDTO(BaseModel):
-    """DTO for creating a new user session."""
-    user_id: UUID = Field(..., description="User ID")
-    duration_hours: int = Field(24, ge=1, le=720, description="Session duration in hours")
-    user_agent: Optional[str] = Field(None, max_length=500, description="User agent string")
-    ip_address: Optional[str] = Field(None, max_length=45, description="IP address")
+    """DTO para criação de uma nova sessão de usuário."""
+    user_id: UUID = Field(..., description="ID do Usuário")
+    duration_hours: int = Field(24, ge=1, le=720, description="Duração da sessão em horas")
+    user_agent: Optional[str] = Field(None, max_length=500, description="String do user agent")
+    ip_address: Optional[str] = Field(None, max_length=45, description="Endereço IP")
 
 
 class SessionResponseDTO(BaseModel):
-    """DTO for session response data."""
+    """DTO para dados de resposta da sessão."""
     id: UUID
     user_id: UUID
     token: str
@@ -29,7 +29,7 @@ class SessionResponseDTO(BaseModel):
 
 
 class SessionListResponseDTO(BaseModel):
-    """DTO for user sessions list response."""
+    """DTO para lista paginada de sessões de usuário."""
     sessions: list[SessionResponseDTO]
     total: int
     active_count: int

@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional, List, Dict, Any
 from pydantic import BaseModel
 from enum import Enum
@@ -35,7 +35,7 @@ class AuthorizationDecision(BaseModel):
         return cls(
             result=DecisionResult.ALLOW,
             reasons=reasons,
-            evaluated_at=datetime.utcnow(),
+            evaluated_at=datetime.now(timezone.utc),
             evaluation_time_ms=evaluation_time_ms
         )
 
@@ -48,7 +48,7 @@ class AuthorizationDecision(BaseModel):
         return cls(
             result=DecisionResult.DENY,
             reasons=reasons,
-            evaluated_at=datetime.utcnow(),
+            evaluated_at=datetime.now(timezone.utc),
             evaluation_time_ms=evaluation_time_ms
         )
 
@@ -61,7 +61,7 @@ class AuthorizationDecision(BaseModel):
         return cls(
             result=DecisionResult.NOT_APPLICABLE,
             reasons=reasons,
-            evaluated_at=datetime.utcnow(),
+            evaluated_at=datetime.now(timezone.utc),
             evaluation_time_ms=evaluation_time_ms
         )
 

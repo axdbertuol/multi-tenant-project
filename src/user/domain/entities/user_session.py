@@ -13,6 +13,7 @@ class SessionStatus(str, Enum):
 
 
 class UserSession(BaseModel):
+    """Entidade de domínio da Sessão do Usuário."""
     id: UUID
     user_id: UUID
     session_token: str
@@ -38,6 +39,7 @@ class UserSession(BaseModel):
         ip_address: Optional[str] = None,
         user_agent: Optional[str] = None,
     ) -> "UserSession":
+        """Cria uma nova instância de Sessão do Usuário."""
         now = datetime.utcnow()
         return cls(
             id=uuid4(),
@@ -53,7 +55,7 @@ class UserSession(BaseModel):
         )
 
     def logout(self) -> "UserSession":
-        """Mark session as logged out."""
+        """Marca a sessão como desconectada."""
         return self.model_copy(
             update={
                 "status": SessionStatus.LOGGED_OUT,
@@ -63,13 +65,13 @@ class UserSession(BaseModel):
         )
 
     def expire(self) -> "UserSession":
-        """Mark session as expired."""
+        """Marca a sessão como expirada."""
         return self.model_copy(
             update={"status": SessionStatus.EXPIRED, "updated_at": datetime.utcnow()}
         )
 
     def revoke(self) -> "UserSession":
-        """Mark session as revoked (admin action)."""
+        """Marca a sessão como revogada (ação do administrador)."""
         return self.model_copy(
             update={
                 "status": SessionStatus.REVOKED,
@@ -79,22 +81,22 @@ class UserSession(BaseModel):
         )
 
     def is_active(self) -> bool:
-        """Check if session is currently active."""
+        """Verifica se a sessão está atualmente ativa."""
         if self.status != SessionStatus.ACTIVE:
             return False
 
         return datetime.utcnow() < self.expires_at
 
     def is_expired(self) -> bool:
-        """Check if session has expired."""
+        """Verifica se a sessão expirou."""
         return datetime.utcnow() >= self.expires_at
 
     def is_valid(self) -> bool:
-        """Check if session is valid (active and not expired)."""
+        """Verifica se a sessão é válida (ativa e não expirada)."""
         return self.is_active()
 
     def get_session_duration(self) -> Optional[int]:
-        """Get session duration in seconds. Returns None if still active."""
+        """Obtém a duração da sessão em segundos. Retorna None se ainda estiver ativa."""
         if not self.logout_at:
             return None
 
@@ -102,7 +104,7 @@ class UserSession(BaseModel):
         return int(duration.total_seconds())
 
     def extend_session(self, new_expires_at: datetime) -> "UserSession":
-        """Extend session expiration time."""
+        """Estende o tempo de expiração da sessão."""
         if self.status != SessionStatus.ACTIVE:
             raise ValueError("Cannot extend inactive session")
 
@@ -111,7 +113,7 @@ class UserSession(BaseModel):
         )
 
     def extend(self, hours: int) -> "UserSession":
-        """Extend session by specified hours."""
+        """Estende a sessão por um número especificado de horas."""
         from datetime import timedelta
         new_expires_at = datetime.utcnow() + timedelta(hours=hours)
         return self.extend_session(new_expires_at)

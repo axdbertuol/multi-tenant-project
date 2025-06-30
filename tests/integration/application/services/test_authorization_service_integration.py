@@ -5,15 +5,23 @@ from unittest.mock import Mock, MagicMock
 
 from src.authorization.domain.entities.authorization_context import AuthorizationContext
 from src.authorization.domain.entities.role import Role
-from src.authorization.domain.entities.permission import Permission
-from src.authorization.domain.entities.policy import Policy
+from src.authorization.domain.entities.permission import Permission, PermissionAction
+from src.authorization.domain.entities.policy import (
+    Policy,
+    PolicyCondition,
+    PolicyEffect,
+)
 from src.authorization.domain.entities.resource import Resource
 from src.authorization.domain.services.authorization_service import AuthorizationService
 from src.authorization.domain.services.rbac_service import RBACService
 from src.authorization.domain.services.abac_service import ABACService
-from src.authorization.domain.services.policy_evaluation_service import PolicyEvaluationService
+from src.authorization.domain.services.policy_evaluation_service import (
+    PolicyEvaluationService,
+)
 from src.authorization.domain.value_objects.authorization_decision import (
-    AuthorizationDecision, DecisionReason, DecisionResult
+    AuthorizationDecision,
+    DecisionReason,
+    DecisionResult,
 )
 from src.authorization.domain.value_objects.role_name import RoleName
 from src.authorization.domain.value_objects.permission_name import PermissionName
@@ -53,21 +61,31 @@ class TestAuthorizationServiceIntegration:
         return Mock(spec=PolicyEvaluationService)
 
     @pytest.fixture
-    def rbac_service(self, mock_role_repository, mock_permission_repository, mock_role_permission_repository):
+    def rbac_service(
+        self,
+        mock_role_repository,
+        mock_permission_repository,
+        mock_role_permission_repository,
+    ):
         """Create RBAC service instance."""
         return RBACService(
             mock_role_repository,
             mock_permission_repository,
-            mock_role_permission_repository
+            mock_role_permission_repository,
         )
 
     @pytest.fixture
-    def abac_service(self, mock_policy_repository, mock_resource_repository, mock_policy_evaluation_service):
+    def abac_service(
+        self,
+        mock_policy_repository,
+        mock_resource_repository,
+        mock_policy_evaluation_service,
+    ):
         """Create ABAC service instance."""
         return ABACService(
             mock_policy_repository,
             mock_resource_repository,
-            mock_policy_evaluation_service
+            mock_policy_evaluation_service,
         )
 
     @pytest.fixture
@@ -97,7 +115,7 @@ class TestAuthorizationServiceIntegration:
             name="admin",
             description="Administrator role",
             created_by=uuid4(),
-            organization_id=sample_organization_id
+            organization_id=sample_organization_id,
         )
 
     @pytest.fixture
@@ -106,8 +124,8 @@ class TestAuthorizationServiceIntegration:
         return Permission.create(
             name="read_users",
             description="Read users permission",
-            permission_type="read",
-            resource_type="user"
+            action=PermissionAction.READ,
+            resource_type="user",
         )
 
     @pytest.fixture
@@ -116,35 +134,41 @@ class TestAuthorizationServiceIntegration:
         return Policy.create(
             name="owner_policy",
             description="Resource owner policy",
-            effect="allow",
+            effect=PolicyEffect.ALLOW,
             resource_type="document",
             action="read",
-            conditions=[{"user_id": "{{resource.owner_id}}"}],
+            conditions=[
+                PolicyCondition(
+                    attribute="user.id",
+                    operator="eq",
+                    value="resource.owner_id",
+                )
+            ],
             organization_id=sample_organization_id,
-            created_by=uuid4()
+            created_by=uuid4(),
         )
 
     @pytest.fixture
     def sample_resource(self, sample_organization_id, sample_user_id):
         """Create a sample resource."""
         return Resource.create(
-            name="Test Document",
+            # name="Test Document",
             resource_type="document",
             organization_id=sample_organization_id,
             owner_id=sample_user_id,
-            metadata={"department": "engineering"}
+            _metadata={"department": "engineering"},
         )
 
     def test_authorize_rbac_allow_no_abac_policies(
-        self, 
-        authorization_service, 
+        self,
+        authorization_service,
         mock_role_repository,
         mock_permission_repository,
         mock_policy_repository,
         sample_user_id,
         sample_organization_id,
         sample_role,
-        sample_permission
+        sample_permission,
     ):
         """Test authorization when RBAC allows and no ABAC policies exist."""
         # Arrange
@@ -152,13 +176,15 @@ class TestAuthorizationServiceIntegration:
             user_id=sample_user_id,
             resource_type="user",
             action="read",
-            organization_id=sample_organization_id
+            organization_id=sample_organization_id,
         )
 
         # Mock RBAC to allow
         mock_role_repository.get_user_roles.return_value = [sample_role]
-        mock_permission_repository.get_role_permissions.return_value = [sample_permission]
-        
+        mock_permission_repository.get_role_permissions.return_value = [
+            sample_permission
+        ]
+
         # Mock ABAC to have no policies
         mock_policy_repository.get_applicable_policies.return_value = []
 
@@ -183,7 +209,7 @@ class TestAuthorizationServiceIntegration:
         sample_organization_id,
         sample_role,
         sample_permission,
-        sample_policy
+        sample_policy,
     ):
         """Test authorization when RBAC allows but ABAC denies."""
         # Arrange
@@ -191,7 +217,7 @@ class TestAuthorizationServiceIntegration:
             user_id=sample_user_id,
             resource_type="document",
             action="read",
-            organization_id=sample_organization_id
+            organization_id=sample_organization_id,
         )
 
         # Mock RBAC to allow
@@ -200,24 +226,30 @@ class TestAuthorizationServiceIntegration:
             Permission.create(
                 name="read_documents",
                 description="Read documents permission",
-                permission_type="read",
-                resource_type="document"
+                action=PermissionAction.READ,
+                resource_type="document",
             )
         ]
-        
+
         # Mock ABAC to deny
         deny_policy = Policy.create(
             name="deny_policy",
             description="Deny policy",
-            effect="deny",
+            effect=PolicyEffect.DENY,
             resource_type="document",
             action="read",
-            conditions=[{"user.department": "finance"}],
+            conditions=[
+                PolicyCondition(
+                    attribute="user.department", operator="eq", value="finance"
+                )
+            ],
             organization_id=sample_organization_id,
-            created_by=uuid4()
+            created_by=uuid4(),
         )
         mock_policy_repository.get_applicable_policies.return_value = [deny_policy]
-        mock_policy_evaluation_service.evaluate_policy.return_value = True  # Policy applies and denies
+        mock_policy_evaluation_service.evaluate_policy.return_value = (
+            True  # Policy applies and denies
+        )
 
         # Act
         decision = authorization_service.authorize(context)
@@ -238,7 +270,7 @@ class TestAuthorizationServiceIntegration:
         sample_user_id,
         sample_organization_id,
         sample_role,
-        sample_policy
+        sample_policy,
     ):
         """Test authorization when RBAC denies but ABAC allows."""
         # Arrange
@@ -246,26 +278,34 @@ class TestAuthorizationServiceIntegration:
             user_id=sample_user_id,
             resource_type="document",
             action="read",
-            organization_id=sample_organization_id
+            organization_id=sample_organization_id,
         )
 
         # Mock RBAC to deny (no permissions)
         mock_role_repository.get_user_roles.return_value = [sample_role]
         mock_permission_repository.get_role_permissions.return_value = []  # No permissions
-        
+
         # Mock ABAC to allow
         allow_policy = Policy.create(
             name="allow_policy",
             description="Allow policy",
-            effect="allow",
+            effect=PolicyEffect.ALLOW,
             resource_type="document",
             action="read",
-            conditions=[{"user_id": "{{resource.owner_id}}"}],
+            conditions=[
+                PolicyCondition(
+                    attribute="user.id",
+                    operator="eq",
+                    value="resource.owner_id",
+                )
+            ],
             organization_id=sample_organization_id,
-            created_by=uuid4()
+            created_by=uuid4(),
         )
         mock_policy_repository.get_applicable_policies.return_value = [allow_policy]
-        mock_policy_evaluation_service.evaluate_policy.return_value = True  # Policy applies and allows
+        mock_policy_evaluation_service.evaluate_policy.return_value = (
+            True  # Policy applies and allows
+        )
 
         # Act
         decision = authorization_service.authorize(context)
@@ -285,7 +325,7 @@ class TestAuthorizationServiceIntegration:
         mock_policy_evaluation_service,
         sample_user_id,
         sample_organization_id,
-        sample_role
+        sample_role,
     ):
         """Test authorization when both RBAC and ABAC deny."""
         # Arrange
@@ -293,23 +333,29 @@ class TestAuthorizationServiceIntegration:
             user_id=sample_user_id,
             resource_type="document",
             action="delete",
-            organization_id=sample_organization_id
+            organization_id=sample_organization_id,
         )
 
         # Mock RBAC to deny
         mock_role_repository.get_user_roles.return_value = [sample_role]
         mock_permission_repository.get_role_permissions.return_value = []  # No permissions
-        
+
         # Mock ABAC to deny
         deny_policy = Policy.create(
             name="deny_policy",
             description="Deny policy",
-            effect="deny",
+            effect=PolicyEffect.DENY,
             resource_type="document",
             action="delete",
-            conditions=[{"always": "true"}],
+            conditions=[
+                PolicyCondition(
+                    attribute="always",
+                    operator="eq",
+                    value="True",
+                )
+            ],
             organization_id=sample_organization_id,
-            created_by=uuid4()
+            created_by=uuid4(),
         )
         mock_policy_repository.get_applicable_policies.return_value = [deny_policy]
         mock_policy_evaluation_service.evaluate_policy.return_value = True
@@ -329,7 +375,7 @@ class TestAuthorizationServiceIntegration:
         mock_role_repository,
         mock_policy_repository,
         sample_user_id,
-        sample_organization_id
+        sample_organization_id,
     ):
         """Test authorization when user has no roles and no policies exist."""
         # Arrange
@@ -337,12 +383,12 @@ class TestAuthorizationServiceIntegration:
             user_id=sample_user_id,
             resource_type="document",
             action="read",
-            organization_id=sample_organization_id
+            organization_id=sample_organization_id,
         )
 
         # Mock no roles
         mock_role_repository.get_user_roles.return_value = []
-        
+
         # Mock no policies
         mock_policy_repository.get_applicable_policies.return_value = []
 
@@ -364,7 +410,7 @@ class TestAuthorizationServiceIntegration:
         mock_policy_evaluation_service,
         sample_user_id,
         sample_organization_id,
-        sample_role
+        sample_role,
     ):
         """Test default deny when no applicable rules found."""
         # Arrange
@@ -372,7 +418,7 @@ class TestAuthorizationServiceIntegration:
             user_id=sample_user_id,
             resource_type="unknown",
             action="unknown",
-            organization_id=sample_organization_id
+            organization_id=sample_organization_id,
         )
 
         # Mock RBAC to have role but no matching permissions
@@ -381,11 +427,11 @@ class TestAuthorizationServiceIntegration:
             Permission.create(
                 name="read_users",
                 description="Read users",
-                permission_type="read",
-                resource_type="user"
+                action=PermissionAction.READ,
+                resource_type="user",
             )
         ]
-        
+
         # Mock ABAC to have policies but none applicable
         mock_policy_repository.get_applicable_policies.return_value = []
 
@@ -405,27 +451,33 @@ class TestAuthorizationServiceIntegration:
         mock_policy_repository,
         sample_user_id,
         sample_organization_id,
-        sample_role
+        sample_role,
     ):
         """Test authorization with wildcard permissions."""
         # Arrange
         context = AuthorizationContext.create(
             user_id=sample_user_id,
             resource_type="document",
-            action="read",
-            organization_id=sample_organization_id
+            action=PermissionAction.MANAGE,
+            organization_id=sample_organization_id,
         )
 
         # Mock RBAC with wildcard permission
-        wildcard_permission = Permission.create(
-            name="wildcard_documents",
-            description="All document permissions",
-            permission_type="*",
-            resource_type="document"
+        wildcard_permission = Permission(
+            id=uuid4(),
+            name=PermissionName(value="wildcard_all"),
+            description="Global wildcard permission",
+            action=PermissionAction.MANAGE,
+            resource_type="*",
+            created_at=datetime.now(timezone.utc),
+            is_active=True,
+            is_system_permission=False,
         )
         mock_role_repository.get_user_roles.return_value = [sample_role]
-        mock_permission_repository.get_role_permissions.return_value = [wildcard_permission]
-        
+        mock_permission_repository.get_role_permissions.return_value = [
+            wildcard_permission
+        ]
+
         # Mock no ABAC policies
         mock_policy_repository.get_applicable_policies.return_value = []
 
@@ -436,7 +488,11 @@ class TestAuthorizationServiceIntegration:
         assert decision.is_allowed()
         assert decision.result == DecisionResult.ALLOW
         assert any(reason.type == "rbac_allow" for reason in decision.reasons)
-        assert any("wildcard" in reason.message for reason in decision.reasons if reason.type == "rbac_allow")
+        assert any(
+            "global wildcard" in reason.message
+            for reason in decision.reasons
+            if reason.type == "rbac_allow"
+        )
 
     def test_authorize_multiple_policies_deny_overrides(
         self,
@@ -447,7 +503,7 @@ class TestAuthorizationServiceIntegration:
         mock_policy_evaluation_service,
         sample_user_id,
         sample_organization_id,
-        sample_role
+        sample_role,
     ):
         """Test authorization with multiple policies where deny overrides allow."""
         # Arrange
@@ -455,44 +511,47 @@ class TestAuthorizationServiceIntegration:
             user_id=sample_user_id,
             resource_type="document",
             action="read",
-            organization_id=sample_organization_id
+            organization_id=sample_organization_id,
         )
 
         # Mock RBAC to allow
         doc_permission = Permission.create(
             name="read_documents",
             description="Read documents",
-            permission_type="read",
-            resource_type="document"
+            action=PermissionAction.READ,
+            resource_type="document",
         )
         mock_role_repository.get_user_roles.return_value = [sample_role]
         mock_permission_repository.get_role_permissions.return_value = [doc_permission]
-        
+
         # Mock ABAC with both allow and deny policies
         allow_policy = Policy.create(
             name="allow_policy",
             description="Allow policy",
-            effect="allow",
+            effect=PolicyEffect.ALLOW,
             resource_type="document",
             action="read",
             conditions=[],
             organization_id=sample_organization_id,
             created_by=uuid4(),
-            priority=10
+            priority=10,
         )
         deny_policy = Policy.create(
             name="deny_policy",
             description="Deny policy",
-            effect="deny",
+            effect=PolicyEffect.DENY,
             resource_type="document",
             action="read",
             conditions=[],
             organization_id=sample_organization_id,
             created_by=uuid4(),
-            priority=20
+            priority=20,
         )
-        
-        mock_policy_repository.get_applicable_policies.return_value = [allow_policy, deny_policy]
+
+        mock_policy_repository.get_applicable_policies.return_value = [
+            allow_policy,
+            deny_policy,
+        ]
         # Both policies apply
         mock_policy_evaluation_service.evaluate_policy.return_value = True
 
@@ -517,7 +576,7 @@ class TestAuthorizationServiceIntegration:
         sample_organization_id,
         sample_resource_id,
         sample_role,
-        sample_resource
+        sample_resource,
     ):
         """Test authorization with resource attribute enrichment."""
         # Arrange
@@ -526,26 +585,30 @@ class TestAuthorizationServiceIntegration:
             resource_type="document",
             action="read",
             organization_id=sample_organization_id,
-            resource_id=sample_resource_id
+            resource_id=sample_resource_id,
         )
 
         # Mock RBAC to deny
         mock_role_repository.get_user_roles.return_value = [sample_role]
         mock_permission_repository.get_role_permissions.return_value = []
-        
+
         # Mock resource repository to return sample resource
         mock_resource_repository.get_by_resource_id.return_value = sample_resource
-        
+
         # Mock ABAC with ownership policy
         ownership_policy = Policy.create(
             name="ownership_policy",
             description="Owner can read",
-            effect="allow",
+            effect=PolicyEffect.ALLOW,
             resource_type="document",
             action="read",
-            conditions=[{"user_id": "{{resource.owner_id}}"}],
+            conditions=[
+                PolicyCondition(
+                    attribute="user_id", operator="eq", value="{{resource.owner_id}}"
+                )
+            ],
             organization_id=sample_organization_id,
-            created_by=uuid4()
+            created_by=uuid4(),
         )
         mock_policy_repository.get_applicable_policies.return_value = [ownership_policy]
         mock_policy_evaluation_service.evaluate_policy.return_value = True
@@ -558,14 +621,16 @@ class TestAuthorizationServiceIntegration:
         assert decision.result == DecisionResult.ALLOW
         assert any(reason.type == "policy_evaluation" for reason in decision.reasons)
         # Verify resource repository was called for enrichment
-        mock_resource_repository.get_by_resource_id.assert_called_once_with("document", sample_resource_id)
+        mock_resource_repository.get_by_resource_id.assert_called_once_with(
+            "document", sample_resource_id
+        )
 
     def test_authorize_error_handling(
         self,
         authorization_service,
         mock_role_repository,
         sample_user_id,
-        sample_organization_id
+        sample_organization_id,
     ):
         """Test authorization error handling."""
         # Arrange
@@ -573,7 +638,7 @@ class TestAuthorizationServiceIntegration:
             user_id=sample_user_id,
             resource_type="document",
             action="read",
-            organization_id=sample_organization_id
+            organization_id=sample_organization_id,
         )
 
         # Mock exception in RBAC
@@ -596,7 +661,7 @@ class TestAuthorizationServiceIntegration:
         mock_policy_repository,
         sample_user_id,
         sample_organization_id,
-        sample_role
+        sample_role,
     ):
         """Test that authorization tracks performance metrics."""
         # Arrange
@@ -604,7 +669,7 @@ class TestAuthorizationServiceIntegration:
             user_id=sample_user_id,
             resource_type="document",
             action="read",
-            organization_id=sample_organization_id
+            organization_id=sample_organization_id,
         )
 
         mock_role_repository.get_user_roles.return_value = [sample_role]
@@ -628,12 +693,14 @@ class TestAuthorizationServiceIntegration:
         sample_organization_id,
         sample_resource_id,
         sample_role,
-        sample_permission
+        sample_permission,
     ):
         """Test simplified can_user_access_resource method."""
         # Arrange
         mock_role_repository.get_user_roles.return_value = [sample_role]
-        mock_permission_repository.get_role_permissions.return_value = [sample_permission]
+        mock_permission_repository.get_role_permissions.return_value = [
+            sample_permission
+        ]
         mock_policy_repository.get_applicable_policies.return_value = []
 
         # Act
@@ -642,7 +709,7 @@ class TestAuthorizationServiceIntegration:
             resource_type="user",
             resource_id=sample_resource_id,
             action="read",
-            organization_id=sample_organization_id
+            organization_id=sample_organization_id,
         )
 
         # Assert
@@ -656,13 +723,23 @@ class TestAuthorizationServiceIntegration:
         mock_policy_repository,
         sample_user_id,
         sample_organization_id,
-        sample_role
+        sample_role,
     ):
         """Test checking multiple permissions at once."""
         # Arrange
         permissions = [
-            Permission.create("read_users", "Read users", "read", "user"),
-            Permission.create("write_users", "Write users", "write", "user")
+            Permission.create(
+                name="read_users",
+                description="Read users",
+                action=PermissionAction.READ,
+                resource_type="user",
+            ),
+            Permission.create(
+                name="write_users",
+                description="Write users",
+                action=PermissionAction.UPDATE,
+                resource_type="user",
+            ),
         ]
         mock_role_repository.get_user_roles.return_value = [sample_role]
         mock_permission_repository.get_role_permissions.return_value = permissions
@@ -675,7 +752,7 @@ class TestAuthorizationServiceIntegration:
             user_id=sample_user_id,
             resource_type="user",
             actions=actions,
-            organization_id=sample_organization_id
+            organization_id=sample_organization_id,
         )
 
         # Assert
@@ -693,7 +770,7 @@ class TestAuthorizationServiceIntegration:
         mock_policy_evaluation_service,
         sample_user_id,
         sample_organization_id,
-        sample_role
+        sample_role,
     ):
         """Test authorization with user attributes in context."""
         # Arrange
@@ -702,23 +779,27 @@ class TestAuthorizationServiceIntegration:
             resource_type="document",
             action="read",
             organization_id=sample_organization_id,
-            user_attributes={"department": "engineering", "clearance_level": 3}
+            user_attributes={"department": "engineering", "clearance_level": 3},
         )
 
         # Mock RBAC to deny
         mock_role_repository.get_user_roles.return_value = [sample_role]
         mock_permission_repository.get_role_permissions.return_value = []
-        
+
         # Mock ABAC with department-based policy
         dept_policy = Policy.create(
             name="dept_policy",
             description="Department access",
-            effect="allow",
+            effect=PolicyEffect.ALLOW,
             resource_type="document",
             action="read",
-            conditions=[{"user.department": "engineering"}],
+            conditions=[
+                PolicyCondition(
+                    attribute="user.department", operator="eq", value="engineering"
+                )
+            ],
             organization_id=sample_organization_id,
-            created_by=uuid4()
+            created_by=uuid4(),
         )
         mock_policy_repository.get_applicable_policies.return_value = [dept_policy]
         mock_policy_evaluation_service.evaluate_policy.return_value = True

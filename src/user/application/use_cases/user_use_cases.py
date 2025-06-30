@@ -18,7 +18,7 @@ from ...domain.value_objects.email import Email
 
 
 class UserUseCase:
-    """Use cases for user management."""
+    """Casos de uso para gerenciamento de usuários."""
 
     def __init__(self, uow: UnitOfWork):
         self._user_repository: UserRepository = uow.get_repository("user")
@@ -26,7 +26,7 @@ class UserUseCase:
         self._uow = uow
 
     def create_user(self, dto: UserCreateDTO) -> UserResponseDTO:
-        """Create a new user."""
+        """Cria um novo usuário."""
         with self._uow:
             # Check if email is available
             email_vo = Email(value=dto.email)
@@ -44,7 +44,7 @@ class UserUseCase:
         return UserResponseDTO.model_validate(saved_user)
 
     def get_user_by_id(self, user_id: UUID) -> Optional[UserResponseDTO]:
-        """Get user by ID."""
+        """Obtém um usuário pelo ID."""
         user = self._user_repository.get_by_id(user_id)
 
         if not user:
@@ -53,7 +53,7 @@ class UserUseCase:
         return UserResponseDTO.model_validate(user)
 
     def get_user_by_email(self, email: str) -> Optional[UserResponseDTO]:
-        """Get user by email."""
+        """Obtém um usuário pelo email."""
         email_vo = Email(value=email)
         user = self._user_repository.get_by_email(email_vo)
 
@@ -63,7 +63,7 @@ class UserUseCase:
         return UserResponseDTO.model_validate(user)
 
     def update_user(self, user_id: UUID, dto: UserUpdateDTO) -> UserResponseDTO:
-        """Update user information."""
+        """Atualiza as informações do usuário."""
         with self._uow:
             user = self._user_repository.get_by_id(user_id)
 
@@ -99,7 +99,7 @@ class UserUseCase:
         return UserResponseDTO.model_validate(saved_user)
 
     def change_password(self, user_id: UUID, dto: UserChangePasswordDTO) -> bool:
-        """Change user password."""
+        """Altera a senha do usuário."""
         with self._uow:
             user = self._user_repository.get_by_id(user_id)
 
@@ -117,7 +117,7 @@ class UserUseCase:
         return True
 
     def deactivate_user(self, user_id: UUID) -> UserResponseDTO:
-        """Deactivate user account."""
+        """Desativa a conta do usuário."""
         with self._uow:
             user = self._user_repository.get_by_id(user_id)
 
@@ -136,7 +136,7 @@ class UserUseCase:
         return UserResponseDTO.model_validate(saved_user)
 
     def activate_user(self, user_id: UUID) -> UserResponseDTO:
-        """Activate user account."""
+        """Ativa a conta do usuário."""
         with self._uow:
             user = self._user_repository.get_by_id(user_id)
 
@@ -153,7 +153,7 @@ class UserUseCase:
         return UserResponseDTO.model_validate(saved_user)
 
     def delete_user(self, user_id: UUID) -> bool:
-        """Delete user account."""
+        """Exclui a conta do usuário."""
         with self._uow:
             can_delete, reason = self._user_domain_service.can_user_be_deleted(user_id)
 
@@ -167,7 +167,7 @@ class UserUseCase:
     def list_users(
         self, page: int = 1, page_size: int = 100, active_only: bool = True
     ) -> UserListResponseDTO:
-        """List users with pagination."""
+        """Lista usuários com paginação."""
 
         if page < 1:
             page = 1
@@ -199,6 +199,7 @@ class UserUseCase:
     def check_email_availability(
         self, email: str, excluding_user_id: Optional[UUID] = None
     ) -> bool:
-        """Check if email is available for use."""
+        """Verifica se o email está disponível para uso."""
         email_vo = Email(value=email)
         return self._user_domain_service.is_email_available(email_vo, excluding_user_id)
+

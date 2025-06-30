@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from uuid import UUID, uuid4
 from typing import Optional, Dict, Any, List
 from pydantic import BaseModel
@@ -20,10 +20,10 @@ class PolicyCondition(BaseModel):
     def evaluate(self, context: Dict[str, Any]) -> bool:
         """Evaluate condition against context."""
         context_value = context.get(self.attribute)
-        
+
         if context_value is None:
             return False
-        
+
         if self.operator == "eq":
             return context_value == self.value
         elif self.operator == "ne":
@@ -42,7 +42,7 @@ class PolicyCondition(BaseModel):
             return context_value not in self.value
         elif self.operator == "contains":
             return self.value in context_value
-        
+
         return False
 
 
@@ -74,7 +74,7 @@ class Policy(BaseModel):
         conditions: List[PolicyCondition],
         created_by: UUID,
         organization_id: Optional[UUID] = None,
-        priority: int = 0
+        priority: int = 0,
     ) -> "Policy":
         return cls(
             id=uuid4(),
@@ -86,68 +86,72 @@ class Policy(BaseModel):
             conditions=conditions,
             organization_id=organization_id,
             created_by=created_by,
-            created_at=datetime.utcnow(),
+            created_at=datetime.now(timezone.utc),
             is_active=True,
-            priority=priority
+            priority=priority,
         )
 
     def evaluate(self, context: Dict[str, Any]) -> Optional[bool]:
         """Evaluate policy against context. Returns None if not applicable."""
         if not self.is_active:
             return None
-        
+
         # Check if policy applies to this resource type and action
-        if (context.get("resource_type") != self.resource_type or 
-            context.get("action") != self.action):
+        if (
+            context.get("resource_type") != self.resource_type
+            or context.get("action") != self.action
+        ):
             return None
-        
+
         # Check organization scope
-        if self.organization_id and context.get("organization_id") != self.organization_id:
+        if (
+            self.organization_id
+            and context.get("organization_id") != self.organization_id
+        ):
             return None
-        
+
         # Evaluate all conditions
         for condition in self.conditions:
             if not condition.evaluate(context):
                 return None  # Policy doesn't apply
-        
+
         # All conditions met, return effect
         return self.effect == PolicyEffect.ALLOW
 
     def update_conditions(self, conditions: List[PolicyCondition]) -> "Policy":
         """Update policy conditions."""
-        return self.model_copy(update={
-            "conditions": conditions,
-            "updated_at": datetime.utcnow()
-        })
+        return self.model_copy(
+            update={"conditions": conditions, "updated_at": datetime.now(timezone.utc)}
+        )
 
     def update_priority(self, priority: int) -> "Policy":
         """Update policy priority."""
-        return self.model_copy(update={
-            "priority": priority,
-            "updated_at": datetime.utcnow()
-        })
+        return self.model_copy(
+            update={"priority": priority, "updated_at": datetime.now(timezone.utc)}
+        )
 
     def deactivate(self) -> "Policy":
         return self.model_copy(update={
             "is_active": False,
-            "updated_at": datetime.utcnow()
+            "updated_at": datetime.now(timezone.utc)
         })
 
     def activate(self) -> "Policy":
-        return self.model_copy(update={
-            "is_active": True,
-            "updated_at": datetime.utcnow()
-        })
+        return self.model_copy(
+            update={"is_active": True, "updated_at": datetime.now(timezone.utc)}
+        )
 
-    def matches_request(self, resource_type: str, action: str, organization_id: Optional[UUID] = None) -> bool:
+    def matches_request(
+        self, resource_type: str, action: str, organization_id: Optional[UUID] = None
+    ) -> bool:
         """Check if policy matches the request."""
         if not self.is_active:
             return False
-        
+
         if self.resource_type != resource_type or self.action != action:
             return False
-        
+
         if self.organization_id and self.organization_id != organization_id:
             return False
-        
+
         return True

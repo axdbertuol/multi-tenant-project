@@ -52,7 +52,7 @@ class SqlAlchemyPolicyRepository(PolicyRepository):
                     effect=PolicyEffectEnum(policy.effect),
                     resource_type=policy.resource_type,
                     action=policy.action,
-                    conditions=[condition.to_dict() for condition in policy.conditions],
+                    conditions=[condition.model_dump() for condition in policy.conditions],
                     organization_id=policy.organization_id,
                     created_by=policy.created_by,
                     priority=policy.priority,

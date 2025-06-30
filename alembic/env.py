@@ -10,8 +10,43 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(__file__)), "src
 
 load_dotenv()
 
-from infrastructure.database.connection import Base
-from infrastructure.database.models import *
+from shared.infrastructure.database.base import Base
+
+# Import only the model files directly to avoid circular imports
+import sys
+import importlib.util
+
+# Import authorization models
+auth_spec = importlib.util.spec_from_file_location(
+    "auth_models", 
+    os.path.join(os.path.dirname(os.path.dirname(__file__)), "src", "authorization", "infrastructure", "database", "models.py")
+)
+auth_models = importlib.util.module_from_spec(auth_spec)
+auth_spec.loader.exec_module(auth_models)
+
+# Import user models  
+user_spec = importlib.util.spec_from_file_location(
+    "user_models",
+    os.path.join(os.path.dirname(os.path.dirname(__file__)), "src", "user", "infrastructure", "database", "models.py")
+)
+user_models = importlib.util.module_from_spec(user_spec)
+user_spec.loader.exec_module(user_models)
+
+# Import organization models
+org_spec = importlib.util.spec_from_file_location(
+    "org_models",
+    os.path.join(os.path.dirname(os.path.dirname(__file__)), "src", "organization", "infrastructure", "database", "models.py")
+)
+org_models = importlib.util.module_from_spec(org_spec)
+org_spec.loader.exec_module(org_models)
+
+# Import plans models
+plans_spec = importlib.util.spec_from_file_location(
+    "plans_models",
+    os.path.join(os.path.dirname(os.path.dirname(__file__)), "src", "plans", "infrastructure", "database", "models.py")
+)
+plans_models = importlib.util.module_from_spec(plans_spec)
+plans_spec.loader.exec_module(plans_models)
 
 config = context.config
 

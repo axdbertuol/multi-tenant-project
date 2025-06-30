@@ -14,15 +14,40 @@ class PolicyRepository(ABC):
         pass
 
     @abstractmethod
-    def get_by_id(self, policy_id: UUID) -> Optional[Policy]:
+    def find_by_id(self, policy_id: UUID) -> Optional[Policy]:
         """Get policy by ID."""
         pass
 
     @abstractmethod
-    def get_by_name(
+    def find_by_name(
         self, name: str, organization_id: Optional[UUID] = None
     ) -> Optional[Policy]:
         """Get policy by name within organization scope."""
+        pass
+
+    @abstractmethod
+    def find_by_resource_and_action(
+        self, resource_type: str, action: str, organization_id: Optional[UUID] = None
+    ) -> List[Policy]:
+        pass
+
+    @abstractmethod
+    def find_by_organization(self, organization_id: UUID) -> List[Policy]:
+        pass
+
+    @abstractmethod
+    def find_global_policies(self) -> List[Policy]:
+        pass
+
+    @abstractmethod
+    def find_paginated(
+        self,
+        organization_id: Optional[UUID],
+        resource_type: Optional[str],
+        action: Optional[str],
+        offset: int,
+        limit: int,
+    ) -> tuple[List[Policy], int]:
         pass
 
     @abstractmethod
@@ -73,4 +98,8 @@ class PolicyRepository(ABC):
         self, resource_type: str, action: str, organization_id: Optional[UUID] = None
     ) -> List[Policy]:
         """Get policies ordered by priority (highest first)."""
+        pass
+
+    @abstractmethod
+    def find_by_resource_type(self, resource_type: str, organization_id: Optional[UUID]) -> List[Policy]:
         pass

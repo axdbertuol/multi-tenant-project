@@ -1,4 +1,5 @@
-from datetime import datetime
+from datetime import datetime, timezone
+
 from uuid import UUID, uuid4
 from typing import Optional, Dict, Any
 from pydantic import BaseModel
@@ -33,7 +34,7 @@ class Resource(BaseModel):
             owner_id=owner_id,
             organization_id=organization_id,
             attributes=attributes or {},
-            created_at=datetime.utcnow(),
+            created_at=datetime.now(timezone.utc),
             is_active=True
         )
 
@@ -51,7 +52,7 @@ class Resource(BaseModel):
         
         return self.model_copy(update={
             "attributes": new_attributes,
-            "updated_at": datetime.utcnow()
+            "updated_at": datetime.now(timezone.utc)
         })
 
     def remove_attribute(self, key: str) -> "Resource":
@@ -61,7 +62,7 @@ class Resource(BaseModel):
         
         return self.model_copy(update={
             "attributes": new_attributes,
-            "updated_at": datetime.utcnow()
+            "updated_at": datetime.now(timezone.utc)
         })
 
     def get_attribute(self, key: str, default: Any = None) -> Any:
@@ -89,12 +90,12 @@ class Resource(BaseModel):
     def activate(self) -> "Resource":
         return self.model_copy(update={
             "is_active": True,
-            "updated_at": datetime.utcnow()
+            "updated_at": datetime.now(timezone.utc)
         })
 
     def transfer_ownership(self, new_owner_id: UUID) -> "Resource":
         """Transfer resource ownership."""
         return self.model_copy(update={
             "owner_id": new_owner_id,
-            "updated_at": datetime.utcnow()
+            "updated_at": datetime.now(timezone.utc)
         })

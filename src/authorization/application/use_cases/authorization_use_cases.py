@@ -213,7 +213,7 @@ class AuthorizationUseCase:
             action=permission_name,
         )
 
-        is_authorized, _ = self.authorization_service.is_authorized(context)
+        is_authorized, _ = self.authorization_service.authorize(context)
         return is_authorized
 
     def get_resource_policies(

@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from uuid import UUID
 from typing import Optional, Dict, Any, List
 from pydantic import BaseModel
@@ -40,7 +40,7 @@ class AuthorizationContext(BaseModel):
             user_attributes=user_attributes or {},
             resource_attributes=resource_attributes or {},
             environment_attributes=environment_attributes or {},
-            request_time=datetime.utcnow()
+            request_time=datetime.now(timezone.utc)
         )
 
     def add_user_attribute(self, key: str, value: Any) -> "AuthorizationContext":

@@ -6,25 +6,25 @@ from .session_dto import SessionResponseDTO
 
 
 class LoginDTO(BaseModel):
-    """DTO for user login."""
+    """DTO para login de usuário."""
 
-    email: str = Field(..., description="User email address")
-    password: str = Field(..., description="User password")
-    remember_me: bool = Field(False, description="Extended session duration")
+    email: str = Field(..., description="Endereço de email do usuário")
+    password: str = Field(..., description="Senha do usuário")
+    remember_me: bool = Field(False, description="Duração estendida da sessão")
     user_agent: Optional[str] = Field(
-        None, max_length=500, description="User agent string"
+        None, max_length=500, description="String do user agent"
     )
-    ip_address: Optional[str] = Field(None, max_length=45, description="IP address")
+    ip_address: Optional[str] = Field(None, max_length=45, description="Endereço IP")
 
 
 class AuthResponseDTO(BaseModel):
-    """DTO for authentication response."""
+    """DTO para resposta de autenticação."""
 
     user: UserResponseDTO
     session: SessionResponseDTO
     access_token: str
     token_type: str = "bearer"
-    expires_in: int  # seconds
+    expires_in: int  # segundos
 
 
 class LogoutDTO2(BaseModel):
@@ -33,9 +33,9 @@ class LogoutDTO2(BaseModel):
 
 
 class LogoutDTO(BaseModel):
-    """DTO for user logout."""
+    """DTO para logout de usuário."""
 
-    revoke_all_sessions: bool = Field(False, description="Revoke all user sessions")
+    revoke_all_sessions: bool = Field(False, description="Revogar todas as sessões do usuário")
 
 
 class LogoutResponseDTO(BaseModel):
@@ -44,19 +44,19 @@ class LogoutResponseDTO(BaseModel):
 
 
 class RefreshTokenDTO(BaseModel):
-    """DTO for token refresh."""
+    """DTO para atualização de token."""
 
-    refresh_token: str = Field(..., description="Refresh token")
+    refresh_token: str = Field(..., description="Token de atualização")
 
 
 class PasswordResetRequestDTO(BaseModel):
-    """DTO for password reset request."""
+    """DTO para solicitação de redefinição de senha."""
 
-    email: str = Field(..., description="User email address")
+    email: str = Field(..., description="Endereço de email do usuário")
 
 
 class PasswordResetConfirmDTO(BaseModel):
-    """DTO for password reset confirmation."""
+    """DTO para confirmação de redefinição de senha."""
 
-    token: str = Field(..., description="Password reset token")
-    new_password: str = Field(..., min_length=8, description="New password")
+    token: str = Field(..., description="Token de redefinição de senha")
+    new_password: str = Field(..., min_length=8, description="Nova senha")

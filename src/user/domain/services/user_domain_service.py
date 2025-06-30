@@ -9,7 +9,7 @@ from ..repositories.user_repository import UserRepository
 
 
 class UserDomainService:
-    """Domain service for user-specific business logic."""
+    """Serviço de domínio para lógica de negócios específica do usuário."""
 
     def __init__(self, uow: UnitOfWork):
         self._user_repository: UserRepository = uow.get_repository("user")
@@ -18,7 +18,7 @@ class UserDomainService:
     def is_email_available(
         self, email: Email, excluding_user_id: Optional[UUID] = None
     ) -> bool:
-        """Check if email is available for registration or update."""
+        """Verifica se o email está disponível para registro ou atualização."""
         existing_user = self._user_repository.get_by_email(email)
 
         if not existing_user:
@@ -31,7 +31,7 @@ class UserDomainService:
         return False
 
     def can_user_be_deleted(self, user_id: UUID) -> tuple[bool, str]:
-        """Check if user can be safely deleted and return reason if not."""
+        """Verifica se o usuário pode ser excluído com segurança e retorna o motivo, se não."""
         user = self._user_repository.get_by_id(user_id)
 
         if not user:
@@ -43,7 +43,7 @@ class UserDomainService:
         return True, "Can be deleted"
 
     def validate_user_activation(self, user: User) -> tuple[bool, str]:
-        """Validate if user can be activated."""
+        """Valida se o usuário pode ser ativado."""
         if user.is_active:
             return False, "User is already active"
 
@@ -51,7 +51,7 @@ class UserDomainService:
         return True, "Can be activated"
 
     def validate_user_deactivation(self, user: User) -> tuple[bool, str]:
-        """Validate if user can be deactivated."""
+        """Valida se o usuário pode ser desativado."""
         if not user.is_active:
             return False, "User is already inactive"
 

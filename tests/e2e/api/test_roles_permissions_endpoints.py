@@ -29,7 +29,7 @@ class TestRolesPermissionsEndpoints:
 
     @pytest.fixture
     def db_session(self):
-        from src.infrastructure.database.dependencies import get_db
+        from src.shared.infrastructure.database.connection import get_db
         session = next(get_db())
         yield session
         session.close()
@@ -232,18 +232,18 @@ class TestRolesPermissionsEndpoints:
         user_write_perm = test_data["permissions"]["user_write"]
         org_read_perm = test_data["permissions"]["org_read"]
         
-        # Verify resource and action scoping
-        assert user_read_perm.resource == "users"
-        assert user_read_perm.action == "read"
+        # Verify resource_type and action scoping
+        assert user_read_perm.resource_type == "user"
+        assert user_read_perm.action.value == "read"
         
-        assert user_write_perm.resource == "users"
-        assert user_write_perm.action == "write"
+        assert user_write_perm.resource_type == "user"
+        assert user_write_perm.action.value == "update"
         
-        assert org_read_perm.resource == "organizations"
-        assert org_read_perm.action == "read"
+        assert org_read_perm.resource_type == "organization"
+        assert org_read_perm.action.value == "read"
         
-        # Different resources should be distinguishable
-        assert user_read_perm.resource != org_read_perm.resource
+        # Different resource types should be distinguishable
+        assert user_read_perm.resource_type != org_read_perm.resource_type
         
         # Different actions should be distinguishable
         assert user_read_perm.action != user_write_perm.action

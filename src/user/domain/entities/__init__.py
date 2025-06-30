@@ -1,4 +1,2 @@
-from .user import User
-from .user_session import UserSession
-
-__all__ = ["User", "UserSession"]
+# Este diretório contém as entidades de domínio para o contexto delimitado de Usuário.
+# As entidades representam os principais conceitos de negócio e suas regras.

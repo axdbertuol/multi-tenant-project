@@ -1,16 +1,2 @@
-from .dtos import (
-    UserCreateDTO, UserUpdateDTO, UserResponseDTO,
-    SessionCreateDTO, SessionResponseDTO,
-    LoginDTO, AuthResponseDTO
-)
-from .use_cases import UserUseCase, AuthUseCase, SessionUseCase
-
-__all__ = [
-    # DTOs
-    "UserCreateDTO", "UserUpdateDTO", "UserResponseDTO",
-    "SessionCreateDTO", "SessionResponseDTO", 
-    "LoginDTO", "AuthResponseDTO",
-    
-    # Use Cases
-    "UserUseCase", "AuthUseCase", "SessionUseCase"
-]
+# Este diretório contém a camada de aplicação do contexto delimitado de Usuário.
+# Ele orquestra a lógica de domínio para casos de uso e define os DTOs (Data Transfer Objects).

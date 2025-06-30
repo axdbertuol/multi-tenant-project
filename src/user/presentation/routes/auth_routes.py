@@ -11,11 +11,11 @@ from ...application.dtos.auth_dto import (
 )
 from ...application.use_cases.auth_use_cases import AuthUseCase
 
-router = APIRouter(prefix="/auth", tags=["Authentication"])
+router = APIRouter(prefix="/auth", tags=["Autenticação"])
 
 
 def get_client_info(request: Request) -> tuple[Optional[str], Optional[str]]:
-    """Extract client info from request."""
+    """Extrai informações do cliente da requisição."""
     user_agent = request.headers.get("user-agent")
     ip_address = request.client.host if request.client else None
     return user_agent, ip_address
@@ -27,7 +27,7 @@ async def login(
     request: Request,
     use_case: AuthUseCase = Depends(get_auth_use_case),
 ):
-    """Authenticate user and create session."""
+    """Autentica o usuário e cria uma sessão."""
     try:
         user_agent, ip_address = get_client_info(request)
         dto.user_agent = user_agent
@@ -43,7 +43,7 @@ async def logout(
     request: Request,
     use_case: AuthUseCase = Depends(get_auth_use_case),
 ):
-    """Logout user by revoking session(s)."""
+    """Realiza o logout do usuário, revogando a(s) sessão(ões)."""
     try:
         # Extract token from Authorization header
         auth_header = request.headers.get("authorization")
@@ -72,7 +72,7 @@ async def refresh_session(
     request: Request,
     use_case: AuthUseCase = Depends(get_auth_use_case),
 ):
-    """Refresh session token."""
+    """Atualiza o token da sessão."""
     try:
         # Extract token from Authorization header
         auth_header = request.headers.get("authorization")
@@ -101,7 +101,7 @@ async def validate_session(
     request: Request,
     use_case: AuthUseCase = Depends(get_auth_use_case),
 ):
-    """Validate session token and return user info."""
+    """Valida o token da sessão e retorna as informações do usuário."""
     try:
         # Extract token from Authorization header
         auth_header = request.headers.get("authorization")
@@ -130,7 +130,7 @@ async def request_password_reset(
     dto: PasswordResetRequestDTO,
     use_case: AuthUseCase = Depends(get_auth_use_case),
 ):
-    """Request password reset for user."""
+    """Solicita a redefinição de senha para o usuário."""
     try:
         use_case.request_password_reset(dto)
         return {"message": "Password reset email sent if account exists"}
@@ -143,7 +143,7 @@ async def confirm_password_reset(
     dto: PasswordResetConfirmDTO,
     use_case: AuthUseCase = Depends(get_auth_use_case),
 ):
-    """Confirm password reset with token."""
+    """Confirma a redefinição de senha com o token."""
     try:
         success = use_case.confirm_password_reset(dto)
         if not success:
@@ -151,6 +151,8 @@ async def confirm_password_reset(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Invalid or expired reset token",
             )
+        
         return {"message": "Password reset successfully"}
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+

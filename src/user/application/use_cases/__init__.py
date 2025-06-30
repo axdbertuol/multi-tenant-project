@@ -1,5 +1,2 @@
-from .user_use_cases import UserUseCase
-from .auth_use_cases import AuthUseCase
-from .session_use_cases import SessionUseCase
-
-__all__ = ["UserUseCase", "AuthUseCase", "SessionUseCase"]
+# Este diretório contém os casos de uso (Use Cases) para o contexto delimitado de Usuário.
+# Os casos de uso orquestram a lógica de domínio para realizar operações específicas.

@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 from typing import Optional, List
 from uuid import UUID
 
-from ..entities.permission import Permission, PermissionType
+from ..entities.permission import Permission, PermissionAction
 from ..value_objects.permission_name import PermissionName
 
 
@@ -15,23 +15,25 @@ class PermissionRepository(ABC):
         pass
 
     @abstractmethod
-    def get_by_id(self, permission_id: UUID) -> Optional[Permission]:
+    def find_by_id(self, permission_id: UUID) -> Optional[Permission]:
         """Get permission by ID."""
         pass
 
     @abstractmethod
-    def get_by_name(self, name: PermissionName) -> Optional[Permission]:
-        """Get permission by name."""
+    def find_by_name_and_resource(
+        self, name: str, resource_type: str
+    ) -> Optional[Permission]:
+        """Get permission by name and resource type."""
         pass
 
     @abstractmethod
-    def get_by_resource_type(self, resource_type: str) -> List[Permission]:
+    def find_by_resource_type(self, resource_type: str) -> List[Permission]:
         """Get all permissions for a resource type."""
         pass
 
     @abstractmethod
     def get_by_resource_and_type(
-        self, resource_type: str, permission_type: PermissionType
+        self, resource_type: str, permission_type: PermissionAction
     ) -> List[Permission]:
         """Get permissions by resource type and permission type."""
         pass
@@ -59,13 +61,35 @@ class PermissionRepository(ABC):
         pass
 
     @abstractmethod
-    def list_active_permissions(
-        self, limit: int = 100, offset: int = 0
-    ) -> List[Permission]:
-        """List active permissions with pagination."""
+    def find_paginated(
+        self, include_system: bool, offset: int, limit: int
+    ) -> tuple[List[Permission], int]:
         pass
 
     @abstractmethod
-    def search_permissions(self, query: str, limit: int = 100) -> List[Permission]:
-        """Search permissions by name or description."""
+    def search(
+        self,
+        query: Optional[str],
+        resource_type: Optional[str],
+        action: Optional[PermissionAction],
+        is_active: Optional[bool],
+        offset: int,
+        limit: int,
+    ) -> tuple[List[Permission], int]:
+        pass
+
+    @abstractmethod
+    def get_role_count(self, permission_id: UUID) -> int:
+        pass
+
+    @abstractmethod
+    def find_system_permissions(self) -> List[Permission]:
+        pass
+
+    @abstractmethod
+    def bulk_save(self, permissions: List[Permission]) -> List[Permission]:
+        pass
+
+    @abstractmethod
+    def find_by_ids(self, permission_ids: List[UUID]) -> List[Permission]:
         pass

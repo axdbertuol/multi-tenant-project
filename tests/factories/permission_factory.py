@@ -1,18 +1,18 @@
 from uuid import uuid4
-from src.domain.entities.permission import Permission
+from src.authorization.domain.entities.permission import Permission, PermissionAction
 
 
 class PermissionFactory:
     @staticmethod
     def create_permission(
         name: str = "test_permission",
-        resource: str = "test_resource",
-        action: str = "read",
-        description: str = None
+        resource_type: str = "test_resource",
+        action: PermissionAction = PermissionAction.READ,
+        description: str = "Test permission"
     ) -> Permission:
         return Permission.create(
             name=name,
-            resource=resource,
+            resource_type=resource_type,
             action=action,
             description=description
         )
@@ -21,26 +21,26 @@ class PermissionFactory:
     def create_user_read_permission() -> Permission:
         return Permission.create(
             name="users.read",
-            resource="users",
-            action="read",
+            resource_type="user",
+            action=PermissionAction.READ,
             description="Read users permission"
         )
 
     @staticmethod
     def create_user_write_permission() -> Permission:
         return Permission.create(
-            name="users.write",
-            resource="users",
-            action="write",
-            description="Write users permission"
+            name="users.update",
+            resource_type="user",
+            action=PermissionAction.UPDATE,
+            description="Update users permission"
         )
 
     @staticmethod
     def create_user_delete_permission() -> Permission:
         return Permission.create(
             name="users.delete",
-            resource="users",
-            action="delete",
+            resource_type="user",
+            action=PermissionAction.DELETE,
             description="Delete users permission"
         )
 
@@ -48,16 +48,16 @@ class PermissionFactory:
     def create_organization_read_permission() -> Permission:
         return Permission.create(
             name="organizations.read",
-            resource="organizations",
-            action="read",
+            resource_type="organization",
+            action=PermissionAction.READ,
             description="Read organizations permission"
         )
 
     @staticmethod
     def create_organization_write_permission() -> Permission:
         return Permission.create(
-            name="organizations.write",
-            resource="organizations",
-            action="write",
-            description="Write organizations permission"
+            name="organizations.update",
+            resource_type="organization",
+            action=PermissionAction.UPDATE,
+            description="Update organizations permission"
         )

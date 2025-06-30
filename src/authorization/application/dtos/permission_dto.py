@@ -5,7 +5,7 @@ from pydantic import BaseModel, Field, field_validator
 from enum import Enum
 
 
-class PermissionTypeEnum(str, Enum):
+class PermissionActionEnum(str, Enum):
     CREATE = "create"
     READ = "read"
     UPDATE = "update"
@@ -19,7 +19,7 @@ class PermissionCreateDTO(BaseModel):
 
     name: str = Field(..., min_length=3, max_length=100, description="Permission name")
     description: str = Field(..., max_length=500, description="Permission description")
-    permission_type: PermissionTypeEnum = Field(..., description="Permission type")
+    action: PermissionActionEnum = Field(..., description="Permission action")
     resource_type: str = Field(
         ..., min_length=2, max_length=50, description="Resource type"
     )
@@ -46,9 +46,9 @@ class PermissionResponseDTO(BaseModel):
     id: UUID
     name: str
     description: str
-    permission_type: str
+    action: str
     resource_type: str
-    full_name: str  # resource_type:permission_type
+    full_name: str  # resource_type:action
     created_at: datetime
     updated_at: Optional[datetime] = None
     is_active: bool
@@ -73,7 +73,7 @@ class PermissionSearchDTO(BaseModel):
 
     query: Optional[str] = Field(None, description="Search query")
     resource_type: Optional[str] = Field(None, description="Filter by resource type")
-    permission_type: Optional[PermissionTypeEnum] = Field(
-        None, description="Filter by permission type"
+    action: Optional[PermissionActionEnum] = Field(
+        None, description="Filter by permission action"
     )
     is_active: Optional[bool] = Field(None, description="Filter by active status")

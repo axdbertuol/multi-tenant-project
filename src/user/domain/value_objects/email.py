@@ -1,15 +1,16 @@
 import re
-from pydantic import BaseModel, field_validator
 from typing import Any
+from pydantic import BaseModel, field_validator
 
 
 class Email(BaseModel):
+    """Objeto de valor para Email."""
+
     value: str
 
     model_config = {"frozen": True}
 
     @field_validator("value")
-    @classmethod
     def validate_email(cls, v: str) -> str:
         if not cls._is_valid_email(v):
             raise ValueError(f"Invalid email format: {v}")
@@ -21,9 +22,11 @@ class Email(BaseModel):
         return re.match(pattern, email) is not None
 
     def domain(self) -> str:
+        """Retorna o domínio do email."""
         return self.value.split("@")[1]
 
     def local_part(self) -> str:
+        """Retorna a parte local do email."""
         return self.value.split("@")[0]
 
     def __str__(self) -> str:

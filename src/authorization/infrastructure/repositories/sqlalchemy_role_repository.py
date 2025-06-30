@@ -24,54 +24,40 @@ class SqlAlchemyRoleRepository(RoleRepository):
 
     def save(self, role: Role) -> Role:
         """Save a role entity."""
-        try:
-            # Check if role exists
-            existing = self.session.get(RoleModel, role.id)
+        # Check if role exists
+        existing = self.session.get(RoleModel, role.id)
 
-            if existing:
-                # Update existing role
-                existing.name = role.name
-                existing.description = role.description
-                existing.organization_id = role.organization_id
-                existing.parent_role_id = role.parent_role_id
-                existing.created_by = role.created_by
-                existing.is_active = role.is_active
-                existing.is_system_role = role.is_system_role
-                existing.updated_at = datetime.now(timezone.utc)
+        if existing:
+            # Update existing role
+            existing.name = role.name
+            existing.description = role.description
+            existing.organization_id = role.organization_id
+            existing.parent_role_id = role.parent_role_id
+            existing.created_by = role.created_by
+            existing.is_active = role.is_active
+            existing.is_system_role = role.is_system_role
+            existing.updated_at = datetime.now(timezone.utc)
 
-                self.session.flush()
-                return self._to_domain_entity(existing)
-            else:
-                # Create new role
-                role_model = RoleModel(
-                    id=role.id,
-                    name=role.name,
-                    description=role.description,
-                    organization_id=role.organization_id,
-                    parent_role_id=role.parent_role_id,
-                    created_by=role.created_by,
-                    is_active=role.is_active,
-                    is_system_role=role.is_system_role,
-                    created_at=role.created_at,
-                    updated_at=role.updated_at,
-                )
+            self.session.flush()
+            return self._to_domain_entity(existing)
+        else:
+            # Create new role
+            role_model = RoleModel(
+                id=role.id,
+                name=role.name,
+                description=role.description,
+                organization_id=role.organization_id,
+                parent_role_id=role.parent_role_id,
+                created_by=role.created_by,
+                is_active=role.is_active,
+                is_system_role=role.is_system_role,
+                created_at=role.created_at,
+                updated_at=role.updated_at,
+            )
 
-                self.session.add(role_model)
-                self.session.flush()
-                return self._to_domain_entity(role_model)
-
-        except IntegrityError as e:
-            self.session.rollback()
-            if "name" in str(e) and "organization_id" in str(e):
-                org_scope = (
-                    f" in organization {role.organization_id}"
-                    if role.organization_id
-                    else " globally"
-                )
-                raise ValueError(
-                    f"Role with name '{role.name}' already exists{org_scope}"
-                )
-            raise e
+            self.session.add(role_model)
+            self.session.flush()
+            return self._to_domain_entity(role_model)
 
     def get_by_id(self, role_id: UUID) -> Optional[Role]:
         """Get role by ID."""
@@ -89,7 +75,8 @@ class SqlAlchemyRoleRepository(RoleRepository):
         result = self.session.execute(
             select(RoleModel).where(
                 and_(
-                    RoleModel.name == name.value, RoleModel.organization_id == organization_id
+                    RoleModel.name == name.value,
+                    RoleModel.organization_id == organization_id,
                 )
             )
         )
@@ -148,17 +135,17 @@ class SqlAlchemyRoleRepository(RoleRepository):
 
         return [self._to_domain_entity(model) for model in role_models]
 
-    def exists_by_name(
-        self, name, organization_id: Optional[UUID] = None
-    ) -> bool:
+    def exists_by_name(self, name, organization_id: Optional[UUID] = None) -> bool:
         """Check if role exists by name within organization scope."""
         result = self.session.execute(
-            select(RoleModel.id).where(
+            select(RoleModel.id)
+            .where(
                 and_(
                     RoleModel.name == name.value,
-                    RoleModel.organization_id == organization_id
+                    RoleModel.organization_id == organization_id,
                 )
-            ).limit(1)
+            )
+            .limit(1)
         )
         return result.first() is not None
 
@@ -167,14 +154,14 @@ class SqlAlchemyRoleRepository(RoleRepository):
     ) -> List[Role]:
         """List active roles with pagination."""
         query = select(RoleModel).where(RoleModel.is_active)
-        
+
         if organization_id is not None:
             query = query.where(RoleModel.organization_id == organization_id)
-        
+
         query = query.offset(offset).limit(limit).order_by(RoleModel.name.asc())
         result = self.session.execute(query)
         role_models = result.scalars().all()
-        
+
         return [self._to_domain_entity(model) for model in role_models]
 
     def count_role_assignments(self, role_id: UUID) -> int:
@@ -334,10 +321,7 @@ class SqlAlchemyRoleRepository(RoleRepository):
         """Get all direct child roles of a parent role."""
         result = self.session.execute(
             select(RoleModel).where(
-                and_(
-                    RoleModel.parent_role_id == parent_role_id,
-                    RoleModel.is_active
-                )
+                and_(RoleModel.parent_role_id == parent_role_id, RoleModel.is_active)
             )
         )
         role_models = result.scalars().all()
@@ -349,10 +333,7 @@ class SqlAlchemyRoleRepository(RoleRepository):
             # Get root roles (roles with no parent)
             result = self.session.execute(
                 select(RoleModel).where(
-                    and_(
-                        RoleModel.parent_role_id.is_(None),
-                        RoleModel.is_active
-                    )
+                    and_(RoleModel.parent_role_id.is_(None), RoleModel.is_active)
                 )
             )
         else:
@@ -360,30 +341,26 @@ class SqlAlchemyRoleRepository(RoleRepository):
             result = self.session.execute(
                 select(RoleModel).where(
                     and_(
-                        RoleModel.parent_role_id == parent_role_id,
-                        RoleModel.is_active
+                        RoleModel.parent_role_id == parent_role_id, RoleModel.is_active
                     )
                 )
             )
-        
+
         role_models = result.scalars().all()
         return [self._to_domain_entity(model) for model in role_models]
 
     def get_role_hierarchy(self, organization_id: Optional[UUID] = None) -> List[Role]:
         """Get all roles in hierarchical order for an organization."""
         query = select(RoleModel).where(RoleModel.is_active)
-        
+
         if organization_id is not None:
-            query = query.where(
-                RoleModel.organization_id == organization_id
-            )
-        
+            query = query.where(RoleModel.organization_id == organization_id)
+
         # Order by parent_role_id nulls first (root roles first), then by name
         query = query.order_by(
-            RoleModel.parent_role_id.asc().nulls_first(),
-            RoleModel.name.asc()
+            RoleModel.parent_role_id.asc().nulls_first(), RoleModel.name.asc()
         )
-        
+
         result = self.session.execute(query)
         role_models = result.scalars().all()
         return [self._to_domain_entity(model) for model in role_models]
@@ -391,27 +368,21 @@ class SqlAlchemyRoleRepository(RoleRepository):
     def has_child_roles(self, role_id: UUID) -> bool:
         """Check if role has any child roles."""
         result = self.session.execute(
-            select(RoleModel.id).where(
-                and_(
-                    RoleModel.parent_role_id == role_id,
-                    RoleModel.is_active
-                )
-            ).limit(1)
+            select(RoleModel.id)
+            .where(and_(RoleModel.parent_role_id == role_id, RoleModel.is_active))
+            .limit(1)
         )
         return result.first() is not None
 
     def get_root_roles(self, organization_id: Optional[UUID] = None) -> List[Role]:
         """Get all root roles (roles with no parent) for an organization."""
         query = select(RoleModel).where(
-            and_(
-                RoleModel.parent_role_id.is_(None),
-                RoleModel.is_active
-            )
+            and_(RoleModel.parent_role_id.is_(None), RoleModel.is_active)
         )
-        
+
         if organization_id is not None:
             query = query.where(RoleModel.organization_id == organization_id)
-        
+
         result = self.session.execute(query)
         role_models = result.scalars().all()
         return [self._to_domain_entity(model) for model in role_models]

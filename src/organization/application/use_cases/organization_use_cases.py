@@ -2,6 +2,8 @@ from typing import Optional
 from uuid import UUID
 import math
 
+from shared.domain.repositories.unit_of_work import UnitOfWork
+
 from ..dtos.organization_dto import (
     OrganizationCreateDTO,
     OrganizationUpdateDTO,
@@ -28,53 +30,48 @@ from ...domain.value_objects.organization_name import OrganizationName
 class OrganizationUseCase:
     """Use cases for organization management."""
 
-    def __init__(
-        self,
-        organization_repository: OrganizationRepository,
-        role_repository: UserOrganizationRoleRepository,
-        organization_domain_service: OrganizationDomainService,
-        membership_service: MembershipService,
-    ):
-        self._organization_repository = organization_repository
-        self._role_repository = role_repository
-        self._organization_domain_service = organization_domain_service
-        self._membership_service = membership_service
+    def __init__(self, uow: UnitOfWork):
+        self._organization_repository: OrganizationRepository = uow.get_repository("organization")
+        self._role_repository: UserOrganizationRoleRepository = uow.get_repository("user_organization_role")
+        self._organization_domain_service = OrganizationDomainService(uow)
+        self._membership_service = MembershipService(uow)
+        self._uow = uow
 
     def create_organization(
         self, dto: OrganizationCreateDTO, owner_id: UUID
     ) -> OrganizationResponseDTO:
         """Create a new organization."""
+        with self._uow:
+            # Check if organization name is available
+            org_name = OrganizationName(value=dto.name)
+            is_available = self._organization_domain_service.is_organization_name_available(
+                org_name
+            )
 
-        # Check if organization name is available
-        org_name = OrganizationName(value=dto.name)
-        is_available = self._organization_domain_service.is_organization_name_available(
-            org_name
-        )
+            if not is_available:
+                raise ValueError(f"Organization name '{dto.name}' is already in use")
 
-        if not is_available:
-            raise ValueError(f"Organization name '{dto.name}' is already in use")
+            # Create organization entity
+            organization = Organization.create(
+                name=dto.name,
+                owner_id=owner_id,
+                description=dto.description,
+                max_users=dto.max_users,
+            )
 
-        # Create organization entity
-        organization = Organization.create(
-            name=dto.name,
-            owner_id=owner_id,
-            description=dto.description,
-            max_users=dto.max_users,
-        )
+            # Save organization
+            saved_org = self._organization_repository.save(organization)
 
-        # Save organization
-        saved_org = self._organization_repository.save(organization)
+            # Create owner role
+            self._membership_service.add_user_to_organization(
+                user_id=owner_id,
+                organization_id=saved_org.id,
+                role=OrganizationRole.OWNER,
+                assigned_by=owner_id,
+            )
 
-        # Create owner role
-        self._membership_service.add_user_to_organization(
-            user_id=owner_id,
-            organization_id=saved_org.id,
-            role=OrganizationRole.OWNER,
-            assigned_by=owner_id,
-        )
-
-        # Get current user count
-        user_count = self._role_repository.count_organization_users(saved_org.id)
+            # Get current user count
+            user_count = self._role_repository.count_organization_users(saved_org.id)
 
         return OrganizationResponseDTO(
             **saved_org.model_dump(),
@@ -151,43 +148,44 @@ class OrganizationUseCase:
         self, organization_id: UUID, dto: OrganizationUpdateDTO, updated_by: UUID
     ) -> OrganizationResponseDTO:
         """Update organization information."""
-        organization = self._organization_repository.get_by_id(organization_id)
+        with self._uow:
+            organization = self._organization_repository.get_by_id(organization_id)
 
-        if not organization:
-            raise ValueError("Organization not found")
+            if not organization:
+                raise ValueError("Organization not found")
 
-        # Check if user can modify organization
-        user_role = self._role_repository.get_by_user_and_organization(
-            updated_by, organization_id
-        )
-
-        if not user_role or not user_role.can_modify_organization():
-            raise ValueError("User does not have permission to modify organization")
-
-        updated_org = organization
-
-        # Update name if provided
-        if dto.name is not None:
-            org_name = OrganizationName(value=dto.name)
-            is_available = (
-                self._organization_domain_service.is_organization_name_available(
-                    org_name, organization_id
-                )
+            # Check if user can modify organization
+            user_role = self._role_repository.get_by_user_and_organization(
+                updated_by, organization_id
             )
-            if not is_available:
-                raise ValueError(f"Organization name '{dto.name}' is already in use")
 
-            updated_org = updated_org.update_name(dto.name)
+            if not user_role or not user_role.can_modify_organization():
+                raise ValueError("User does not have permission to modify organization")
 
-        # Update description if provided
-        if dto.description is not None:
-            updated_org = updated_org.update_description(dto.description)
+            updated_org = organization
 
-        # Save updated organization
-        saved_org = self._organization_repository.save(updated_org)
+            # Update name if provided
+            if dto.name is not None:
+                org_name = OrganizationName(value=dto.name)
+                is_available = (
+                    self._organization_domain_service.is_organization_name_available(
+                        org_name, organization_id
+                    )
+                )
+                if not is_available:
+                    raise ValueError(f"Organization name '{dto.name}' is already in use")
 
-        # Get current user count
-        user_count = self._role_repository.count_organization_users(organization_id)
+                updated_org = updated_org.update_name(dto.name)
+
+            # Update description if provided
+            if dto.description is not None:
+                updated_org = updated_org.update_description(dto.description)
+
+            # Save updated organization
+            saved_org = self._organization_repository.save(updated_org)
+
+            # Get current user count
+            user_count = self._role_repository.count_organization_users(organization_id)
 
         return OrganizationResponseDTO(
             **saved_org.model_dump(),
@@ -203,68 +201,69 @@ class OrganizationUseCase:
         updated_by: UUID,
     ) -> OrganizationResponseDTO:
         """Update organization settings."""
-        organization = self._organization_repository.get_by_id(organization_id)
+        with self._uow:
+            organization = self._organization_repository.get_by_id(organization_id)
 
-        if not organization:
-            raise ValueError("Organization not found")
+            if not organization:
+                raise ValueError("Organization not found")
 
-        # Check permissions
-        user_role = self._role_repository.get_by_user_and_organization(
-            updated_by, organization_id
-        )
-
-        if not user_role or not user_role.can_modify_organization():
-            raise ValueError(
-                "User does not have permission to modify organization settings"
+            # Check permissions
+            user_role = self._role_repository.get_by_user_and_organization(
+                updated_by, organization_id
             )
 
-        # Update settings
-        updated_settings = organization.settings
-
-        if dto.max_users is not None:
-            # Validate new max_users doesn't violate current user count
-            current_user_count = self._role_repository.count_organization_users(
-                organization_id
-            )
-            if dto.max_users < current_user_count:
+            if not user_role or not user_role.can_modify_organization():
                 raise ValueError(
-                    f"Cannot reduce max users below current count: {current_user_count}"
+                    "User does not have permission to modify organization settings"
                 )
 
-            updated_settings = updated_settings.update_max_users(dto.max_users)
+            # Update settings
+            updated_settings = organization.settings
 
-        if dto.allow_user_registration is not None:
-            updated_settings = updated_settings.update_custom_setting(
-                "allow_user_registration", dto.allow_user_registration
-            )
+            if dto.max_users is not None:
+                # Validate new max_users doesn't violate current user count
+                current_user_count = self._role_repository.count_organization_users(
+                    organization_id
+                )
+                if dto.max_users < current_user_count:
+                    raise ValueError(
+                        f"Cannot reduce max users below current count: {current_user_count}"
+                    )
 
-        if dto.require_email_verification is not None:
-            updated_settings = updated_settings.update_custom_setting(
-                "require_email_verification", dto.require_email_verification
-            )
+                updated_settings = updated_settings.update_max_users(dto.max_users)
 
-        if dto.session_timeout_hours is not None:
-            updated_settings = updated_settings.update_custom_setting(
-                "session_timeout_hours", dto.session_timeout_hours
-            )
+            if dto.allow_user_registration is not None:
+                updated_settings = updated_settings.update_custom_setting(
+                    "allow_user_registration", dto.allow_user_registration
+                )
 
-        if dto.features_enabled is not None:
-            for feature, enabled in dto.features_enabled.items():
-                if enabled:
-                    updated_settings = updated_settings.enable_feature(feature)
-                else:
-                    updated_settings = updated_settings.disable_feature(feature)
+            if dto.require_email_verification is not None:
+                updated_settings = updated_settings.update_custom_setting(
+                    "require_email_verification", dto.require_email_verification
+                )
 
-        if dto.custom_settings is not None:
-            for key, value in dto.custom_settings.items():
-                updated_settings = updated_settings.update_custom_setting(key, value)
+            if dto.session_timeout_hours is not None:
+                updated_settings = updated_settings.update_custom_setting(
+                    "session_timeout_hours", dto.session_timeout_hours
+                )
 
-        # Update organization with new settings
-        updated_org = organization.update_settings(updated_settings)
-        saved_org = self._organization_repository.save(updated_org)
+            if dto.features_enabled is not None:
+                for feature, enabled in dto.features_enabled.items():
+                    if enabled:
+                        updated_settings = updated_settings.enable_feature(feature)
+                    else:
+                        updated_settings = updated_settings.disable_feature(feature)
 
-        # Get current user count
-        user_count = self._role_repository.count_organization_users(organization_id)
+            if dto.custom_settings is not None:
+                for key, value in dto.custom_settings.items():
+                    updated_settings = updated_settings.update_custom_setting(key, value)
+
+            # Update organization with new settings
+            updated_org = organization.update_settings(updated_settings)
+            saved_org = self._organization_repository.save(updated_org)
+
+            # Get current user count
+            user_count = self._role_repository.count_organization_users(organization_id)
 
         return OrganizationResponseDTO(
             **saved_org.model_dump(),
@@ -277,29 +276,30 @@ class OrganizationUseCase:
         self, organization_id: UUID, deactivated_by: UUID
     ) -> bool:
         """Deactivate an organization."""
-        organization = self._organization_repository.get_by_id(organization_id)
+        with self._uow:
+            organization = self._organization_repository.get_by_id(organization_id)
 
-        if not organization:
-            raise ValueError("Organization not found")
+            if not organization:
+                raise ValueError("Organization not found")
 
-        # Check if user is owner
-        if not organization.is_owner(deactivated_by):
-            raise ValueError("Only organization owner can deactivate the organization")
+            # Check if user is owner
+            if not organization.is_owner(deactivated_by):
+                raise ValueError("Only organization owner can deactivate the organization")
 
-        # Check if organization can be safely deactivated
-        (
-            can_delete,
-            reason,
-        ) = self._organization_domain_service.can_organization_be_deleted(
-            organization_id
-        )
+            # Check if organization can be safely deactivated
+            (
+                can_delete,
+                reason,
+            ) = self._organization_domain_service.can_organization_be_deleted(
+                organization_id
+            )
 
-        if not can_delete:
-            raise ValueError(f"Cannot deactivate organization: {reason}")
+            if not can_delete:
+                raise ValueError(f"Cannot deactivate organization: {reason}")
 
-        # Deactivate organization
-        updated_org = organization.deactivate()
-        self._organization_repository.save(updated_org)
+            # Deactivate organization
+            updated_org = organization.deactivate()
+            self._organization_repository.save(updated_org)
 
         return True
 
@@ -307,22 +307,22 @@ class OrganizationUseCase:
         self, organization_id: UUID, current_owner_id: UUID, new_owner_id: UUID
     ) -> OrganizationResponseDTO:
         """Transfer organization ownership."""
+        with self._uow:
+            # Validate transfer
+            (
+                can_transfer,
+                reason,
+            ) = self._organization_domain_service.can_transfer_ownership(
+                organization_id, current_owner_id, new_owner_id
+            )
 
-        # Validate transfer
-        (
-            can_transfer,
-            reason,
-        ) = self._organization_domain_service.can_transfer_ownership(
-            organization_id, current_owner_id, new_owner_id
-        )
+            if not can_transfer:
+                raise ValueError(f"Cannot transfer ownership: {reason}")
 
-        if not can_transfer:
-            raise ValueError(f"Cannot transfer ownership: {reason}")
-
-        # Perform transfer
-        self._membership_service.transfer_ownership(
-            organization_id, current_owner_id, new_owner_id
-        )
+            # Perform transfer
+            self._membership_service.transfer_ownership(
+                organization_id, current_owner_id, new_owner_id
+            )
 
         # Return updated organization
         return self.get_organization_by_id(organization_id)

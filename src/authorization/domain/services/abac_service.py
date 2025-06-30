@@ -190,23 +190,18 @@ class ABACService:
 
         return resource.belongs_to_organization(organization_id)
 
-    def evaluate_custom_policy(
-        self, policy: Policy, context: Dict[str, Any]
-    ) -> bool | None:
-        """Evaluate a custom policy with provided context."""
-        auth_context = AuthorizationContext.create(
-            user_id=UUID(context["user_id"]),
-            resource_type=context["resource_type"],
-            action=context["action"],
-            organization_id=UUID(context["organization_id"])
-            if context.get("organization_id")
-            else None,
-            resource_id=UUID(context["resource_id"])
-            if context.get("resource_id")
-            else None,
-            user_attributes=context.get("user_attributes", {}),
-            resource_attributes=context.get("resource_attributes", {}),
-            environment_attributes=context.get("environment_attributes", {}),
-        )
+    def evaluate_policy_conditions(self, policy: Policy, context: AuthorizationContext) -> tuple[bool, list[dict[str, Any]]]:
+        """Evaluate policy conditions against context."""
+        condition_results = []
+        all_conditions_met = True
 
-        return self._policy_evaluation_service.evaluate_policy(policy, auth_context)
+        for condition in policy.conditions:
+            result = self._policy_evaluation_service.evaluate_condition(condition, context.to_dict())
+            condition_results.append({
+                "condition": condition.model_dump(),
+                "result": result
+            })
+            if not result:
+                all_conditions_met = False
+
+        return all_conditions_met, condition_results

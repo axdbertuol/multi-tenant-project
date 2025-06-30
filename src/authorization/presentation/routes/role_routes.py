@@ -1,7 +1,7 @@
 from typing import List, Optional
 from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, status, Query
-from fastapi.responses import JSONResponse
+
 
 from ..dependencies import get_role_use_case
 from ...application.use_cases.role_use_cases import RoleUseCase

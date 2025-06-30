@@ -316,3 +316,97 @@ if has_access:
 5. **Escalabilidade**: Novos tipos de recursos facilmente adicionáveis
 
 O sistema está pronto para uso e totalmente integrado com o sistema de autorização existente!
+
+The **Resource model** in the provided code is structured to represent both **static and dynamic metadata** about resources in a system, with a focus on **flexibility**, **access control**, and **integration with authorization policies**. Below is a breakdown of its key components and structure:
+
+---
+
+### 1. **Core Fields**
+#### **Static Metadata**
+These fields define fixed, structural properties of the resource:
+- **`resource_type`** (`str`):  
+  A categorical identifier (e.g., `"user"`, `"organization"`, `"chat"`, `"plan"`). Used for grouping and policy scoping .
+- **`resource_id`** (`UUID`):  
+  A unique identifier for the specific instance of the resource (e.g., a user’s UUID).
+- **`owner_id`** (`UUID`):  
+  Links the resource to its owner (e.g., a user who created or manages the resource).
+- **`organization_id`** (`UUID`, optional):  
+  Associates the resource with an organization for multi-tenancy support .
+- **`created_at`** (`datetime`):  
+  Timestamp of resource creation.
+- **`updated_at`** (`datetime`, optional):  
+  Timestamp of the last modification.
+- **`is_active`** (`bool`, default `True`):  
+  Indicates whether the resource is active or archived.
+
+#### **Dynamic Metadata (`attributes`)**  
+- **`attributes`** (`Dict[str, Any]`):  
+  A **JSON column** storing **flexible, key-value metadata** (e.g., `{"classification": "confidential", "owner_department": "engineering"}`).  
+  - **Purpose**: Enables **Attribute-Based Access Control (ABAC)** by allowing policies to reference dynamic attributes (e.g., `"resource.classification == 'public'"`) .  
+  - **Example**: A dataset resource might have attributes like `{"sensitivity": "high", "project_code": "PROJ-123"}` to enforce access rules based on data sensitivity or project ownership .
+
+---
+
+### 2. **Methods for Managing Attributes**
+The model includes methods to manipulate dynamic attributes:
+- **`update_attributes(attributes: Dict[str, Any]) -> Resource`**  
+  Merges new attributes into the existing dictionary.
+- **`set_attribute(key: str, value: Any) -> Resource`**  
+  Sets a single attribute key-value pair.
+- **`remove_attribute(key: str) -> Resource`**  
+  Removes an attribute by key.
+- **`get_attribute(key: str, default: Any = None) -> Any`**  
+  Retrieves an attribute value or returns a default if missing.
+- **`has_attribute(key: str) -> bool`**  
+  Checks if an attribute exists .
+
+These methods ensure programmatic updates to the `attributes` dictionary while maintaining immutability via `model_copy` (Pydantic’s frozen model pattern).
+
+---
+
+### 3. **Integration with Authorization**
+The `attributes` field plays a critical role in **policy evaluation**:
+- Policies reference resource attributes in conditions (via `PolicyCondition`). For example:
+  ```python
+  PolicyCondition(attribute="classification", operator="eq", value="public")
+  ```
+  This allows rules like *"Allow access if the resource’s classification is public"* .
+- During authorization, resource attributes are merged into the `AuthorizationContext`, making them accessible to policy evaluators .
+
+---
+
+### 4. **Database Mapping**
+The `ResourceModel` class maps to the `authorization_resources` table in the database:
+- **Fields**:  
+  - `resource_type`: Indexed for fast lookups by type.  
+  - `resource_id`: Indexed to ensure uniqueness per resource type.  
+  - `attributes`: Stored as a JSON column for dynamic metadata.  
+- **Constraints**:  
+  - A composite unique constraint ensures no duplicate `(resource_type, resource_id)` pairs.  
+  - Indexes optimize queries for common operations like filtering by `owner_id` or `organization_id` .
+
+---
+
+### 5. **Use Cases and Flexibility**
+The model supports scenarios requiring **dynamic access control**:
+- **Example 1**:  
+  A `dataset` resource with attributes like `{"owner_department": "finance", "access_level": "read-only"}` can enforce policies like *"Users in the finance department can read this dataset"*.
+- **Example 2**:  
+  A `chat` resource might track attributes like `{"participants": ["user1", "user2"]}` to restrict access to authorized participants only .
+
+---
+
+### 6. **Comparison to General Resource Models**
+From the web_search content:
+- The model aligns with **resource management principles** (e.g., defining structure and metadata , but extends it with **ABAC-specific features** (e.g., dynamic attributes for policy evaluation .  
+- Unlike rigid models (e.g., SAP’s resource model for bundling static properties , this design emphasizes **flexibility** via JSON storage and programmatic updates.
+
+---
+
+### Summary
+The Resource model combines **static identifiers** (e.g., `resource_type`, `owner_id`) with **dynamic attributes** to enable fine-grained, context-aware access control. Its structure supports:
+1. **Scalable resource management** via UUIDs and multi-tenancy.
+2. **Policy-driven authorization** through ABAC-compatible attributes.
+3. **Extensibility** for domain-specific metadata without schema changes.
+
+This design is ideal for systems requiring adaptive access controls, such as SaaS platforms or data governance frameworks .

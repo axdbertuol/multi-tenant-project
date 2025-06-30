@@ -1,4 +1,2 @@
-from .email import Email
-from .password import Password
-
-__all__ = ["Email", "Password"]
+# Este diretório contém os objetos de valor para o contexto delimitado de Usuário.
+# Os objetos de valor representam conceitos descritivos sem identidade conceitual.

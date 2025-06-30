@@ -1,15 +1,17 @@
 from datetime import datetime, timezone
 from typing import List, Optional
 from uuid import UUID
-from sqlalchemy import select, delete, and_, text
+from sqlalchemy import select, delete, and_, text, join
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 
-from ...domain.entities.permission import Permission
+from ...domain.entities.permission import Permission, PermissionAction
 from ...domain.repositories.permission_repository import PermissionRepository
 from ...infrastructure.database.models import (
     PermissionModel,
-    PermissionTypeEnum,
+    PermissionActionEnum,
+    role_permission_association,
+    user_role_assignment,
 )
 
 
@@ -21,49 +23,38 @@ class SqlAlchemyPermissionRepository(PermissionRepository):
 
     def save(self, permission: Permission) -> Permission:
         """Save a permission entity."""
-        try:
-            # Check if permission exists
-            existing = self.session.get(PermissionModel, permission.id)
+        # Check if permission exists
+        existing = self.session.get(PermissionModel, permission.id)
 
-            if existing:
-                # Update existing permission
-                existing.name = permission.name
-                existing.description = permission.description
-                existing.permission_type = PermissionTypeEnum(
-                    permission.permission_type
-                )
-                existing.resource_type = permission.resource_type
-                existing.is_active = permission.is_active
-                existing.is_system_permission = permission.is_system_permission
-                existing.updated_at = datetime.now(timezone.utc)
+        if existing:
+            # Update existing permission
+            existing.name = permission.name
+            existing.description = permission.description
+            existing.action = PermissionActionEnum(permission.action)
+            existing.resource_type = permission.resource_type
+            existing.is_active = permission.is_active
+            existing.is_system_permission = permission.is_system_permission
+            existing.updated_at = datetime.now(timezone.utc)
 
-                self.session.flush()
-                return self._to_domain_entity(existing)
-            else:
-                # Create new permission
-                permission_model = PermissionModel(
-                    id=permission.id,
-                    name=permission.name,
-                    description=permission.description,
-                    permission_type=PermissionTypeEnum(permission.permission_type),
-                    resource_type=permission.resource_type,
-                    is_active=permission.is_active,
-                    is_system_permission=permission.is_system_permission,
-                    created_at=permission.created_at,
-                    updated_at=permission.updated_at,
-                )
+            self.session.flush()
+            return self._to_domain_entity(existing)
+        else:
+            # Create new permission
+            permission_model = PermissionModel(
+                id=permission.id,
+                name=permission.name,
+                description=permission.description,
+                action=PermissionActionEnum(permission.action),
+                resource_type=permission.resource_type,
+                is_active=permission.is_active,
+                is_system_permission=permission.is_system_permission,
+                created_at=permission.created_at,
+                updated_at=permission.updated_at,
+            )
 
-                self.session.add(permission_model)
-                self.session.flush()
-                return self._to_domain_entity(permission_model)
-
-        except IntegrityError as e:
-            self.session.rollback()
-            if "name" in str(e) and "resource_type" in str(e):
-                raise ValueError(
-                    f"Permission '{permission.name}' already exists for resource type '{permission.resource_type}'"
-                )
-            raise e
+            self.session.add(permission_model)
+            self.session.flush()
+            return self._to_domain_entity(permission_model)
 
     def find_by_id(self, permission_id: UUID) -> Optional[Permission]:
         """Find a permission by ID."""
@@ -108,13 +99,12 @@ class SqlAlchemyPermissionRepository(PermissionRepository):
 
         return [self._to_domain_entity(model) for model in permission_models]
 
-    def find_by_type(self, permission_type: str) -> List[Permission]:
-        """Find permissions by permission type."""
+    def find_by_action(self, action: str) -> List[Permission]:
+        """Find permissions by action."""
         result = self.session.execute(
             select(PermissionModel).where(
                 and_(
-                    PermissionModel.permission_type
-                    == PermissionTypeEnum(permission_type),
+                    PermissionModel.action == PermissionActionEnum(action),
                     PermissionModel.is_active,
                 )
             )
@@ -151,7 +141,7 @@ class SqlAlchemyPermissionRepository(PermissionRepository):
         include_system: bool = True,
         is_active: Optional[bool] = None,
         resource_type: Optional[str] = None,
-        permission_type: Optional[str] = None,
+        action: Optional[str] = None,
         offset: int = 0,
         limit: int = 20,
     ) -> tuple[List[Permission], int]:
@@ -174,12 +164,10 @@ class SqlAlchemyPermissionRepository(PermissionRepository):
                 PermissionModel.resource_type == resource_type
             )
 
-        if permission_type:
-            query = query.where(
-                PermissionModel.permission_type == PermissionTypeEnum(permission_type)
-            )
+        if action:
+            query = query.where(PermissionModel.action == PermissionActionEnum(action))
             count_query = count_query.where(
-                PermissionModel.permission_type == PermissionTypeEnum(permission_type)
+                PermissionModel.action == PermissionActionEnum(action)
             )
 
         # Get total count
@@ -202,7 +190,7 @@ class SqlAlchemyPermissionRepository(PermissionRepository):
         self,
         query: Optional[str] = None,
         resource_type: Optional[str] = None,
-        permission_type: Optional[str] = None,
+        action: Optional[str] = None,
         is_active: Optional[bool] = None,
         offset: int = 0,
         limit: int = 20,
@@ -226,12 +214,12 @@ class SqlAlchemyPermissionRepository(PermissionRepository):
                 PermissionModel.resource_type == resource_type
             )
 
-        if permission_type:
+        if action:
             db_query = db_query.where(
-                PermissionModel.permission_type == PermissionTypeEnum(permission_type)
+                PermissionModel.action == PermissionActionEnum(action)
             )
             count_query = count_query.where(
-                PermissionModel.permission_type == PermissionTypeEnum(permission_type)
+                PermissionModel.action == PermissionActionEnum(action)
             )
 
         if is_active is not None:
@@ -277,7 +265,7 @@ class SqlAlchemyPermissionRepository(PermissionRepository):
                 id=permission.id,
                 name=permission.name,
                 description=permission.description,
-                permission_type=PermissionTypeEnum(permission.permission_type),
+                action=PermissionActionEnum(permission.action),
                 resource_type=permission.resource_type,
                 is_active=permission.is_active,
                 is_system_permission=permission.is_system_permission,
@@ -305,9 +293,82 @@ class SqlAlchemyPermissionRepository(PermissionRepository):
         result = self.session.execute(select(PermissionModel.resource_type).distinct())
         return [row[0] for row in result.fetchall()]
 
-    def get_permission_types(self) -> List[str]:
-        """Get all permission types."""
-        return [pt.value for pt in PermissionTypeEnum]
+    def get_actions(self) -> List[str]:
+        """Get all permission actions."""
+        return [pt.value for pt in PermissionActionEnum]
+
+    def get_role_permissions(self, role_id: UUID) -> List[Permission]:
+        """Get all permissions assigned to a role."""
+        result = self.session.execute(
+            select(PermissionModel)
+            .join(role_permission_association, PermissionModel.id == role_permission_association.c.permission_id)
+            .where(
+                and_(
+                    role_permission_association.c.role_id == role_id,
+                    PermissionModel.is_active
+                )
+            )
+            .order_by(PermissionModel.created_at.desc())
+        )
+        permission_models = result.scalars().all()
+        
+        return [self._to_domain_entity(model) for model in permission_models]
+
+    def get_by_resource_and_type(self, resource_type: str, action: PermissionAction) -> List[Permission]:
+        """Get permissions by resource type and action."""
+        result = self.session.execute(
+            select(PermissionModel).where(
+                and_(
+                    PermissionModel.resource_type == resource_type,
+                    PermissionModel.action == PermissionActionEnum(action),
+                    PermissionModel.is_active
+                )
+            )
+            .order_by(PermissionModel.created_at.desc())
+        )
+        permission_models = result.scalars().all()
+        
+        return [self._to_domain_entity(model) for model in permission_models]
+
+    def get_user_permissions(self, user_id: UUID, organization_id: Optional[UUID] = None) -> List[Permission]:
+        """Get all permissions for a user (through roles)."""
+        query = (
+            select(PermissionModel)
+            .join(role_permission_association, PermissionModel.id == role_permission_association.c.permission_id)
+            .join(user_role_assignment, role_permission_association.c.role_id == user_role_assignment.c.role_id)
+            .where(
+                and_(
+                    user_role_assignment.c.user_id == user_id,
+                    user_role_assignment.c.is_active,
+                    PermissionModel.is_active
+                )
+            )
+        )
+        
+        # Add organization filter if provided
+        if organization_id is not None:
+            query = query.where(
+                user_role_assignment.c.organization_id == organization_id
+            )
+        
+        query = query.distinct().order_by(PermissionModel.created_at.desc())
+        
+        result = self.session.execute(query)
+        permission_models = result.scalars().all()
+        
+        return [self._to_domain_entity(model) for model in permission_models]
+
+    def exists_by_name(self, name) -> bool:
+        """Check if permission exists by name."""
+        # Handle both string and PermissionName value object
+        name_value = name.value if hasattr(name, 'value') else str(name)
+        
+        result = self.session.execute(
+            select(PermissionModel.id)
+            .where(PermissionModel.name == name_value)
+            .limit(1)
+        )
+        return result.scalar() is not None
 
     def _to_domain_entity(self, permission_model: PermissionModel) -> Permission:
         """Convert SQLAlchemy model to domain entity."""
@@ -315,7 +376,7 @@ class SqlAlchemyPermissionRepository(PermissionRepository):
             id=permission_model.id,
             name=permission_model.name,
             description=permission_model.description,
-            permission_type=permission_model.permission_type.value,
+            action=permission_model.action.value,
             resource_type=permission_model.resource_type,
             is_active=permission_model.is_active,
             is_system_permission=permission_model.is_system_permission,

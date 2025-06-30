@@ -18,7 +18,7 @@ from ...domain.services.authentication_service import AuthenticationService
 
 
 class AuthUseCase:
-    """Use cases for authentication and authorization."""
+    """Casos de uso para autenticação e autorização."""
 
     def __init__(self, uow: UnitOfWork):
         self._user_repository: UserRepository = uow.get_repository("user")
@@ -29,7 +29,7 @@ class AuthUseCase:
         self._uow = uow
 
     def login(self, dto: LoginDTO) -> AuthResponseDTO:
-        """Authenticate user and create session."""
+        """Autentica um usuário e cria uma sessão."""
         with self._uow:
             # Authenticate user
             user = self._auth_service.authenticate(dto.email, dto.password)
@@ -70,7 +70,7 @@ class AuthUseCase:
         )
 
     def logout(self, token: str, dto: LogoutDTO) -> bool:
-        """Logout user by revoking session(s)."""
+        """Realiza o logout do usuário, revogando a(s) sessão(ões)."""
         with self._uow:
             # Get session to find user
             session = self._session_repository.get_by_token(token)
@@ -88,7 +88,7 @@ class AuthUseCase:
         return True
 
     def validate_session(self, token: str) -> Optional[UserResponseDTO]:
-        """Validate session token and return user."""
+        """Valida o token da sessão e retorna o usuário."""
 
         user = self._auth_service.validate_session(token)
 
@@ -98,7 +98,7 @@ class AuthUseCase:
         return UserResponseDTO.model_validate(user)
 
     def refresh_session(self, token: str) -> Optional[AuthResponseDTO]:
-        """Refresh session if valid."""
+        """Atualiza a sessão se for válida."""
         with self._uow:
             # Validate current session
             user = self._auth_service.validate_session(token)
@@ -149,7 +149,7 @@ class AuthUseCase:
         )
 
     def request_password_reset(self, dto: PasswordResetRequestDTO) -> bool:
-        """Request password reset for user."""
+        """Solicita a redefinição de senha para o usuário."""
         from ...domain.value_objects.email import Email
 
         # Check if user exists
@@ -169,7 +169,7 @@ class AuthUseCase:
         return True
 
     def confirm_password_reset(self, dto: PasswordResetConfirmDTO) -> bool:
-        """Confirm password reset with token."""
+        """Confirma a redefinição de senha com o token."""
 
         # In real implementation, validate reset token and get associated user
         # For now, this is a placeholder implementation
@@ -190,7 +190,7 @@ class AuthUseCase:
     def change_password_with_current(
         self, user_id: UUID, current_password: str, new_password: str
     ) -> bool:
-        """Change password with current password verification."""
+        """Altera a senha com a verificação da senha atual."""
         with self._uow:
             user = self._user_repository.get_by_id(user_id)
 
@@ -211,13 +211,13 @@ class AuthUseCase:
         return True
 
     def _generate_session_token(self) -> str:
-        """Generate secure session token."""
+        """Gera um token de sessão seguro."""
         import secrets
 
         return secrets.token_urlsafe(32)
 
     def _generate_reset_token(self) -> str:
-        """Generate secure password reset token."""
+        """Gera um token de redefinição de senha seguro."""
         import secrets
 
         return secrets.token_urlsafe(32)

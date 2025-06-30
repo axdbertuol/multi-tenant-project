@@ -4,7 +4,7 @@ from unittest.mock import Mock
 
 from src.authorization.domain.entities.authorization_context import AuthorizationContext
 from src.authorization.domain.entities.role import Role
-from src.authorization.domain.entities.permission import Permission
+from src.authorization.domain.entities.permission import Permission, PermissionAction
 from src.authorization.domain.services.authorization_service import AuthorizationService
 from src.authorization.domain.services.rbac_service import RBACService
 from src.authorization.domain.services.abac_service import ABACService
@@ -92,14 +92,14 @@ class TestAuthorizationServiceRoleInheritance:
         read_users_perm = Permission.create(
             name="read_users",
             description="Read user data",
-            permission_type="read",
+            action=PermissionAction.READ,
             resource_type="user"
         )
         
         read_reports_perm = Permission.create(
             name="read_reports",
             description="Read reports",
-            permission_type="read", 
+            action=PermissionAction.READ, 
             resource_type="report"
         )
         
@@ -107,14 +107,14 @@ class TestAuthorizationServiceRoleInheritance:
         manage_users_perm = Permission.create(
             name="manage_users",
             description="Manage users",
-            permission_type="manage",
+            action=PermissionAction.MANAGE,
             resource_type="user"
         )
         
         approve_requests_perm = Permission.create(
             name="approve_requests",
             description="Approve requests",
-            permission_type="approve",
+            action=PermissionAction.EXECUTE,
             resource_type="request"
         )
 

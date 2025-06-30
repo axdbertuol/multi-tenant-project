@@ -1,8 +1,8 @@
 import pytest
 from unittest.mock import Mock, Mock
 from uuid import uuid4
-from src.application.use_cases.organization_use_cases import OrganizationUseCases
-from src.application.dtos.organization_dto import (
+from organization.application.use_cases.organization_use_cases import OrganizationUseCases
+from organization.application.dtos.organization_dto import (
     CreateOrganizationDto,
     UpdateOrganizationDto,
     TransferOwnershipDto,

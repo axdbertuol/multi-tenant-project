@@ -2,8 +2,8 @@ import pytest
 from uuid import uuid4
 from sqlalchemy.orm import Session
 
-from src.infrastructure.database.models import PermissionModel
-from src.domain.entities.permission import Permission
+from src.authorization.infrastructure.database.models import PermissionModel
+from src.authorization.domain.entities.permission import Permission, PermissionAction
 from tests.factories.permission_factory import PermissionFactory
 
 
@@ -12,7 +12,7 @@ class TestPermissionRepositoryIntegration:
 
     @pytest.fixture
     def db_session(self):
-        from src.infrastructure.database.dependencies import get_db
+        from src.shared.infrastructure.database.connection import get_db
         session = next(get_db())
         yield session
         session.rollback()
@@ -22,17 +22,17 @@ class TestPermissionRepositoryIntegration:
         """Test creating a permission entity and persisting to database"""
         permission = PermissionFactory.create_permission(
             name="test_permission",
-            resource="test_resource",
-            action="read",
+            resource_type="test_resource",
+            action=PermissionAction.READ,
             description="Test permission"
         )
         
         # Convert to database model
         permission_model = PermissionModel(
             id=permission.id,
-            name=permission.name,
+            name=permission.name.value,
             description=permission.description,
-            resource=permission.resource,
+            resource_type=permission.resource_type,
             action=permission.action,
             created_at=permission.created_at,
             updated_at=permission.updated_at,
@@ -49,22 +49,22 @@ class TestPermissionRepositoryIntegration:
         ).first()
         
         assert retrieved_permission is not None
-        assert retrieved_permission.name == permission.name
-        assert retrieved_permission.resource == permission.resource
+        assert retrieved_permission.name == permission.name.value
+        assert retrieved_permission.resource_type == permission.resource_type
         assert retrieved_permission.action == permission.action
         assert retrieved_permission.description == permission.description
         assert retrieved_permission.is_active == permission.is_active
 
-    def test_find_permissions_by_resource(self, db_session: Session):
-        """Test finding permissions by resource"""
+    def test_find_permissions_by_resource_type(self, db_session: Session):
+        """Test finding permissions by resource_type"""
         user_permission = PermissionFactory.create_user_read_permission()
         org_permission = PermissionFactory.create_organization_read_permission()
         
         user_model = PermissionModel(
             id=user_permission.id,
-            name=user_permission.name,
+            name=user_permission.name.value,
             description=user_permission.description,
-            resource=user_permission.resource,
+            resource_type=user_permission.resource_type,
             action=user_permission.action,
             created_at=user_permission.created_at,
             is_active=user_permission.is_active
@@ -72,9 +72,9 @@ class TestPermissionRepositoryIntegration:
         
         org_model = PermissionModel(
             id=org_permission.id,
-            name=org_permission.name,
+            name=org_permission.name.value,
             description=org_permission.description,
-            resource=org_permission.resource,
+            resource_type=org_permission.resource_type,
             action=org_permission.action,
             created_at=org_permission.created_at,
             is_active=org_permission.is_active
@@ -83,13 +83,13 @@ class TestPermissionRepositoryIntegration:
         db_session.add_all([user_model, org_model])
         db_session.commit()
         
-        # Find permissions by resource
+        # Find permissions by resource_type
         user_permissions = db_session.query(PermissionModel).filter(
-            PermissionModel.resource == "users"
+            PermissionModel.resource_type == "user"
         ).all()
         
         org_permissions = db_session.query(PermissionModel).filter(
-            PermissionModel.resource == "organizations"
+            PermissionModel.resource_type == "organization"
         ).all()
         
         assert len(user_permissions) == 1
@@ -105,9 +105,9 @@ class TestPermissionRepositoryIntegration:
         
         read_model = PermissionModel(
             id=read_permission.id,
-            name=read_permission.name,
+            name=read_permission.name.value,
             description=read_permission.description,
-            resource=read_permission.resource,
+            resource_type=read_permission.resource_type,
             action=read_permission.action,
             created_at=read_permission.created_at,
             is_active=read_permission.is_active
@@ -115,9 +115,9 @@ class TestPermissionRepositoryIntegration:
         
         write_model = PermissionModel(
             id=write_permission.id,
-            name=write_permission.name,
+            name=write_permission.name.value,
             description=write_permission.description,
-            resource=write_permission.resource,
+            resource_type=write_permission.resource_type,
             action=write_permission.action,
             created_at=write_permission.created_at,
             is_active=write_permission.is_active
@@ -128,28 +128,28 @@ class TestPermissionRepositoryIntegration:
         
         # Find permissions by action
         read_permissions = db_session.query(PermissionModel).filter(
-            PermissionModel.action == "read"
+            PermissionModel.action == PermissionAction.READ
         ).all()
         
-        write_permissions = db_session.query(PermissionModel).filter(
-            PermissionModel.action == "write"
+        update_permissions = db_session.query(PermissionModel).filter(
+            PermissionModel.action == PermissionAction.UPDATE
         ).all()
         
         assert len(read_permissions) == 1
-        assert read_permissions[0].action == "read"
+        assert read_permissions[0].action == PermissionAction.READ
         
-        assert len(write_permissions) == 1
-        assert write_permissions[0].action == "write"
+        assert len(update_permissions) == 1
+        assert update_permissions[0].action == PermissionAction.UPDATE
 
-    def test_find_permission_by_resource_and_action(self, db_session: Session):
-        """Test finding specific permission by resource and action combination"""
+    def test_find_permission_by_resource_type_and_action(self, db_session: Session):
+        """Test finding specific permission by resource_type and action combination"""
         permission = PermissionFactory.create_user_read_permission()
         
         permission_model = PermissionModel(
             id=permission.id,
-            name=permission.name,
+            name=permission.name.value,
             description=permission.description,
-            resource=permission.resource,
+            resource_type=permission.resource_type,
             action=permission.action,
             created_at=permission.created_at,
             is_active=permission.is_active
@@ -158,10 +158,10 @@ class TestPermissionRepositoryIntegration:
         db_session.add(permission_model)
         db_session.commit()
         
-        # Find by resource and action
+        # Find by resource_type and action
         found_permission = db_session.query(PermissionModel).filter(
-            PermissionModel.resource == "users",
-            PermissionModel.action == "read"
+            PermissionModel.resource_type == "user",
+            PermissionModel.action == PermissionAction.READ
         ).first()
         
         assert found_permission is not None
@@ -172,15 +172,15 @@ class TestPermissionRepositoryIntegration:
         """Test updating permission in database"""
         permission = PermissionFactory.create_permission(
             name="original_permission",
-            resource="users",
-            action="read"
+            resource_type="user",
+            action=PermissionAction.READ
         )
         
         permission_model = PermissionModel(
             id=permission.id,
-            name=permission.name,
+            name=permission.name.value,
             description=permission.description,
-            resource=permission.resource,
+            resource_type=permission.resource_type,
             action=permission.action,
             created_at=permission.created_at,
             is_active=permission.is_active
@@ -190,10 +190,10 @@ class TestPermissionRepositoryIntegration:
         db_session.commit()
         
         # Update permission
-        updated_permission = permission.update_name("updated_permission")
+        updated_permission = permission.update_description("Updated description")
         
         # Update in database
-        permission_model.name = updated_permission.name
+        permission_model.description = updated_permission.description
         permission_model.updated_at = updated_permission.updated_at
         db_session.commit()
         
@@ -202,19 +202,25 @@ class TestPermissionRepositoryIntegration:
             PermissionModel.id == permission.id
         ).first()
         
-        assert retrieved_permission.name == "updated_permission"
+        assert retrieved_permission.description == "Updated description"
         assert retrieved_permission.updated_at is not None
 
-    def test_permission_name_uniqueness(self, db_session: Session):
-        """Test that permission names must be unique"""
-        permission1 = PermissionFactory.create_permission(name="duplicate_permission")
-        permission2 = PermissionFactory.create_permission(name="duplicate_permission")
+    def test_permission_name_uniqueness_within_resource_type(self, db_session: Session):
+        """Test that permission names must be unique within resource type"""
+        permission1 = PermissionFactory.create_permission(
+            name="duplicate_permission",
+            resource_type="user"
+        )
+        permission2 = PermissionFactory.create_permission(
+            name="duplicate_permission",
+            resource_type="user"
+        )
         
         model1 = PermissionModel(
             id=permission1.id,
-            name=permission1.name,
+            name=permission1.name.value,
             description=permission1.description,
-            resource=permission1.resource,
+            resource_type=permission1.resource_type,
             action=permission1.action,
             created_at=permission1.created_at,
             is_active=permission1.is_active
@@ -222,9 +228,9 @@ class TestPermissionRepositoryIntegration:
         
         model2 = PermissionModel(
             id=permission2.id,
-            name=permission2.name,
+            name=permission2.name.value,
             description=permission2.description,
-            resource=permission2.resource,
+            resource_type=permission2.resource_type,
             action=permission2.action,
             created_at=permission2.created_at,
             is_active=permission2.is_active
@@ -233,7 +239,7 @@ class TestPermissionRepositoryIntegration:
         db_session.add(model1)
         db_session.commit()
         
-        # Adding second permission with same name should fail
+        # Adding second permission with same name within same resource type should fail
         db_session.add(model2)
         
         with pytest.raises(Exception):  # IntegrityError expected
@@ -246,9 +252,9 @@ class TestPermissionRepositoryIntegration:
         
         active_model = PermissionModel(
             id=active_permission.id,
-            name=active_permission.name,
+            name=active_permission.name.value,
             description=active_permission.description,
-            resource=active_permission.resource,
+            resource_type=active_permission.resource_type,
             action=active_permission.action,
             created_at=active_permission.created_at,
             is_active=active_permission.is_active
@@ -256,9 +262,9 @@ class TestPermissionRepositoryIntegration:
         
         inactive_model = PermissionModel(
             id=inactive_permission.id,
-            name=inactive_permission.name,
+            name=inactive_permission.name.value,
             description=inactive_permission.description,
-            resource=inactive_permission.resource,
+            resource_type=inactive_permission.resource_type,
             action=inactive_permission.action,
             created_at=inactive_permission.created_at,
             is_active=inactive_permission.is_active
@@ -276,19 +282,23 @@ class TestPermissionRepositoryIntegration:
         assert "active_permission" in permission_names
         assert "inactive_permission" not in permission_names
 
-    def test_permission_resource_action_indexing(self, db_session: Session):
-        """Test that resource and action fields are properly indexed for performance"""
+    def test_permission_resource_type_action_indexing(self, db_session: Session):
+        """Test that resource_type and action fields are properly indexed for performance"""
         permissions = [
-            PermissionFactory.create_permission(name=f"perm_{i}", resource="users", action="read")
+            PermissionFactory.create_permission(
+                name=f"perm_{i}", 
+                resource_type="user", 
+                action=PermissionAction.READ
+            )
             for i in range(10)
         ]
         
         models = [
             PermissionModel(
                 id=perm.id,
-                name=perm.name,
+                name=perm.name.value,
                 description=perm.description,
-                resource=perm.resource,
+                resource_type=perm.resource_type,
                 action=perm.action,
                 created_at=perm.created_at,
                 is_active=perm.is_active
@@ -299,16 +309,16 @@ class TestPermissionRepositoryIntegration:
         db_session.add_all(models)
         db_session.commit()
         
-        # Query by resource (should be efficient due to index)
+        # Query by resource_type (should be efficient due to index)
         result = db_session.query(PermissionModel).filter(
-            PermissionModel.resource == "users"
+            PermissionModel.resource_type == "user"
         ).all()
         
         assert len(result) == 10
         
         # Query by action (should be efficient due to index)
         result = db_session.query(PermissionModel).filter(
-            PermissionModel.action == "read"
+            PermissionModel.action == PermissionAction.READ
         ).all()
         
         assert len(result) == 10

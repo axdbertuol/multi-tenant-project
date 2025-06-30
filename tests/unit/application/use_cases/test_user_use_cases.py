@@ -1,8 +1,8 @@
 import pytest
 from unittest.mock import Mock, Mock
 from uuid import uuid4
-from src.application.use_cases.user_use_cases import UserUseCases
-from src.application.dtos.user_dto import (
+from user.application.use_cases.user_use_cases import UserUseCases
+from user.application.dtos.user_dto import (
     CreateUserDto,
     UpdateUserDto,
     ChangePasswordDto,
@@ -28,7 +28,7 @@ class TestUserUseCases:
         return UserUseCases(mock_uow)
 
     @pytest.mark.io
-     def test_create_user_success(self, user_use_cases, mock_uow):
+    def test_create_user_success(self, user_use_cases, mock_uow):
         """Test successful user creation."""
         # Arrange
         create_dto = CreateUserDto(
@@ -53,7 +53,7 @@ class TestUserUseCases:
         mock_uow.users.create.assert_called_once()
 
     @pytest.mark.io
-     def test_create_user_email_already_exists(self, user_use_cases, mock_uow):
+    def test_create_user_email_already_exists(self, user_use_cases, mock_uow):
         """Test user creation with existing email."""
         # Arrange
         create_dto = CreateUserDto(
@@ -70,7 +70,7 @@ class TestUserUseCases:
             user_use_cases.create_user(create_dto)
 
     @pytest.mark.io
-     def test_get_user_by_id_success(self, user_use_cases, mock_uow):
+    def test_get_user_by_id_success(self, user_use_cases, mock_uow):
         """Test getting user by ID successfully."""
         # Arrange
         user_id = uuid4()
@@ -88,7 +88,7 @@ class TestUserUseCases:
         mock_uow.users.get_by_id.assert_called_once_with(user_id)
 
     @pytest.mark.io
-     def test_get_user_by_id_not_found(self, user_use_cases, mock_uow):
+    def test_get_user_by_id_not_found(self, user_use_cases, mock_uow):
         """Test getting user by ID when user doesn't exist."""
         # Arrange
         user_id = uuid4()
@@ -101,7 +101,7 @@ class TestUserUseCases:
         assert result is None
 
     @pytest.mark.io
-     def test_get_user_by_email_success(self, user_use_cases, mock_uow):
+    def test_get_user_by_email_success(self, user_use_cases, mock_uow):
         """Test getting user by email successfully."""
         # Arrange
         email = "test@example.com"
@@ -118,7 +118,7 @@ class TestUserUseCases:
         mock_uow.users.get_by_email.assert_called_once_with(email)
 
     @pytest.mark.io
-     def test_get_all_users(self, user_use_cases, mock_uow):
+    def test_get_all_users(self, user_use_cases, mock_uow):
         """Test getting all users."""
         # Arrange
         users = [
@@ -142,7 +142,7 @@ class TestUserUseCases:
         mock_uow.users.get_all.assert_called_once()
 
     @pytest.mark.io
-     def test_update_user_success(self, user_use_cases, mock_uow):
+    def test_update_user_success(self, user_use_cases, mock_uow):
         """Test successful user update."""
         # Arrange
         user_id = uuid4()
@@ -165,7 +165,7 @@ class TestUserUseCases:
         mock_uow.users.update.assert_called_once()
 
     @pytest.mark.io
-     def test_update_user_not_found(self, user_use_cases, mock_uow):
+    def test_update_user_not_found(self, user_use_cases, mock_uow):
         """Test updating non-existent user."""
         # Arrange
         user_id = uuid4()
@@ -181,7 +181,7 @@ class TestUserUseCases:
         mock_uow.users.update.assert_not_called()
 
     @pytest.mark.io
-     def test_update_user_no_changes(self, user_use_cases, mock_uow):
+    def test_update_user_no_changes(self, user_use_cases, mock_uow):
         """Test updating user with no actual changes."""
         # Arrange
         user_id = uuid4()
@@ -199,7 +199,7 @@ class TestUserUseCases:
         mock_uow.users.update.assert_called_once_with(existing_user)
 
     @pytest.mark.io
-     def test_delete_user_success(self, user_use_cases, mock_uow):
+    def test_delete_user_success(self, user_use_cases, mock_uow):
         """Test successful user deletion."""
         # Arrange
         user_id = uuid4()
@@ -213,7 +213,7 @@ class TestUserUseCases:
         mock_uow.users.delete.assert_called_once_with(user_id)
 
     @pytest.mark.io
-     def test_delete_user_not_found(self, user_use_cases, mock_uow):
+    def test_delete_user_not_found(self, user_use_cases, mock_uow):
         """Test deleting non-existent user."""
         # Arrange
         user_id = uuid4()
@@ -226,7 +226,7 @@ class TestUserUseCases:
         assert result is False
 
     @pytest.mark.io
-     def test_deactivate_user_success(self, user_use_cases, mock_uow):
+    def test_deactivate_user_success(self, user_use_cases, mock_uow):
         """Test successful user deactivation."""
         # Arrange
         user_id = uuid4()
@@ -247,7 +247,7 @@ class TestUserUseCases:
         mock_uow.users.update.assert_called_once()
 
     @pytest.mark.io
-     def test_activate_user_success(self, user_use_cases, mock_uow):
+    def test_activate_user_success(self, user_use_cases, mock_uow):
         """Test successful user activation."""
         # Arrange
         user_id = uuid4()
@@ -268,7 +268,7 @@ class TestUserUseCases:
         mock_uow.users.update.assert_called_once()
 
     @pytest.mark.io
-     def test_change_password_success(self, user_use_cases, mock_uow):
+    def test_change_password_success(self, user_use_cases, mock_uow):
         """Test successful password change."""
         # Arrange
         user_id = uuid4()
@@ -292,7 +292,7 @@ class TestUserUseCases:
         mock_uow.users.update.assert_called_once()
 
     @pytest.mark.io
-     def test_change_password_user_not_found(self, user_use_cases, mock_uow):
+    def test_change_password_user_not_found(self, user_use_cases, mock_uow):
         """Test password change for non-existent user."""
         # Arrange
         user_id = uuid4()
@@ -310,7 +310,7 @@ class TestUserUseCases:
         mock_uow.users.update.assert_not_called()
 
     @pytest.mark.io
-     def test_change_password_wrong_old_password(self, user_use_cases, mock_uow):
+    def test_change_password_wrong_old_password(self, user_use_cases, mock_uow):
         """Test password change with wrong old password."""
         # Arrange
         user_id = uuid4()
@@ -328,7 +328,7 @@ class TestUserUseCases:
         mock_uow.users.update.assert_not_called()
 
     @pytest.mark.io
-     def test_verify_user_password_success(self, user_use_cases, mock_uow):
+    def test_verify_user_password_success(self, user_use_cases, mock_uow):
         """Test successful password verification."""
         # Arrange
         email = "test@example.com"
@@ -347,7 +347,7 @@ class TestUserUseCases:
         mock_uow.users.get_by_email.assert_called_once_with(email)
 
     @pytest.mark.io
-     def test_verify_user_password_user_not_found(self, user_use_cases, mock_uow):
+    def test_verify_user_password_user_not_found(self, user_use_cases, mock_uow):
         """Test password verification for non-existent user."""
         # Arrange
         email = "nonexistent@example.com"
@@ -362,7 +362,7 @@ class TestUserUseCases:
         assert result is None
 
     @pytest.mark.io
-     def test_verify_user_password_wrong_password(self, user_use_cases, mock_uow):
+    def test_verify_user_password_wrong_password(self, user_use_cases, mock_uow):
         """Test password verification with wrong password."""
         # Arrange
         email = "test@example.com"

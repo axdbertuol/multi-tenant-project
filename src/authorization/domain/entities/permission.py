@@ -1,4 +1,5 @@
-from datetime import datetime
+from datetime import datetime, timezone
+
 from uuid import UUID, uuid4
 from typing import Optional
 from pydantic import BaseModel
@@ -7,7 +8,7 @@ from enum import Enum
 from ..value_objects.permission_name import PermissionName
 
 
-class PermissionType(str, Enum):
+class PermissionAction(str, Enum):
     CREATE = "create"
     READ = "read"
     UPDATE = "update"
@@ -20,7 +21,7 @@ class Permission(BaseModel):
     id: UUID
     name: PermissionName
     description: str
-    permission_type: PermissionType
+    action: PermissionAction
     resource_type: str  # e.g., "user", "organization", "chat"
     created_at: datetime
     updated_at: Optional[datetime] = None
@@ -34,7 +35,7 @@ class Permission(BaseModel):
         cls, 
         name: str, 
         description: str, 
-        permission_type: PermissionType,
+        action: PermissionAction,
         resource_type: str,
         is_system_permission: bool = False
     ) -> "Permission":
@@ -42,9 +43,9 @@ class Permission(BaseModel):
             id=uuid4(),
             name=PermissionName(value=name),
             description=description,
-            permission_type=permission_type,
+            action=action,
             resource_type=resource_type,
-            created_at=datetime.utcnow(),
+            created_at=datetime.now(timezone.utc),
             is_active=True,
             is_system_permission=is_system_permission
         )
@@ -67,12 +68,12 @@ class Permission(BaseModel):
     def activate(self) -> "Permission":
         return self.model_copy(update={
             "is_active": True,
-            "updated_at": datetime.utcnow()
+            "updated_at": datetime.now(timezone.utc)
         })
 
     def get_full_name(self) -> str:
-        """Get full permission name in format: resource_type:permission_type"""
-        return f"{self.resource_type}:{self.permission_type.value}"
+        """Get full permission name in format: resource_type:action"""
+        return f"{self.resource_type}:{self.action.value}"
 
     def can_be_deleted(self) -> tuple[bool, str]:
         """Check if permission can be deleted."""
@@ -81,10 +82,10 @@ class Permission(BaseModel):
         
         return True, "Permission can be deleted"
 
-    def matches_resource_and_action(self, resource_type: str, action: PermissionType) -> bool:
+    def matches_resource_and_action(self, resource_type: str, action: PermissionAction) -> bool:
         """Check if this permission matches the given resource and action."""
         return (
             self.resource_type == resource_type and 
-            self.permission_type == action and 
+            self.action == action and 
             self.is_active
         )

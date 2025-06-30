@@ -10,7 +10,7 @@ from ..value_objects.email import Email
 
 
 class AuthenticationService:
-    """Domain service for authentication logic."""
+    """Serviço de domínio para lógica de autenticação."""
 
     def __init__(self, uow: UnitOfWork):
         self._user_repository: UserRepository = uow.get_repository("user")
@@ -20,7 +20,7 @@ class AuthenticationService:
         self._uow = uow
 
     def authenticate(self, email: str, password: str) -> Optional[User]:
-        """Authenticate user with email and password."""
+        """Autentica um usuário com email e senha."""
         try:
             email_vo = Email(value=email)
             user = self._user_repository.get_by_email(email_vo)
@@ -48,7 +48,7 @@ class AuthenticationService:
         user_agent: Optional[str] = None,
         ip_address: Optional[str] = None,
     ) -> UserSession:
-        """Create a new user session."""
+        """Cria uma nova sessão de usuário."""
         from datetime import datetime, timedelta
         
         expires_at = datetime.utcnow() + timedelta(hours=duration_hours)
@@ -64,7 +64,7 @@ class AuthenticationService:
         return self._session_repository.save(session)
 
     def validate_session(self, token: str) -> Optional[User]:
-        """Validate session token and return user if valid."""
+        """Valida o token da sessão e retorna o usuário se for válido."""
         session = self._session_repository.get_by_token(token)
 
         if not session or not session.is_valid():
@@ -78,7 +78,7 @@ class AuthenticationService:
         return user
 
     def revoke_session(self, token: str) -> bool:
-        """Revoke a specific session."""
+        """Revoga uma sessão específica."""
         session = self._session_repository.get_by_token(token)
 
         if not session:
@@ -90,5 +90,5 @@ class AuthenticationService:
         return True
 
     def revoke_all_user_sessions(self, user_id) -> int:
-        """Revoke all sessions for a user."""
+        """Revoga todas as sessões de um usuário."""
         return self._session_repository.revoke_all_user_sessions(user_id)

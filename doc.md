@@ -66,14 +66,14 @@ graph TB
     subgraph "User Context"
         User[User]
         UserSession[UserSession]
-        User ||--o{ UserSession : "has sessions"
+        UserSession -->|has sessions| User
     end
 
     subgraph "Organization Context"
         Organization[Organization]
         OrganizationMember[OrganizationMember]
-        Organization ||--o{ OrganizationMember : "has members"
-        User ||--o{ OrganizationMember : "belongs to"
+        OrganizationMember -->|has members| Organization
+        OrganizationMember -->|belongs to| User
     end
 
     subgraph "Authorization Context"
@@ -83,10 +83,10 @@ graph TB
         Resource[Resource]
         ResourcePermission[ResourcePermission]
         
-        Role ||--o{ Permission : "has"
-        OrganizationMember ||--o{ Role : "assigned"
-        Resource ||--o{ ResourcePermission : "protected by"
-        Policy ||--o{ ResourcePermission : "evaluated in"
+        Permission -->|has| Role
+        Role -->|assigned| OrganizationMember
+        ResourcePermission -->|protected by| Resource
+        ResourcePermission -->|evaluated in| Policy
     end
 
     subgraph "Plans Context"
@@ -95,11 +95,12 @@ graph TB
         PlanResource[PlanResource]
         FeatureUsage[FeatureUsage]
         
-        Plan ||--o{ PlanResource : "contains"
-        Organization ||--o{ Subscription : "subscribes to"
-        Subscription }o--|| Plan : "references"
-        PlanResource ||--o{ FeatureUsage : "tracks"
+        PlanResource -->|contains| Plan
+        Subscription -->|subscribes to| Organization
+        Plan -->|references| Subscription
+        FeatureUsage -->|tracks| PlanResource
     end
+
 ```
 
 ## 2. Entidades de Domínio

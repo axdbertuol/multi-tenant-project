@@ -1,4 +1,4 @@
-from shared.infrastructure.database.models.base import BaseModel as SQLBaseModel
+from shared.infrastructure.database.base import BaseModel as SQLBaseModel
 from sqlalchemy import Column, String, Boolean, ForeignKey, DateTime, Text, Enum
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.sql import func
@@ -13,7 +13,7 @@ class SessionStatusEnum(enum.Enum):
 
 
 class UserModel(SQLBaseModel):
-    """SQLAlchemy model for User entity."""
+    """Modelo SQLAlchemy para a entidade Usuário."""
 
     __tablename__ = "users"
 
@@ -26,7 +26,7 @@ class UserModel(SQLBaseModel):
 
 
 class UserSessionModel(SQLBaseModel):
-    """SQLAlchemy model for UserSession entity."""
+    """Modelo SQLAlchemy para a entidade UserSession."""
 
     __tablename__ = "user_sessions"
 
@@ -47,4 +47,4 @@ class UserSessionModel(SQLBaseModel):
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
     logout_at = Column(DateTime(timezone=True), nullable=True)
-    metadata = Column(Text, nullable=True)  # JSON string for additional session data
+    _metadata = Column(Text, nullable=True)  # JSON string for additional session data

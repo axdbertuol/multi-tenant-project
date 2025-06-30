@@ -15,7 +15,7 @@ from ...domain.services.authentication_service import AuthenticationService
 
 
 class SessionUseCase:
-    """Use cases for session management."""
+    """Casos de uso para gerenciamento de sessões."""
 
     def __init__(self, uow: UnitOfWork):
         self._user_repository: UserRepository = uow.get_repository("user")
@@ -26,7 +26,7 @@ class SessionUseCase:
         self._uow = uow
 
     def create_session(self, dto: SessionCreateDTO) -> SessionResponseDTO:
-        """Create a new user session."""
+        """Cria uma nova sessão de usuário."""
         with self._uow:
             # Verify user exists and is active
             user = self._user_repository.get_by_id(dto.user_id)
@@ -58,7 +58,7 @@ class SessionUseCase:
         )
 
     def get_session_by_id(self, session_id: UUID) -> Optional[SessionResponseDTO]:
-        """Get session by ID."""
+        """Obtém uma sessão pelo ID."""
         session = self._session_repository.get_by_id(session_id)
 
         if not session:
@@ -73,7 +73,7 @@ class SessionUseCase:
         )
 
     def get_session_by_token(self, token: str) -> Optional[SessionResponseDTO]:
-        """Get session by token."""
+        """Obtém uma sessão pelo token."""
         session = self._session_repository.get_by_token(token)
 
         if not session:
@@ -88,7 +88,7 @@ class SessionUseCase:
         )
 
     def get_user_sessions(self, user_id: UUID) -> SessionListResponseDTO:
-        """Get all sessions for a user."""
+        """Obtém todas as sessões de um usuário."""
 
         # Get active sessions
         sessions = self._session_repository.get_active_by_user_id(user_id)
@@ -115,7 +115,7 @@ class SessionUseCase:
         )
 
     def revoke_session(self, session_id: UUID) -> bool:
-        """Revoke a specific session."""
+        """Revoga uma sessão específica."""
         with self._uow:
             session = self._session_repository.get_by_id(session_id)
 
@@ -127,13 +127,13 @@ class SessionUseCase:
         return result
 
     def revoke_session_by_token(self, token: str) -> bool:
-        """Revoke session by token."""
+        """Revoga uma sessão pelo token."""
         with self._uow:
             result = self._auth_service.revoke_session(token)
         return result
 
     def revoke_all_user_sessions(self, user_id: UUID) -> int:
-        """Revoke all sessions for a user."""
+        """Revoga todas as sessões de um usuário."""
         with self._uow:
             result = self._auth_service.revoke_all_user_sessions(user_id)
         return result
@@ -141,7 +141,7 @@ class SessionUseCase:
     def extend_session(
         self, session_id: UUID, hours: int = 24
     ) -> Optional[SessionResponseDTO]:
-        """Extend session duration."""
+        """Estende a duração de uma sessão."""
         with self._uow:
             session = self._session_repository.get_by_id(session_id)
 
@@ -161,7 +161,7 @@ class SessionUseCase:
         )
 
     def cleanup_expired_sessions(self) -> int:
-        """Clean up expired sessions."""
+        """Limpa sessões expiradas."""
         with self._uow:
             result = self._session_repository.cleanup_expired_sessions()
         return result
@@ -169,7 +169,7 @@ class SessionUseCase:
     def validate_session_access(
         self, token: str, required_permissions: list[str] = None
     ) -> bool:
-        """Validate session and optional permissions."""
+        """Valida a sessão e permissões opcionais."""
 
         # Validate session
         user = self._auth_service.validate_session(token)
@@ -187,7 +187,7 @@ class SessionUseCase:
         return True
 
     def _generate_session_token(self) -> str:
-        """Generate secure session token."""
+        """Gera um token de sessão seguro."""
         import secrets
 
         return secrets.token_urlsafe(32)

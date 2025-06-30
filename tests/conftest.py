@@ -1,15 +1,15 @@
 import pytest
-import pytest_io
+from shared.infrastructure.database.connection import Base, get_db
 import io
 import os
-from typing import Generator, Generator
+from typing import Generator
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from fastapi.testclient import TestClient
 
 from src.main import app
-from src.infrastructure.database.connection import Base, get_db
-from src.infrastructure.repositories.sqlalchemy_unit_of_work import SQLAlchemyUnitOfWork
+# from src.infrastructure.database.connection import Base, get_db
+# from src.infrastructure.repositories.sqlalchemy_unit_of_work import SQLAlchemyUnitOfWork
 
 
 # Test Database Configuration
@@ -44,10 +44,10 @@ def db_session() -> Generator:
         Base.metadata.drop_all(bind=test_engine)
 
 
-@pytest.fixture(scope="function")
-def unit_of_work(db_session) -> SQLAlchemyUnitOfWork:
-    """Create a Unit of Work instance for testing."""
-    return SQLAlchemyUnitOfWork(db_session)
+# @pytest.fixture(scope="function")
+# def unit_of_work(db_session) -> SQLAlchemyUnitOfWork:
+#     """Create a Unit of Work instance for testing."""
+#     return SQLAlchemyUnitOfWork(db_session)
 
 
 @pytest.fixture(scope="function")
@@ -68,8 +68,8 @@ def client(db_session) -> Generator:
     app.dependency_overrides.clear()
 
 
-@pytest_io.fixture
- def _client(db_session):
+@pytest.fixture
+def _client(db_session):
     """Create an  test client for testing."""
 
     def override_get_db():
@@ -83,7 +83,7 @@ def client(db_session) -> Generator:
 
     transport = ASGITransport(app=app)
     try:
-         with Client(transport=transport, base_url="http://test") as client:
+        with Client(transport=transport, base_url="http://test") as client:
             yield client
     finally:
         app.dependency_overrides.clear()

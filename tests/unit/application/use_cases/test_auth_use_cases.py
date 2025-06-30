@@ -1,10 +1,10 @@
 import pytest
 from unittest.mock import Mock, Mock
 from uuid import uuid4
-from src.application.use_cases.auth_use_cases import AuthUseCases
-from src.application.dtos.auth_dto import SignupDto, LoginDto
-from src.application.services.jwt_service import JWTService
-from src.domain.entities.user import User
+from user.application.use_cases.auth_use_cases import AuthUseCases
+from user.application.dtos.auth_dto import SignupDto, LoginDto
+from user.application.services.jwt_service import JWTService
+from user.domain.entities.user import User
 from tests.factories.user_factory import UserFactory
 
 
@@ -39,7 +39,7 @@ class TestAuthUseCases:
         return AuthUseCases(mock_uow, mock_jwt_service)
 
     @pytest.mark.io
-     def test_signup_success(self, auth_use_cases, mock_uow):
+    def test_signup_success(self, auth_use_cases, mock_uow):
         """Test successful user signup."""
         # Arrange
         signup_data = SignupDto(
@@ -74,7 +74,7 @@ class TestAuthUseCases:
         auth_use_cases.session_use_cases.create_session.assert_called_once()
 
     @pytest.mark.io
-     def test_signup_user_already_exists(self, auth_use_cases, mock_uow):
+    def test_signup_user_already_exists(self, auth_use_cases, mock_uow):
         """Test signup with existing user email."""
         # Arrange
         signup_data = SignupDto(
@@ -91,7 +91,7 @@ class TestAuthUseCases:
             auth_use_cases.signup(signup_data)
 
     @pytest.mark.io
-     def test_login_success(self, auth_use_cases, mock_uow):
+    def test_login_success(self, auth_use_cases, mock_uow):
         """Test successful user login."""
         # Arrange
         login_data = LoginDto(email="test@example.com", password="password123")
@@ -118,7 +118,7 @@ class TestAuthUseCases:
         auth_use_cases.session_use_cases.create_session.assert_called_once()
 
     @pytest.mark.io
-     def test_login_user_not_found(self, auth_use_cases, mock_uow):
+    def test_login_user_not_found(self, auth_use_cases, mock_uow):
         """Test login with non-existent user."""
         # Arrange
         login_data = LoginDto(email="nonexistent@example.com", password="password123")
@@ -132,7 +132,7 @@ class TestAuthUseCases:
         assert result is None
 
     @pytest.mark.io
-     def test_login_inactive_user(self, auth_use_cases, mock_uow):
+    def test_login_inactive_user(self, auth_use_cases, mock_uow):
         """Test login with inactive user."""
         # Arrange
         login_data = LoginDto(email="inactive@example.com", password="password123")
@@ -147,7 +147,7 @@ class TestAuthUseCases:
             auth_use_cases.login(login_data)
 
     @pytest.mark.io
-     def test_login_wrong_password(self, auth_use_cases, mock_uow):
+    def test_login_wrong_password(self, auth_use_cases, mock_uow):
         """Test login with wrong password."""
         # Arrange
         login_data = LoginDto(email="test@example.com", password="wrongpassword")
@@ -162,9 +162,7 @@ class TestAuthUseCases:
         assert result is None
 
     @pytest.mark.io
-     def test_get_current_user_success(
-        self, auth_use_cases, mock_uow, mock_jwt_service
-    ):
+    def test_get_current_user_success(self, auth_use_cases, mock_uow, mock_jwt_service):
         """Test getting current user with valid token."""
         # Arrange
         token = "valid_token"
@@ -193,7 +191,7 @@ class TestAuthUseCases:
         mock_uow.users.get_by_id.assert_called_once_with(user.id)
 
     @pytest.mark.io
-     def test_get_current_user_invalid_session(self, auth_use_cases):
+    def test_get_current_user_invalid_session(self, auth_use_cases):
         """Test getting current user with invalid session."""
         # Arrange
         token = "invalid_token"
@@ -210,9 +208,7 @@ class TestAuthUseCases:
         assert result is None
 
     @pytest.mark.io
-     def test_get_current_user_invalid_token(
-        self, auth_use_cases, mock_jwt_service
-    ):
+    def test_get_current_user_invalid_token(self, auth_use_cases, mock_jwt_service):
         """Test getting current user with invalid token."""
         # Arrange
         token = "invalid_token"
@@ -230,7 +226,7 @@ class TestAuthUseCases:
         assert result is None
 
     @pytest.mark.io
-     def test_get_current_user_inactive_user(
+    def test_get_current_user_inactive_user(
         self, auth_use_cases, mock_uow, mock_jwt_service
     ):
         """Test getting current user with inactive user."""
@@ -255,7 +251,7 @@ class TestAuthUseCases:
         assert result is None
 
     @pytest.mark.io
-     def test_verify_token_valid(self, auth_use_cases):
+    def test_verify_token_valid(self, auth_use_cases):
         """Test token verification with valid token."""
         # Arrange
         token = "valid_token"
@@ -272,7 +268,7 @@ class TestAuthUseCases:
         assert result is True
 
     @pytest.mark.io
-     def test_verify_token_invalid(self, auth_use_cases):
+    def test_verify_token_invalid(self, auth_use_cases):
         """Test token verification with invalid token."""
         # Arrange
         token = "invalid_token"
@@ -289,7 +285,7 @@ class TestAuthUseCases:
         assert result is False
 
     @pytest.mark.io
-     def test_logout_success(self, auth_use_cases):
+    def test_logout_success(self, auth_use_cases):
         """Test successful logout."""
         # Arrange
         token = "valid_token"
@@ -305,7 +301,7 @@ class TestAuthUseCases:
         auth_use_cases.session_use_cases.logout_session.assert_called_once_with(token)
 
     @pytest.mark.io
-     def test_logout_failure(self, auth_use_cases):
+    def test_logout_failure(self, auth_use_cases):
         """Test logout failure."""
         # Arrange
         token = "invalid_token"

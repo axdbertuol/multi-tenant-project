@@ -7,8 +7,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 DATABASE_URL = os.getenv(
-    "DATABASE_URL",
-    "postgresql://postgres:password@localhost:5432/ddd_app"
+    "DATABASE_URL", "postgresql://postgres:password@localhost:5432/ddd_app"
 )
 
 SCHEMA_NAME = "contas"
@@ -17,8 +16,7 @@ engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 # Create Base with schema support
-metadata = MetaData(schema=SCHEMA_NAME)
-Base = declarative_base(metadata=metadata)
+Base = declarative_base(metadata=MetaData(schema=SCHEMA_NAME))
 
 
 def get_db():

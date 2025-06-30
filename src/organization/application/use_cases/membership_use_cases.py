@@ -2,6 +2,8 @@ from typing import Optional
 from uuid import UUID
 import math
 
+from shared.domain.repositories.unit_of_work import UnitOfWork
+
 from ..dtos.membership_dto import (
     MembershipCreateDTO,
     MembershipUpdateDTO,
@@ -26,53 +28,48 @@ from ...domain.services.membership_service import MembershipService
 class MembershipUseCase:
     """Use cases for organization membership management."""
 
-    def __init__(
-        self,
-        organization_repository: OrganizationRepository,
-        role_repository: UserOrganizationRoleRepository,
-        organization_domain_service: OrganizationDomainService,
-        membership_service: MembershipService,
-    ):
-        self._organization_repository = organization_repository
-        self._role_repository = role_repository
-        self._organization_domain_service = organization_domain_service
-        self._membership_service = membership_service
+    def __init__(self, uow: UnitOfWork):
+        self._organization_repository: OrganizationRepository = uow.get_repository("organization")
+        self._role_repository: UserOrganizationRoleRepository = uow.get_repository("user_organization_role")
+        self._organization_domain_service = OrganizationDomainService(uow)
+        self._membership_service = MembershipService(uow)
+        self._uow = uow
 
     def add_member(
         self, organization_id: UUID, dto: MembershipCreateDTO, assigned_by: UUID
     ) -> MembershipResponseDTO:
         """Add a user to an organization."""
+        with self._uow:
+            # Check if organization exists
+            organization = self._organization_repository.get_by_id(organization_id)
+            if not organization:
+                raise ValueError("Organization not found")
 
-        # Check if organization exists
-        organization = self._organization_repository.get_by_id(organization_id)
-        if not organization:
-            raise ValueError("Organization not found")
-
-        # Check if user can manage members
-        assigner_role = self._role_repository.get_by_user_and_organization(
-            assigned_by, organization_id
-        )
-
-        if not assigner_role or not assigner_role.can_manage_users():
-            raise ValueError(
-                "User does not have permission to manage organization members"
+            # Check if user can manage members
+            assigner_role = self._role_repository.get_by_user_and_organization(
+                assigned_by, organization_id
             )
 
-        # Validate user addition
-        can_add, reason = self._organization_domain_service.validate_user_addition(
-            organization_id, dto.role
-        )
+            if not assigner_role or not assigner_role.can_manage_users():
+                raise ValueError(
+                    "User does not have permission to manage organization members"
+                )
 
-        if not can_add:
-            raise ValueError(f"Cannot add user: {reason}")
+            # Validate user addition
+            can_add, reason = self._organization_domain_service.validate_user_addition(
+                organization_id, dto.role
+            )
 
-        # Add user to organization
-        role = self._membership_service.add_user_to_organization(
-            user_id=dto.user_id,
-            organization_id=organization_id,
-            role=dto.role,
-            assigned_by=assigned_by,
-        )
+            if not can_add:
+                raise ValueError(f"Cannot add user: {reason}")
+
+            # Add user to organization
+            role = self._membership_service.add_user_to_organization(
+                user_id=dto.user_id,
+                organization_id=organization_id,
+                role=dto.role,
+                assigned_by=assigned_by,
+            )
 
         return MembershipResponseDTO(
             **role.model_dump(),
@@ -89,29 +86,29 @@ class MembershipUseCase:
         updated_by: UUID,
     ) -> MembershipResponseDTO:
         """Update a member's role in an organization."""
+        with self._uow:
+            # Check if organization exists
+            organization = self._organization_repository.get_by_id(organization_id)
+            if not organization:
+                raise ValueError("Organization not found")
 
-        # Check if organization exists
-        organization = self._organization_repository.get_by_id(organization_id)
-        if not organization:
-            raise ValueError("Organization not found")
-
-        # Check permissions
-        updater_role = self._role_repository.get_by_user_and_organization(
-            updated_by, organization_id
-        )
-
-        if not updater_role or not updater_role.can_manage_users():
-            raise ValueError(
-                "User does not have permission to manage organization members"
+            # Check permissions
+            updater_role = self._role_repository.get_by_user_and_organization(
+                updated_by, organization_id
             )
 
-        # Update role
-        updated_role = self._membership_service.change_user_role(
-            user_id=user_id,
-            organization_id=organization_id,
-            new_role=dto.role,
-            changed_by=updated_by,
-        )
+            if not updater_role or not updater_role.can_manage_users():
+                raise ValueError(
+                    "User does not have permission to manage organization members"
+                )
+
+            # Update role
+            updated_role = self._membership_service.change_user_role(
+                user_id=user_id,
+                organization_id=organization_id,
+                new_role=dto.role,
+                changed_by=updated_by,
+            )
 
         return MembershipResponseDTO(
             **updated_role.model_dump(),
@@ -124,38 +121,40 @@ class MembershipUseCase:
         self, organization_id: UUID, user_id: UUID, removed_by: UUID
     ) -> bool:
         """Remove a user from an organization."""
+        with self._uow:
+            # Check if organization exists
+            organization = self._organization_repository.get_by_id(organization_id)
+            if not organization:
+                raise ValueError("Organization not found")
 
-        # Check if organization exists
-        organization = self._organization_repository.get_by_id(organization_id)
-        if not organization:
-            raise ValueError("Organization not found")
-
-        # Check permissions (can remove others or themselves)
-        remover_role = self._role_repository.get_by_user_and_organization(
-            removed_by, organization_id
-        )
-
-        can_remove_others = remover_role and remover_role.can_manage_users()
-        is_self_removal = removed_by == user_id
-
-        if not can_remove_others and not is_self_removal:
-            raise ValueError("User does not have permission to remove this member")
-
-        # Check if user can leave organization
-        if is_self_removal:
-            can_leave, reason = (
-                self._organization_domain_service.can_user_leave_organization(
-                    user_id, organization_id
-                )
+            # Check permissions (can remove others or themselves)
+            remover_role = self._role_repository.get_by_user_and_organization(
+                removed_by, organization_id
             )
 
-            if not can_leave:
-                raise ValueError(f"Cannot leave organization: {reason}")
+            can_remove_others = remover_role and remover_role.can_manage_users()
+            is_self_removal = removed_by == user_id
 
-        # Remove user from organization
-        return self._membership_service.remove_user_from_organization(
-            user_id, organization_id
-        )
+            if not can_remove_others and not is_self_removal:
+                raise ValueError("User does not have permission to remove this member")
+
+            # Check if user can leave organization
+            if is_self_removal:
+                can_leave, reason = (
+                    self._organization_domain_service.can_user_leave_organization(
+                        user_id, organization_id
+                    )
+                )
+
+                if not can_leave:
+                    raise ValueError(f"Cannot leave organization: {reason}")
+
+            # Remove user from organization
+            result = self._membership_service.remove_user_from_organization(
+                user_id, organization_id
+            )
+
+        return result
 
     def get_organization_members(
         self, organization_id: UUID, page: int = 1, page_size: int = 100
@@ -274,22 +273,22 @@ class MembershipUseCase:
         self, organization_id: UUID, dto: OwnershipTransferDTO, current_owner_id: UUID
     ) -> MembershipResponseDTO:
         """Transfer organization ownership."""
+        with self._uow:
+            # Validate transfer
+            can_transfer, reason = self._organization_domain_service.can_transfer_ownership(
+                organization_id, current_owner_id, dto.new_owner_id
+            )
 
-        # Validate transfer
-        can_transfer, reason = self._organization_domain_service.can_transfer_ownership(
-            organization_id, current_owner_id, dto.new_owner_id
-        )
+            if not can_transfer:
+                raise ValueError(f"Cannot transfer ownership: {reason}")
 
-        if not can_transfer:
-            raise ValueError(f"Cannot transfer ownership: {reason}")
+            # Perform transfer
+            old_role, new_role = self._membership_service.transfer_ownership(
+                organization_id, current_owner_id, dto.new_owner_id
+            )
 
-        # Perform transfer
-        old_role, new_role = self._membership_service.transfer_ownership(
-            organization_id, current_owner_id, dto.new_owner_id
-        )
-
-        # Get organization for response
-        organization = self._organization_repository.get_by_id(organization_id)
+            # Get organization for response
+            organization = self._organization_repository.get_by_id(organization_id)
 
         return MembershipResponseDTO(
             **new_role.model_dump(),

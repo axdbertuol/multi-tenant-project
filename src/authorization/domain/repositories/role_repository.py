@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import Optional, List
 from uuid import UUID
+from datetime import datetime
 
 from ..entities.role import Role
 from ..value_objects.role_name import RoleName
@@ -90,4 +91,52 @@ class RoleRepository(ABC):
     @abstractmethod
     def get_root_roles(self, organization_id: Optional[UUID] = None) -> List[Role]:
         """Get all root roles (roles with no parent) for an organization."""
+        pass
+
+    @abstractmethod
+    def find_paginated(
+        self, organization_id: Optional[UUID], include_system: bool, offset: int, limit: int
+    ) -> tuple[List[Role], int]:
+        pass
+
+    @abstractmethod
+    def get_assignment_count(self, role_id: UUID) -> int:
+        pass
+
+    @abstractmethod
+    def assign_permissions(self, role_id: UUID, permission_ids: list[UUID]) -> None:
+        pass
+
+    @abstractmethod
+    def replace_permissions(self, role_id: UUID, permission_ids: list[UUID]) -> None:
+        pass
+
+    @abstractmethod
+    def remove_permissions(self, role_id: UUID, permission_ids: list[UUID]) -> None:
+        pass
+
+    @abstractmethod
+    def get_role_permissions(self, role_id: UUID) -> List[Role]:
+        pass
+
+    @abstractmethod
+    def get_permission_count(self, role_id: UUID) -> int:
+        pass
+
+    @abstractmethod
+    def find_user_roles(self, user_id: UUID, organization_id: Optional[UUID]) -> List[Role]:
+        pass
+
+    @abstractmethod
+    def find_by_id(self, role_id: UUID) -> Optional[Role]:
+        pass
+
+    @abstractmethod
+    def assign_role_to_user(
+        self, user_id: UUID, role_id: UUID, organization_id: Optional[UUID], assigned_by: UUID, expires_at: Optional[datetime]
+    ) -> None:
+        pass
+
+    @abstractmethod
+    def remove_role_from_user(self, user_id: UUID, role_id: UUID, organization_id: Optional[UUID]) -> bool:
         pass

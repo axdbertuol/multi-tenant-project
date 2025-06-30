@@ -1,9 +1,2 @@
-from .user_dto import UserCreateDTO, UserUpdateDTO, UserResponseDTO
-from .session_dto import SessionCreateDTO, SessionResponseDTO
-from .auth_dto import LoginDTO, AuthResponseDTO
-
-__all__ = [
-    "UserCreateDTO", "UserUpdateDTO", "UserResponseDTO",
-    "SessionCreateDTO", "SessionResponseDTO", 
-    "LoginDTO", "AuthResponseDTO"
-]
+# Este diretório contém os DTOs (Data Transfer Objects) para o contexto delimitado de Usuário.
+# Os DTOs são usados para transferir dados entre as camadas da aplicação.

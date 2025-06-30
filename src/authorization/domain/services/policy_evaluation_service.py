@@ -108,7 +108,7 @@ class PolicyEvaluationService:
             else:
                 created_at = created_at_str
 
-            age = datetime.utcnow() - created_at
+            age = datetime.now(timezone.utc) - created_at
             return age.days
         except Exception:
             return 0

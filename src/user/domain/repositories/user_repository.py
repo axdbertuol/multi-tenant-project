@@ -1,45 +1,45 @@
 from abc import ABC, abstractmethod
-from typing import Optional, List
+from typing import List, Optional
 from uuid import UUID
 
-from ..entities.user import User
-from ..value_objects.email import Email
+from user.domain.entities.user import User
+from user.domain.value_objects.email import Email
 
 
 class UserRepository(ABC):
-    """User repository interface for the User bounded context."""
+    """Interface do repositório de usuários para o contexto delimitado de Usuário."""
 
     @abstractmethod
     def save(self, user: User) -> User:
-        """Save or update a user."""
+        """Salva ou atualiza um usuário."""
         pass
 
     @abstractmethod
     def get_by_id(self, user_id: UUID) -> Optional[User]:
-        """Get user by ID."""
+        """Obtém um usuário pelo ID."""
         pass
 
     @abstractmethod
     def get_by_email(self, email: Email) -> Optional[User]:
-        """Get user by email."""
+        """Obtém um usuário pelo email."""
         pass
 
     @abstractmethod
     def exists_by_email(self, email: Email) -> bool:
-        """Check if user exists by email."""
+        """Verifica se o usuário existe pelo email."""
         pass
 
     @abstractmethod
     def delete(self, user_id: UUID) -> bool:
-        """Delete user by ID."""
+        """Exclui um usuário pelo ID."""
         pass
 
     @abstractmethod
     def list_active_users(self, limit: int = 100, offset: int = 0) -> List[User]:
-        """List active users with pagination."""
+        """Lista usuários ativos com paginação."""
         pass
 
     @abstractmethod
     def count_active_users(self) -> int:
-        """Count total active users."""
+        """Conta o total de usuários ativos."""
         pass

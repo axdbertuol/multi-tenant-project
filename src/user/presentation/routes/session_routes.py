@@ -10,11 +10,11 @@ from ...application.dtos.session_dto import (
 )
 from ...application.use_cases.session_use_cases import SessionUseCase
 
-router = APIRouter(prefix="/sessions", tags=["Sessions"])
+router = APIRouter(prefix="/sessions", tags=["Sessões"])
 
 
 def get_auth_token(request: Request) -> str:
-    """Extract and validate authorization token from request."""
+    """Extrai e valida o token de autorização da requisição."""
     auth_header = request.headers.get("authorization")
     if not auth_header or not auth_header.startswith("Bearer "):
         raise HTTPException(
@@ -30,7 +30,7 @@ async def create_session(
     request: Request,
     use_case: SessionUseCase = Depends(get_session_use_case),
 ):
-    """Create a new user session."""
+    """Cria uma nova sessão de usuário."""
     try:
         # Add client info to DTO
         dto.user_agent = request.headers.get("user-agent")
@@ -51,7 +51,7 @@ async def get_session_by_id(
     session_id: UUID,
     use_case: SessionUseCase = Depends(get_session_use_case),
 ):
-    """Get session by ID."""
+    """Obtém uma sessão pelo ID."""
     try:
         session = use_case.get_session_by_id(session_id)
         if not session:
@@ -69,7 +69,7 @@ async def get_session_by_token(
     token: str,
     use_case: SessionUseCase = Depends(get_session_use_case),
 ):
-    """Get session by token."""
+    """Obtém uma sessão pelo token."""
     try:
         session = use_case.get_session_by_token(token)
         if not session:
@@ -87,7 +87,7 @@ async def get_user_sessions(
     user_id: UUID,
     use_case: SessionUseCase = Depends(get_session_use_case),
 ):
-    """Get all sessions for a user."""
+    """Obtém todas as sessões de um usuário."""
     try:
         return use_case.get_user_sessions(user_id)
     except ValueError as e:
@@ -99,7 +99,7 @@ async def revoke_session(
     session_id: UUID,
     use_case: SessionUseCase = Depends(get_session_use_case),
 ):
-    """Revoke a specific session."""
+    """Revoga uma sessão específica."""
     try:
         success = use_case.revoke_session(session_id)
         if not success:
@@ -117,7 +117,7 @@ async def revoke_session_by_token(
     token: str,
     use_case: SessionUseCase = Depends(get_session_use_case),
 ):
-    """Revoke session by token."""
+    """Revoga uma sessão pelo token."""
     try:
         success = use_case.revoke_session_by_token(token)
         if not success:
@@ -135,7 +135,7 @@ async def revoke_all_user_sessions(
     user_id: UUID,
     use_case: SessionUseCase = Depends(get_session_use_case),
 ):
-    """Revoke all sessions for a user."""
+    """Revoga todas as sessões de um usuário."""
     try:
         count = use_case.revoke_all_user_sessions(user_id)
         return {"message": f"Revoked {count} sessions"}
@@ -149,7 +149,7 @@ async def extend_session(
     hours: int = Query(24, ge=1, le=720, description="Hours to extend session"),
     use_case: SessionUseCase = Depends(get_session_use_case),
 ):
-    """Extend session duration."""
+    """Estende a duração da sessão."""
     try:
         session = use_case.extend_session(session_id, hours)
         if not session:
@@ -166,7 +166,7 @@ async def extend_session(
 async def cleanup_expired_sessions(
     use_case: SessionUseCase = Depends(get_session_use_case),
 ):
-    """Clean up expired sessions."""
+    """Limpa sessões expiradas."""
     try:
         count = use_case.cleanup_expired_sessions()
         return {"message": f"Cleaned up {count} expired sessions"}
@@ -180,7 +180,7 @@ async def validate_session_access(
     permissions: List[str] = Query(None, description="Required permissions"),
     use_case: SessionUseCase = Depends(get_session_use_case),
 ):
-    """Validate session and optional permissions."""
+    """Valida a sessão e permissões opcionais."""
     try:
         valid = use_case.validate_session_access(token, permissions)
         return {"valid": valid, "token": token}
