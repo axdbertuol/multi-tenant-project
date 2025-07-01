@@ -4,7 +4,7 @@ import logging
 import time
 
 from shared.infrastructure.database.connection import engine, Base
-from iam.presentation.routers import router as iam_router
+from src.iam.presentation.routers import router as iam_router
 
 # Configurar logging
 logging.basicConfig(level=logging.INFO)

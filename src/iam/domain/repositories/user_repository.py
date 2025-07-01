@@ -2,8 +2,8 @@ from abc import ABC, abstractmethod
 from typing import List, Optional
 from uuid import UUID
 
-from user.domain.entities.user import User
-from user.domain.value_objects.email import Email
+from ..entities.user import User
+from ..value_objects.email import Email
 
 
 class UserRepository(ABC):

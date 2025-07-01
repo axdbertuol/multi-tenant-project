@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 from typing import List, Optional
 from uuid import UUID
 
-from user.domain.entities.user_session import UserSession
+from ..entities.user_session import UserSession
 
 
 class UserSessionRepository(ABC):
