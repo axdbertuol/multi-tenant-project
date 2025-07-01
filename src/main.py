@@ -4,8 +4,7 @@ import logging
 import time
 
 from shared.infrastructure.database.connection import engine, Base
-from user.presentation.routers import user_api_router
-# from presentation.api.auth_routes import router as auth_router
+from iam.presentation.routers import router as iam_router
 
 # Configurar logging
 logging.basicConfig(level=logging.INFO)
@@ -67,8 +66,7 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
 
-    app.include_router(user_api_router, prefix="/api/v1")
-    # app.include_router(auth_router, prefix="/api/v1")
+    app.include_router(iam_router)
 
     return app
 
@@ -103,8 +101,7 @@ def models_endpoint():
         "application": "FastAPI DDD Project",
         "available_endpoints": [
             "/docs - API Documentation",
-            "/api/v1/users - User management endpoints",
-            "/api/v1/auth - Authentication endpoints",
+            "/api/v1/iam - IAM (Identity and Access Management) endpoints",
             "/health - Health check",
         ],
         "note": "If you're looking for AI models, try OpenAI API, Ollama, or similar services",

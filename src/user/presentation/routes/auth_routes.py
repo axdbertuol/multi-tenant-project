@@ -9,7 +9,7 @@ from ...application.dtos.auth_dto import (
     PasswordResetRequestDTO,
     PasswordResetConfirmDTO,
 )
-from ...application.use_cases.auth_use_cases import AuthUseCase
+from ...application.use_cases.auth_use_cases import AuthenticationUseCase
 
 router = APIRouter(prefix="/auth", tags=["Autenticação"])
 
@@ -25,7 +25,7 @@ def get_client_info(request: Request) -> tuple[Optional[str], Optional[str]]:
 async def login(
     dto: LoginDTO,
     request: Request,
-    use_case: AuthUseCase = Depends(get_auth_use_case),
+    use_case: AuthenticationUseCase = Depends(get_auth_use_case),
 ):
     """Autentica o usuário e cria uma sessão."""
     try:
@@ -41,7 +41,7 @@ async def login(
 async def logout(
     dto: LogoutDTO,
     request: Request,
-    use_case: AuthUseCase = Depends(get_auth_use_case),
+    use_case: AuthenticationUseCase = Depends(get_auth_use_case),
 ):
     """Realiza o logout do usuário, revogando a(s) sessão(ões)."""
     try:
@@ -52,16 +52,16 @@ async def logout(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Authorization header required",
             )
-        
+
         token = auth_header.split(" ")[1]
         success = use_case.logout(token, dto)
-        
+
         if not success:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid session",
             )
-        
+
         return {"message": "Logged out successfully"}
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
@@ -70,7 +70,7 @@ async def logout(
 @router.post("/refresh", response_model=AuthResponseDTO)
 async def refresh_session(
     request: Request,
-    use_case: AuthUseCase = Depends(get_auth_use_case),
+    use_case: AuthenticationUseCase = Depends(get_auth_use_case),
 ):
     """Atualiza o token da sessão."""
     try:
@@ -81,16 +81,16 @@ async def refresh_session(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Authorization header required",
             )
-        
+
         token = auth_header.split(" ")[1]
         result = use_case.refresh_session(token)
-        
+
         if not result:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid or expired session",
             )
-        
+
         return result
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
@@ -99,7 +99,7 @@ async def refresh_session(
 @router.get("/validate")
 async def validate_session(
     request: Request,
-    use_case: AuthUseCase = Depends(get_auth_use_case),
+    use_case: AuthenticationUseCase = Depends(get_auth_use_case),
 ):
     """Valida o token da sessão e retorna as informações do usuário."""
     try:
@@ -110,16 +110,16 @@ async def validate_session(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Authorization header required",
             )
-        
+
         token = auth_header.split(" ")[1]
         user = use_case.validate_session(token)
-        
+
         if not user:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid or expired session",
             )
-        
+
         return {"user": user}
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
@@ -128,7 +128,7 @@ async def validate_session(
 @router.post("/password-reset/request")
 async def request_password_reset(
     dto: PasswordResetRequestDTO,
-    use_case: AuthUseCase = Depends(get_auth_use_case),
+    use_case: AuthenticationUseCase = Depends(get_auth_use_case),
 ):
     """Solicita a redefinição de senha para o usuário."""
     try:
@@ -141,7 +141,7 @@ async def request_password_reset(
 @router.post("/password-reset/confirm")
 async def confirm_password_reset(
     dto: PasswordResetConfirmDTO,
-    use_case: AuthUseCase = Depends(get_auth_use_case),
+    use_case: AuthenticationUseCase = Depends(get_auth_use_case),
 ):
     """Confirma a redefinição de senha com o token."""
     try:
@@ -151,8 +151,7 @@ async def confirm_password_reset(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Invalid or expired reset token",
             )
-        
+
         return {"message": "Password reset successfully"}
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
-

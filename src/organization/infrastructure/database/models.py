@@ -6,18 +6,9 @@ from sqlalchemy import (
     ForeignKey,
     DateTime,
     Text,
-    Enum,
     Integer,
 )
 from sqlalchemy.dialects.postgresql import UUID, JSON
-import enum
-
-
-class OrganizationRoleEnum(str, enum.Enum):
-    OWNER = "owner"
-    ADMIN = "admin"
-    MEMBER = "member"
-    VIEWER = "viewer"
 
 
 class OrganizationModel(SQLBaseModel):
@@ -47,10 +38,15 @@ class UserOrganizationRoleModel(SQLBaseModel):
     organization_id = Column(
         UUID(as_uuid=True), ForeignKey("organizations.id"), nullable=False, index=True
     )
-    role = Column(Enum(OrganizationRoleEnum), nullable=False, index=True)
+    role_id = Column(
+        UUID(as_uuid=True), ForeignKey("roles.id"), nullable=False, index=True
+    )
     assigned_by = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    assigned_at = Column(DateTime(timezone=True), nullable=False)
     expires_at = Column(DateTime(timezone=True), nullable=True)
     is_active = Column(Boolean, default=True, nullable=False)
+    revoked_at = Column(DateTime(timezone=True), nullable=True)
+    revoked_by = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
 
     # Ensure unique active membership per user per organization
     __table_args__ = ({"postgresql_where": "is_active = true"},)

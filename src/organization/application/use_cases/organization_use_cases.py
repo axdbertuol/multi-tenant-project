@@ -122,8 +122,8 @@ class OrganizationUseCase:
                 # This would typically require joining with user data
                 member = OrganizationMemberSummaryDTO(
                     user_id=role.user_id,
-                    user_name="User Name",  # Would fetch from user service
-                    user_email="user@example.com",  # Would fetch from user service
+                    user_name="User Name",  # Would fetch from iam service
+                    user_email="user@example.com",  # Would fetch from iam service
                     role=role.role.value,
                     joined_at=role.assigned_at,
                     is_active=role.is_active,

@@ -379,7 +379,7 @@ class TenantValidationMiddleware:
 ```mermaid
 sequenceDiagram
     participant U as User
-    participant A as AuthUseCase
+    participant A as AuthenticationUseCase
     participant H as HybridAuthService
     participant P as PlanUseCase
     participant R as ResourceRepo
@@ -400,7 +400,7 @@ sequenceDiagram
 ```
 
 **Fluxo Detalhado**:
-1. **Autenticação**: `AuthUseCase.authenticate()` valida credenciais e gera JWT
+1. **Autenticação**: `AuthenticationUseCase.authenticate()` valida credenciais e gera JWT
 2. **Autorização**: `HybridAuthorizationService.can_access_resource()` combina RBAC + ABAC
 3. **Validação de Plano**: `PlanUseCase.validate_resource_access()` verifica se recurso está no plano
 4. **Retorno**: Dados do recurso ou erro de acesso negado

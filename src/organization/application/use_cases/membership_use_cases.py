@@ -73,8 +73,8 @@ class MembershipUseCase:
 
         return MembershipResponseDTO(
             **role.model_dump(),
-            user_name="User Name",  # Would fetch from user service
-            user_email="user@example.com",  # Would fetch from user service
+            user_name="User Name",  # Would fetch from iam service
+            user_email="user@example.com",  # Would fetch from iam service
             organization_name=organization.name.value,
         )
 
@@ -112,8 +112,8 @@ class MembershipUseCase:
 
         return MembershipResponseDTO(
             **updated_role.model_dump(),
-            user_name="User Name",  # Would fetch from user service
-            user_email="user@example.com",  # Would fetch from user service
+            user_name="User Name",  # Would fetch from iam service
+            user_email="user@example.com",  # Would fetch from iam service
             organization_name=organization.name.value,
         )
 
@@ -189,8 +189,8 @@ class MembershipUseCase:
         for role in paginated_roles:
             dto = MembershipResponseDTO(
                 **role.model_dump(),
-                user_name="User Name",  # Would fetch from user service
-                user_email="user@example.com",  # Would fetch from user service
+                user_name="User Name",  # Would fetch from iam service
+                user_email="user@example.com",  # Would fetch from iam service
                 organization_name=organization.name.value,
             )
             membership_dtos.append(dto)
@@ -223,8 +223,8 @@ class MembershipUseCase:
 
         return MembershipResponseDTO(
             **role.model_dump(),
-            user_name="User Name",  # Would fetch from user service
-            user_email="user@example.com",  # Would fetch from user service
+            user_name="User Name",  # Would fetch from iam service
+            user_email="user@example.com",  # Would fetch from iam service
             organization_name=organization.name.value,
         )
 
@@ -292,8 +292,8 @@ class MembershipUseCase:
 
         return MembershipResponseDTO(
             **new_role.model_dump(),
-            user_name="New Owner Name",  # Would fetch from user service
-            user_email="newowner@example.com",  # Would fetch from user service
+            user_name="New Owner Name",  # Would fetch from iam service
+            user_email="newowner@example.com",  # Would fetch from iam service
             organization_name=organization.name.value,
         )
 

@@ -17,7 +17,7 @@ from ..dtos.session_dto import SessionResponseDTO
 from ...domain.services.authentication_service import AuthenticationService
 
 
-class AuthUseCase:
+class AuthenticationUseCase:
     """Casos de uso para autenticação e autorização."""
 
     def __init__(self, uow: UnitOfWork):

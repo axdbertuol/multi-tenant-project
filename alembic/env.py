@@ -16,21 +16,13 @@ from shared.infrastructure.database.base import Base
 import sys
 import importlib.util
 
-# Import authorization models
-auth_spec = importlib.util.spec_from_file_location(
-    "auth_models", 
-    os.path.join(os.path.dirname(os.path.dirname(__file__)), "src", "authorization", "infrastructure", "database", "models.py")
+# Import IAM models (combines user and authorization models)
+iam_spec = importlib.util.spec_from_file_location(
+    "iam_models", 
+    os.path.join(os.path.dirname(os.path.dirname(__file__)), "src", "iam", "infrastructure", "database", "models.py")
 )
-auth_models = importlib.util.module_from_spec(auth_spec)
-auth_spec.loader.exec_module(auth_models)
-
-# Import user models  
-user_spec = importlib.util.spec_from_file_location(
-    "user_models",
-    os.path.join(os.path.dirname(os.path.dirname(__file__)), "src", "user", "infrastructure", "database", "models.py")
-)
-user_models = importlib.util.module_from_spec(user_spec)
-user_spec.loader.exec_module(user_models)
+iam_models = importlib.util.module_from_spec(iam_spec)
+iam_spec.loader.exec_module(iam_models)
 
 # Import organization models
 org_spec = importlib.util.spec_from_file_location(
