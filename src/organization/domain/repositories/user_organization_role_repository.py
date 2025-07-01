@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 from typing import Optional, List
 from uuid import UUID
 
-from ..entities.user_organization_role import UserOrganizationRole, OrganizationRole
+from ..entities.user_organization_role import UserOrganizationRole
 
 
 class UserOrganizationRoleRepository(ABC):
@@ -39,7 +39,7 @@ class UserOrganizationRoleRepository(ABC):
 
     @abstractmethod
     def user_has_role_in_organization(
-        self, user_id: UUID, organization_id: UUID, role: OrganizationRole
+        self, user_id: UUID, organization_id: UUID, role_id: UUID
     ) -> bool:
         """Check if user has specific role in organization."""
         pass

@@ -41,7 +41,7 @@ class UserUseCase:
             # Save user
             saved_user = self._user_repository.save(user)
 
-        return UserResponseDTO.model_validate(saved_user)
+        return UserResponseDTO.from_user(saved_user)
 
     def get_user_by_id(self, user_id: UUID) -> Optional[UserResponseDTO]:
         """Obtém um usuário pelo ID."""
@@ -50,7 +50,7 @@ class UserUseCase:
         if not user:
             return None
 
-        return UserResponseDTO.model_validate(user)
+        return UserResponseDTO.from_user(user)
 
     def get_user_by_email(self, email: str) -> Optional[UserResponseDTO]:
         """Obtém um usuário pelo email."""
@@ -60,7 +60,7 @@ class UserUseCase:
         if not user:
             return None
 
-        return UserResponseDTO.model_validate(user)
+        return UserResponseDTO.from_user(user)
 
     def update_user(self, user_id: UUID, dto: UserUpdateDTO) -> UserResponseDTO:
         """Atualiza as informações do usuário."""
@@ -96,7 +96,7 @@ class UserUseCase:
             # Save updated user
             saved_user = self._user_repository.save(updated_user)
 
-        return UserResponseDTO.model_validate(saved_user)
+        return UserResponseDTO.from_user(saved_user)
 
     def change_password(self, user_id: UUID, dto: UserChangePasswordDTO) -> bool:
         """Altera a senha do usuário."""
@@ -133,7 +133,7 @@ class UserUseCase:
             updated_user = user.deactivate()
             saved_user = self._user_repository.save(updated_user)
 
-        return UserResponseDTO.model_validate(saved_user)
+        return UserResponseDTO.from_user(saved_user)
 
     def activate_user(self, user_id: UUID) -> UserResponseDTO:
         """Ativa a conta do usuário."""
@@ -150,7 +150,7 @@ class UserUseCase:
             updated_user = user.activate()
             saved_user = self._user_repository.save(updated_user)
 
-        return UserResponseDTO.model_validate(saved_user)
+        return UserResponseDTO.from_user(saved_user)
 
     def delete_user(self, user_id: UUID) -> bool:
         """Exclui a conta do usuário."""
@@ -184,7 +184,7 @@ class UserUseCase:
         total = self._user_repository.count_active_users()
 
         # Convert to DTOs
-        user_dtos = [UserResponseDTO.model_validate(user) for user in users]
+        user_dtos = [UserResponseDTO.from_user(user) for user in users]
 
         total_pages = math.ceil(total / page_size)
 

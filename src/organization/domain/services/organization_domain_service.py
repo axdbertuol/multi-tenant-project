@@ -2,8 +2,9 @@ from typing import Optional, List
 from uuid import UUID
 
 from ..entities.organization import Organization
-from ..entities.user_organization_role import UserOrganizationRole, OrganizationRole
+from ..entities.user_organization_role import UserOrganizationRole
 from ..value_objects.organization_name import OrganizationName
+from ..constants.default_roles import DefaultOrganizationRoles
 from ..repositories.organization_repository import OrganizationRepository
 from ..repositories.user_organization_role_repository import (
     UserOrganizationRoleRepository,
@@ -99,7 +100,7 @@ class OrganizationDomainService:
         return True, "Ownership can be transferred"
 
     def validate_user_addition(
-        self, organization_id: UUID, role: OrganizationRole
+        self, organization_id: UUID, role_id: UUID
     ) -> tuple[bool, str]:
         """Validate if a new user can be added to organization."""
         organization = self._organization_repository.get_by_id(organization_id)

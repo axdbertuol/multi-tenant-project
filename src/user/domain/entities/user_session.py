@@ -14,6 +14,7 @@ class SessionStatus(str, Enum):
 
 class UserSession(BaseModel):
     """Entidade de domínio da Sessão do Usuário."""
+
     id: UUID
     user_id: UUID
     session_token: str
@@ -27,7 +28,7 @@ class UserSession(BaseModel):
     created_at: datetime
     updated_at: Optional[datetime] = None
 
-    model_config = {"arbitrary_types_allowed": True}
+    model_config = {"arbitrary_types_allowed": True, "frozen": True}
 
     @classmethod
     def create(
@@ -115,5 +116,6 @@ class UserSession(BaseModel):
     def extend(self, hours: int) -> "UserSession":
         """Estende a sessão por um número especificado de horas."""
         from datetime import timedelta
+
         new_expires_at = datetime.utcnow() + timedelta(hours=hours)
         return self.extend_session(new_expires_at)

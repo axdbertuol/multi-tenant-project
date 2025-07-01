@@ -2,10 +2,8 @@ import pytest
 from datetime import datetime
 from uuid import uuid4, UUID
 
-from organization.domain.entities.user_organization_role import (
-    OrganizationRole,
-    UserOrganizationRole,
-)
+from organization.domain.entities.user_organization_role import UserOrganizationRole
+from organization.domain.constants.default_roles import DefaultOrganizationRoles
 
 
 class TestUserOrganizationRole:
@@ -13,17 +11,18 @@ class TestUserOrganizationRole:
         user_id = uuid4()
         organization_id = uuid4()
         assigned_by = uuid4()
+        role_id = DefaultOrganizationRoles.ADMIN
 
         user_org_role = UserOrganizationRole.create(
             user_id=user_id,
             organization_id=organization_id,
-            role=OrganizationRole.ADMIN,
+            role_id=role_id,
             assigned_by=assigned_by,
         )
 
         assert user_org_role.user_id == user_id
         assert user_org_role.organization_id == organization_id
-        assert user_org_role.role_id == UUID("00000000-0000-0000-0000-000000000002")  # ADMIN role UUID
+        assert user_org_role.role_id == DefaultOrganizationRoles.ADMIN
         assert user_org_role.assigned_by == assigned_by
         assert user_org_role.is_active is True
         assert user_org_role.revoked_at is None
@@ -36,11 +35,12 @@ class TestUserOrganizationRole:
         organization_id = uuid4()
         assigned_by = uuid4()
         revoked_by = uuid4()
+        role_id = DefaultOrganizationRoles.ADMIN
 
         user_org_role = UserOrganizationRole.create(
             user_id=user_id,
             organization_id=organization_id,
-            role=OrganizationRole.ADMIN,
+            role_id=role_id,
             assigned_by=assigned_by,
         )
 
@@ -52,18 +52,19 @@ class TestUserOrganizationRole:
         assert revoked_role.id == user_org_role.id
         assert revoked_role.user_id == user_id
         assert revoked_role.organization_id == organization_id
-        assert revoked_role.role_id == UUID("00000000-0000-0000-0000-000000000002")  # ADMIN role UUID
+        assert revoked_role.role_id == DefaultOrganizationRoles.ADMIN
 
     def test_reactivate_user_organization_role(self):
         user_id = uuid4()
         organization_id = uuid4()
         assigned_by = uuid4()
         revoked_by = uuid4()
+        role_id = DefaultOrganizationRoles.ADMIN
 
         user_org_role = UserOrganizationRole.create(
             user_id=user_id,
             organization_id=organization_id,
-            role=OrganizationRole.ADMIN,
+            role_id=role_id,
             assigned_by=assigned_by,
         )
 
@@ -76,17 +77,18 @@ class TestUserOrganizationRole:
         assert reactivated_role.id == user_org_role.id
         assert reactivated_role.user_id == user_id
         assert reactivated_role.organization_id == organization_id
-        assert reactivated_role.role_id == UUID("00000000-0000-0000-0000-000000000002")  # ADMIN role UUID
+        assert reactivated_role.role_id == DefaultOrganizationRoles.ADMIN
 
     def test_user_organization_role_immutability(self):
         user_id = uuid4()
         organization_id = uuid4()
         assigned_by = uuid4()
+        role_id = DefaultOrganizationRoles.ADMIN
 
         user_org_role = UserOrganizationRole.create(
             user_id=user_id,
             organization_id=organization_id,
-            role=OrganizationRole.ADMIN,
+            role_id=role_id,
             assigned_by=assigned_by,
         )
 
@@ -98,11 +100,12 @@ class TestUserOrganizationRole:
         organization_id = uuid4()
         assigned_by = uuid4()
         revoked_by = uuid4()
+        role_id = DefaultOrganizationRoles.ADMIN
 
         original_role = UserOrganizationRole.create(
             user_id=user_id,
             organization_id=organization_id,
-            role=OrganizationRole.ADMIN,
+            role_id=role_id,
             assigned_by=assigned_by,
         )
 

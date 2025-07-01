@@ -1,7 +1,7 @@
 from datetime import datetime
-from typing import Optional
+from typing import Optional, Any
 from uuid import UUID
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, field_serializer
 
 
 class UserCreateDTO(BaseModel):
@@ -54,6 +54,18 @@ class UserResponseDTO(BaseModel):
     updated_at: Optional[datetime] = None
     
     model_config = {"from_attributes": True}
+    
+    @classmethod
+    def from_user(cls, user) -> "UserResponseDTO":
+        """Create UserResponseDTO from User entity."""
+        return cls(
+            id=user.id,
+            email=user.email.value if hasattr(user.email, 'value') else str(user.email),
+            name=user.name,
+            is_active=user.is_active,
+            created_at=user.created_at,
+            updated_at=user.updated_at,
+        )
 
 
 class UserListResponseDTO(BaseModel):

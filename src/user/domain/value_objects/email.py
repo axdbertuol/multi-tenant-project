@@ -1,6 +1,6 @@
 import re
 from typing import Any
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, field_validator, validate_email
 
 
 class Email(BaseModel):
@@ -11,8 +11,8 @@ class Email(BaseModel):
     model_config = {"frozen": True}
 
     @field_validator("value")
-    def validate_email(cls, v: str) -> str:
-        if not cls._is_valid_email(v):
+    def _validate_email(cls, v: str) -> str:
+        if not validate_email(v):
             raise ValueError(f"Invalid email format: {v}")
         return v.lower().strip()
 
