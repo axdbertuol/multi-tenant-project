@@ -3,7 +3,7 @@ from shared.infrastructure.database.connection import Base, get_db
 import io
 import os
 from typing import Generator
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 from fastapi.testclient import TestClient
 
@@ -33,9 +33,11 @@ def event_loop():
 def db_session() -> Generator:
     """Create a fresh database session for each test."""
     # Create tables
+    with test_engine.connect() as conn:
+        conn.execute(text("CREATE SCHEMA IF NOT EXISTS contas"))
     Base.metadata.create_all(bind=test_engine)
-
     session = TestSessionLocal()
+
     try:
         yield session
     finally:

@@ -1,11 +1,13 @@
-from typing import List, Optional
+from typing import List, Optional, Dict
 from uuid import UUID
 
 from ..entities.authorization_context import AuthorizationContext
+from ..entities.permission import Permission
 from ..repositories.role_repository import RoleRepository
 from ..repositories.permission_repository import PermissionRepository
 from ..repositories.role_permission_repository import RolePermissionRepository
 from ..value_objects.authorization_decision import AuthorizationDecision, DecisionReason
+from .role_inheritance_service import RoleInheritanceService
 
 
 class RBACService:
@@ -16,10 +18,12 @@ class RBACService:
         role_repository: RoleRepository,
         permission_repository: PermissionRepository,
         role_permission_repository: RolePermissionRepository,
+        role_inheritance_service: Optional[RoleInheritanceService] = None,
     ):
         self._role_repository = role_repository
         self._permission_repository = permission_repository
         self._role_permission_repository = role_permission_repository
+        self._role_inheritance_service = role_inheritance_service or RoleInheritanceService()
 
     def authorize(self, context: AuthorizationContext) -> AuthorizationDecision:
         """Authorize request using RBAC."""
@@ -82,6 +86,19 @@ class RBACService:
             )
             return AuthorizationDecision.allow([reason])
 
+        # Check action wildcard
+        action_wildcard = f"*:{context.action}"
+        if action_wildcard in user_permissions:
+            reason = DecisionReason(
+                type="rbac_allow",
+                message=f"User has action wildcard permission: {action_wildcard}",
+                details={
+                    "permission": action_wildcard,
+                    "roles": [role.name.value for role in user_roles],
+                },
+            )
+            return AuthorizationDecision.allow([reason])
+
         # Check global wildcard
         if "*:*" in user_permissions:
             reason = DecisionReason(
@@ -109,27 +126,37 @@ class RBACService:
     def get_user_permissions(
         self, user_id: UUID, organization_id: Optional[UUID] = None
     ) -> List[str]:
-        """Get all permissions for a user through their roles."""
+        """Get all permissions for a user through their roles (including inherited permissions)."""
         # Get user roles
         user_roles = self._role_repository.get_user_roles(user_id, organization_id)
 
         if not user_roles:
             return []
 
-        # Get permissions for all roles
-        all_permissions = set()
+        # Get all roles in the organization hierarchy
+        all_roles = self._role_repository.get_role_hierarchy(organization_id)
+        
+        # Build role permissions map
+        role_permissions_map: Dict[UUID, List[Permission]] = {}
+        for role in all_roles:
+            role_perms = self._permission_repository.get_role_permissions(role.id)
+            # Only include active permissions
+            active_perms = [p for p in role_perms if p.is_active]
+            role_permissions_map[role.id] = active_perms
 
-        for role in user_roles:
-            if not role.is_active:
-                continue
+        # Get effective permissions for user roles (including inherited)
+        user_role_ids = [role.id for role in user_roles if role.is_active]
+        effective_permissions = self._role_inheritance_service.get_effective_permissions_for_user_roles(
+            user_role_ids, all_roles, role_permissions_map
+        )
 
-            role_permissions = self._permission_repository.get_role_permissions(role.id)
+        # Convert to permission name strings
+        permission_names = set()
+        for permission in effective_permissions:
+            if permission.is_active:
+                permission_names.add(permission.get_full_name())
 
-            for permission in role_permissions:
-                if permission.is_active:
-                    all_permissions.add(permission.get_full_name())
-
-        return list(all_permissions)
+        return list(permission_names)
 
     def user_has_permission(
         self,
@@ -155,6 +182,12 @@ class RBACService:
         resource_wildcard = f"{resource_type}:*"
         if resource_wildcard in user_permissions:
             return True
+
+        # Check action wildcard
+        if action:
+            action_wildcard = f"*:{action}"
+            if action_wildcard in user_permissions:
+                return True
 
         # Check global wildcard
         if "*:*" in user_permissions:

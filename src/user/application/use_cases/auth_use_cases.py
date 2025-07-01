@@ -53,7 +53,12 @@ class AuthUseCase:
             )
 
         # Create response DTOs
-        user_dto = UserResponseDTO.model_validate(user)
+        user_dto = UserResponseDTO.model_validate(
+            {
+                **user.model_dump(exclude="email"),
+                "email": user.email.value,
+            }
+        )
         session_dto = SessionResponseDTO.model_validate(
             {
                 **session.model_dump(),
@@ -95,7 +100,12 @@ class AuthUseCase:
         if not user:
             return None
 
-        return UserResponseDTO.model_validate(user)
+        return UserResponseDTO.model_validate(
+            {
+                **user.model_dump(exclude="email"),
+                "email": user.email.value,
+            }
+        )
 
     def refresh_session(self, token: str) -> Optional[AuthResponseDTO]:
         """Atualiza a sessão se for válida."""
@@ -132,7 +142,13 @@ class AuthUseCase:
             self._auth_service.revoke_session(token)
 
         # Create response DTOs
-        user_dto = UserResponseDTO.model_validate(user)
+        user_dto = UserResponseDTO.model_validate(
+            {
+                **user.model_dump(exclude="email"),
+                "email": user.email.value,
+            }
+        )
+
         session_dto = SessionResponseDTO.model_validate(
             {
                 **new_session.model_dump(),

@@ -36,7 +36,14 @@ class RoleInheritanceService:
         seen_permissions = set()  # Track to avoid duplicates
         
         # Start from root and work down to ensure proper inheritance order
+        role_map = {r.id: r for r in all_roles}
+        
         for role_id in hierarchy_path:
+            # Check if role is active - only inherit from active roles
+            role_in_hierarchy = role_map.get(role_id)
+            if not role_in_hierarchy or not role_in_hierarchy.is_active:
+                continue
+                
             direct_permissions = role_permissions.get(role_id, [])
             
             for permission in direct_permissions:
