@@ -20,12 +20,12 @@ class Resource(BaseModel):
 
     @classmethod
     def create(
-        cls, 
-        resource_type: str, 
-        resource_id: UUID, 
+        cls,
+        resource_type: str,
+        resource_id: UUID,
         owner_id: UUID,
         organization_id: Optional[UUID] = None,
-        attributes: Optional[Dict[str, Any]] = None
+        attributes: Optional[Dict[str, Any]] = None,
     ) -> "Resource":
         return cls(
             id=uuid4(),
@@ -35,35 +35,41 @@ class Resource(BaseModel):
             organization_id=organization_id,
             attributes=attributes or {},
             created_at=datetime.now(timezone.utc),
-            is_active=True
+            is_active=True,
         )
 
     def update_attributes(self, attributes: Dict[str, Any]) -> "Resource":
         """Update resource attributes for ABAC."""
-        return self.model_copy(update={
-            "attributes": {**self.attributes, **attributes},
-            "updated_at": datetime.utcnow()
-        })
+        return self.model_copy(
+            update={
+                "attributes": {**self.attributes, **attributes},
+                "updated_at": datetime.utcnow(),
+            }
+        )
 
     def set_attribute(self, key: str, value: Any) -> "Resource":
         """Set a single attribute."""
         new_attributes = self.attributes.copy()
         new_attributes[key] = value
-        
-        return self.model_copy(update={
-            "attributes": new_attributes,
-            "updated_at": datetime.now(timezone.utc)
-        })
+
+        return self.model_copy(
+            update={
+                "attributes": new_attributes,
+                "updated_at": datetime.now(timezone.utc),
+            }
+        )
 
     def remove_attribute(self, key: str) -> "Resource":
         """Remove an attribute."""
         new_attributes = self.attributes.copy()
         new_attributes.pop(key, None)
-        
-        return self.model_copy(update={
-            "attributes": new_attributes,
-            "updated_at": datetime.now(timezone.utc)
-        })
+
+        return self.model_copy(
+            update={
+                "attributes": new_attributes,
+                "updated_at": datetime.now(timezone.utc),
+            }
+        )
 
     def get_attribute(self, key: str, default: Any = None) -> Any:
         """Get attribute value."""
@@ -82,20 +88,17 @@ class Resource(BaseModel):
         return self.organization_id == organization_id
 
     def deactivate(self) -> "Resource":
-        return self.model_copy(update={
-            "is_active": False,
-            "updated_at": datetime.utcnow()
-        })
+        return self.model_copy(
+            update={"is_active": False, "updated_at": datetime.utcnow()}
+        )
 
     def activate(self) -> "Resource":
-        return self.model_copy(update={
-            "is_active": True,
-            "updated_at": datetime.now(timezone.utc)
-        })
+        return self.model_copy(
+            update={"is_active": True, "updated_at": datetime.now(timezone.utc)}
+        )
 
     def transfer_ownership(self, new_owner_id: UUID) -> "Resource":
         """Transfer resource ownership."""
-        return self.model_copy(update={
-            "owner_id": new_owner_id,
-            "updated_at": datetime.now(timezone.utc)
-        })
+        return self.model_copy(
+            update={"owner_id": new_owner_id, "updated_at": datetime.now(timezone.utc)}
+        )

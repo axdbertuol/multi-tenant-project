@@ -93,12 +93,14 @@ class SqlAlchemyResourceRepository(ResourceRepository):
     def get_by_owner_id(self, owner_id: UUID) -> List[Resource]:
         """Get all resources owned by a user."""
         result = self.session.execute(
-            select(ResourceModel).where(
+            select(ResourceModel)
+            .where(
                 and_(
                     ResourceModel.owner_id == owner_id,
                     ResourceModel.is_active == True,
                 )
-            ).order_by(ResourceModel.created_at.desc())
+            )
+            .order_by(ResourceModel.created_at.desc())
         )
         resource_models = result.scalars().all()
 
@@ -107,12 +109,14 @@ class SqlAlchemyResourceRepository(ResourceRepository):
     def get_by_organization_id(self, organization_id: UUID) -> List[Resource]:
         """Get all resources belonging to an organization."""
         result = self.session.execute(
-            select(ResourceModel).where(
+            select(ResourceModel)
+            .where(
                 and_(
                     ResourceModel.organization_id == organization_id,
                     ResourceModel.is_active == True,
                 )
-            ).order_by(ResourceModel.created_at.desc())
+            )
+            .order_by(ResourceModel.created_at.desc())
         )
         resource_models = result.scalars().all()
 
@@ -121,12 +125,14 @@ class SqlAlchemyResourceRepository(ResourceRepository):
     def get_by_type(self, resource_type: str) -> List[Resource]:
         """Get all resources of a specific type."""
         result = self.session.execute(
-            select(ResourceModel).where(
+            select(ResourceModel)
+            .where(
                 and_(
                     ResourceModel.resource_type == resource_type,
                     ResourceModel.is_active == True,
                 )
-            ).order_by(ResourceModel.created_at.desc())
+            )
+            .order_by(ResourceModel.created_at.desc())
         )
         resource_models = result.scalars().all()
 
@@ -182,9 +188,7 @@ class SqlAlchemyResourceRepository(ResourceRepository):
             query = query.where(ResourceModel.resource_type == resource_type)
 
         query = (
-            query.offset(offset)
-            .limit(limit)
-            .order_by(ResourceModel.created_at.desc())
+            query.offset(offset).limit(limit).order_by(ResourceModel.created_at.desc())
         )
 
         result = self.session.execute(query)

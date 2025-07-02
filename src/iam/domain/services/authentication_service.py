@@ -50,9 +50,9 @@ class AuthenticationService:
     ) -> UserSession:
         """Cria uma nova sessão de usuário."""
         from datetime import datetime, timedelta
-        
+
         expires_at = datetime.utcnow() + timedelta(hours=duration_hours)
-        
+
         session = UserSession.create(
             user_id=user.id,
             session_token=token,

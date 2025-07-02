@@ -47,13 +47,13 @@ role_permission_association = Table(
     Column(
         "role_id",
         UUID(as_uuid=True),
-        ForeignKey("authorization_roles.id"),
+        ForeignKey("contas.authorization_roles.id"),
         primary_key=True,
     ),
     Column(
         "permission_id",
         UUID(as_uuid=True),
-        ForeignKey("authorization_permissions.id"),
+        ForeignKey("contas.authorization_permissions.id"),
         primary_key=True,
     ),
     Column(
@@ -68,20 +68,24 @@ role_permission_association = Table(
 user_role_assignment = Table(
     "user_role_assignments",
     Base.metadata,
-    Column("user_id", UUID(as_uuid=True), ForeignKey("users.id"), primary_key=True),
+    Column(
+        "user_id", UUID(as_uuid=True), ForeignKey("contas.users.id"), primary_key=True
+    ),
     Column(
         "role_id",
         UUID(as_uuid=True),
-        ForeignKey("authorization_roles.id"),
+        ForeignKey("contas.authorization_roles.id"),
         primary_key=True,
     ),
     Column(
         "organization_id",
         UUID(as_uuid=True),
-        ForeignKey("organizations.id"),
+        ForeignKey("contas.organizations.id"),
         nullable=True,
     ),
-    Column("assigned_by", UUID(as_uuid=True), ForeignKey("users.id"), nullable=False),
+    Column(
+        "assigned_by", UUID(as_uuid=True), ForeignKey("contas.users.id"), nullable=False
+    ),
     Column(
         "assigned_at",
         DateTime(timezone=True),
@@ -113,7 +117,7 @@ class UserSessionModel(SQLBaseModel):
     __tablename__ = "user_sessions"
 
     user_id = Column(
-        UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True
+        UUID(as_uuid=True), ForeignKey("contas.users.id"), nullable=False, index=True
     )
     session_token = Column(String(500), nullable=False, unique=True, index=True)
     status = Column(
@@ -141,15 +145,20 @@ class RoleModel(SQLBaseModel):
     name = Column(String(100), nullable=False, index=True)
     description = Column(Text, nullable=False)
     organization_id = Column(
-        UUID(as_uuid=True), ForeignKey("organizations.id"), nullable=True, index=True
-    )
-    parent_role_id = Column(
         UUID(as_uuid=True),
-        ForeignKey("authorization_roles.id"),
+        ForeignKey("contas.organizations.id"),
         nullable=True,
         index=True,
     )
-    created_by = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    parent_role_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("contas.authorization_roles.id"),
+        nullable=True,
+        index=True,
+    )
+    created_by = Column(
+        UUID(as_uuid=True), ForeignKey("contas.users.id"), nullable=False
+    )
     is_active = Column(Boolean, default=True, nullable=False)
     is_system_role = Column(Boolean, default=False, nullable=False)
 
@@ -185,9 +194,14 @@ class PolicyModel(SQLBaseModel):
     action = Column(String(50), nullable=False, index=True)
     conditions = Column(JSON, nullable=False, default=[])  # List of policy conditions
     organization_id = Column(
-        UUID(as_uuid=True), ForeignKey("organizations.id"), nullable=True, index=True
+        UUID(as_uuid=True),
+        ForeignKey("contas.organizations.id"),
+        nullable=True,
+        index=True,
     )
-    created_by = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    created_by = Column(
+        UUID(as_uuid=True), ForeignKey("contas.users.id"), nullable=False
+    )
     priority = Column(Integer, default=0, nullable=False)
     is_active = Column(Boolean, default=True, nullable=False)
 
@@ -204,9 +218,14 @@ class ResourceModel(SQLBaseModel):
 
     resource_type = Column(String(50), nullable=False, index=True)
     resource_id = Column(UUID(as_uuid=True), nullable=False, index=True)
-    owner_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
+    owner_id = Column(
+        UUID(as_uuid=True), ForeignKey("contas.users.id"), nullable=False, index=True
+    )
     organization_id = Column(
-        UUID(as_uuid=True), ForeignKey("organizations.id"), nullable=True, index=True
+        UUID(as_uuid=True),
+        ForeignKey("contas.organizations.id"),
+        nullable=True,
+        index=True,
     )
     attributes = Column(JSON, nullable=False, default={})
     is_active = Column(Boolean, default=True, nullable=False)

@@ -12,6 +12,7 @@ class PermissionEffect(str, Enum):
 
 class ContextCondition(BaseModel):
     """Defines conditions that must be met for the permission to apply"""
+
     attribute: str  # e.g., "user.department", "resource.project_code", "context.time"
     operator: str  # e.g., "equals", "in", "contains", "greater_than"
     value: Any  # e.g., "engineering", ["proj_a", "proj_b"], "2024-01-01"
@@ -21,6 +22,7 @@ class ContextCondition(BaseModel):
 
 class ResourcePermission(BaseModel):
     """Specific permission for a user/role on a resource with contextual conditions"""
+
     id: UUID
     user_id: Optional[UUID] = None  # Direct user permission
     role_id: Optional[UUID] = None  # Role-based permission
@@ -86,13 +88,17 @@ class ResourcePermission(BaseModel):
         )
 
     def revoke(self, revoked_by: UUID) -> "ResourcePermission":
-        return self.model_copy(update={
-            "revoked_at": datetime.utcnow(),
-            "revoked_by": revoked_by,
-            "is_active": False,
-        })
+        return self.model_copy(
+            update={
+                "revoked_at": datetime.utcnow(),
+                "revoked_by": revoked_by,
+                "is_active": False,
+            }
+        )
 
-    def update_conditions(self, conditions: list[ContextCondition]) -> "ResourcePermission":
+    def update_conditions(
+        self, conditions: list[ContextCondition]
+    ) -> "ResourcePermission":
         return self.model_copy(update={"conditions": conditions})
 
     def update_priority(self, priority: int) -> "ResourcePermission":

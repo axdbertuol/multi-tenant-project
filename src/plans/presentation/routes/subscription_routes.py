@@ -17,8 +17,10 @@ from ...application.use_cases.subscription_use_cases import SubscriptionUseCase
 router = APIRouter(prefix="/subscriptions", tags=["Subscriptions"])
 
 
-@router.post("/", response_model=SubscriptionResponseDTO, status_code=status.HTTP_201_CREATED)
-async def create_subscription(
+@router.post(
+    "/", response_model=SubscriptionResponseDTO, status_code=status.HTTP_201_CREATED
+)
+def create_subscription(
     dto: SubscriptionCreateDTO,
     use_case: SubscriptionUseCase = Depends(get_subscription_use_case),
 ):
@@ -30,7 +32,7 @@ async def create_subscription(
 
 
 @router.get("/{subscription_id}", response_model=SubscriptionResponseDTO)
-async def get_subscription_by_id(
+def get_subscription_by_id(
     subscription_id: UUID,
     use_case: SubscriptionUseCase = Depends(get_subscription_use_case),
 ):
@@ -48,7 +50,7 @@ async def get_subscription_by_id(
 
 
 @router.get("/", response_model=SubscriptionListResponseDTO)
-async def list_subscriptions(
+def list_subscriptions(
     organization_id: Optional[UUID] = Query(None, description="Filter by organization"),
     plan_id: Optional[UUID] = Query(None, description="Filter by plan"),
     status: Optional[str] = Query(None, description="Filter by status"),
@@ -65,14 +67,14 @@ async def list_subscriptions(
             status=status,
             billing_cycle=billing_cycle,
             page=page,
-            page_size=page_size
+            page_size=page_size,
         )
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
 
 @router.get("/organization/{organization_id}", response_model=SubscriptionResponseDTO)
-async def get_organization_subscription(
+def get_organization_subscription(
     organization_id: UUID,
     use_case: SubscriptionUseCase = Depends(get_subscription_use_case),
 ):
@@ -90,7 +92,7 @@ async def get_organization_subscription(
 
 
 @router.put("/{subscription_id}", response_model=SubscriptionResponseDTO)
-async def update_subscription(
+def update_subscription(
     subscription_id: UUID,
     dto: SubscriptionUpdateDTO,
     use_case: SubscriptionUseCase = Depends(get_subscription_use_case),
@@ -109,7 +111,7 @@ async def update_subscription(
 
 
 @router.post("/{subscription_id}/activate", response_model=SubscriptionResponseDTO)
-async def activate_subscription(
+def activate_subscription(
     subscription_id: UUID,
     use_case: SubscriptionUseCase = Depends(get_subscription_use_case),
 ):
@@ -127,7 +129,7 @@ async def activate_subscription(
 
 
 @router.post("/{subscription_id}/cancel", response_model=SubscriptionResponseDTO)
-async def cancel_subscription(
+def cancel_subscription(
     subscription_id: UUID,
     dto: SubscriptionCancellationDTO,
     use_case: SubscriptionUseCase = Depends(get_subscription_use_case),
@@ -146,7 +148,7 @@ async def cancel_subscription(
 
 
 @router.post("/{subscription_id}/suspend", response_model=SubscriptionResponseDTO)
-async def suspend_subscription(
+def suspend_subscription(
     subscription_id: UUID,
     reason: Optional[str] = Query(None, description="Reason for suspension"),
     use_case: SubscriptionUseCase = Depends(get_subscription_use_case),
@@ -165,7 +167,7 @@ async def suspend_subscription(
 
 
 @router.post("/{subscription_id}/reactivate", response_model=SubscriptionResponseDTO)
-async def reactivate_subscription(
+def reactivate_subscription(
     subscription_id: UUID,
     use_case: SubscriptionUseCase = Depends(get_subscription_use_case),
 ):
@@ -183,7 +185,7 @@ async def reactivate_subscription(
 
 
 @router.post("/{subscription_id}/upgrade", response_model=SubscriptionResponseDTO)
-async def upgrade_subscription(
+def upgrade_subscription(
     subscription_id: UUID,
     dto: SubscriptionUpgradeDTO,
     use_case: SubscriptionUseCase = Depends(get_subscription_use_case),
@@ -202,7 +204,7 @@ async def upgrade_subscription(
 
 
 @router.post("/{subscription_id}/downgrade", response_model=SubscriptionResponseDTO)
-async def downgrade_subscription(
+def downgrade_subscription(
     subscription_id: UUID,
     dto: SubscriptionDowngradeDTO,
     use_case: SubscriptionUseCase = Depends(get_subscription_use_case),
@@ -221,9 +223,11 @@ async def downgrade_subscription(
 
 
 @router.post("/{subscription_id}/extend")
-async def extend_subscription(
+def extend_subscription(
     subscription_id: UUID,
-    extension_days: int = Query(..., ge=1, le=3650, description="Days to extend subscription"),
+    extension_days: int = Query(
+        ..., ge=1, le=3650, description="Days to extend subscription"
+    ),
     use_case: SubscriptionUseCase = Depends(get_subscription_use_case),
 ):
     """Extend subscription end date."""
@@ -240,7 +244,7 @@ async def extend_subscription(
 
 
 @router.get("/{subscription_id}/billing-history")
-async def get_subscription_billing_history(
+def get_subscription_billing_history(
     subscription_id: UUID,
     page: int = Query(1, ge=1, description="Page number"),
     page_size: int = Query(20, ge=1, le=100, description="Items per page"),
@@ -262,7 +266,7 @@ async def get_subscription_billing_history(
 
 
 @router.get("/{subscription_id}/usage")
-async def get_subscription_usage(
+def get_subscription_usage(
     subscription_id: UUID,
     start_date: Optional[str] = Query(None, description="Start date (YYYY-MM-DD)"),
     end_date: Optional[str] = Query(None, description="End date (YYYY-MM-DD)"),
@@ -282,7 +286,7 @@ async def get_subscription_usage(
 
 
 @router.delete("/{subscription_id}")
-async def delete_subscription(
+def delete_subscription(
     subscription_id: UUID,
     use_case: SubscriptionUseCase = Depends(get_subscription_use_case),
 ):

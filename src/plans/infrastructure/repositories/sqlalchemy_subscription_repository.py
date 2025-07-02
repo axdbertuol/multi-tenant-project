@@ -5,7 +5,11 @@ from sqlalchemy.orm import Session
 from sqlalchemy import select, update, delete, and_
 from sqlalchemy.exc import IntegrityError
 
-from ...domain.entities.subscription import Subscription, SubscriptionStatus, BillingCycle
+from ...domain.entities.subscription import (
+    Subscription,
+    SubscriptionStatus,
+    BillingCycle,
+)
 from ...domain.repositories.subscription_repository import SubscriptionRepository
 from ...infrastructure.database.models import (
     SubscriptionModel,
@@ -31,7 +35,9 @@ class SqlAlchemySubscriptionRepository(SubscriptionRepository):
                 existing.organization_id = subscription.organization_id
                 existing.plan_id = subscription.plan_id
                 existing.status = SubscriptionStatusEnum(subscription.status.value)
-                existing.billing_cycle = BillingCycleEnum(subscription.billing_cycle.value)
+                existing.billing_cycle = BillingCycleEnum(
+                    subscription.billing_cycle.value
+                )
                 existing.starts_at = subscription.starts_at
                 existing.ends_at = subscription.ends_at
                 existing.next_billing_date = subscription.next_billing_date

@@ -15,7 +15,7 @@ router = APIRouter(prefix="/plans", tags=["Plans"])
 
 
 @router.post("/", response_model=PlanResponseDTO, status_code=status.HTTP_201_CREATED)
-async def create_plan(
+def create_plan(
     dto: PlanCreateDTO,
     use_case: PlanUseCase = Depends(get_plan_use_case),
 ):
@@ -27,7 +27,7 @@ async def create_plan(
 
 
 @router.get("/{plan_id}", response_model=PlanResponseDTO)
-async def get_plan_by_id(
+def get_plan_by_id(
     plan_id: UUID,
     use_case: PlanUseCase = Depends(get_plan_use_case),
 ):
@@ -45,7 +45,7 @@ async def get_plan_by_id(
 
 
 @router.get("/", response_model=PlanListResponseDTO)
-async def list_plans(
+def list_plans(
     plan_type: Optional[str] = Query(None, description="Filter by plan type"),
     is_active: Optional[bool] = Query(None, description="Filter by active status"),
     page: int = Query(1, ge=1, description="Page number"),
@@ -55,17 +55,14 @@ async def list_plans(
     """List plans with pagination and filters."""
     try:
         return use_case.list_plans(
-            plan_type=plan_type,
-            is_active=is_active,
-            page=page,
-            page_size=page_size
+            plan_type=plan_type, is_active=is_active, page=page, page_size=page_size
         )
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
 
 @router.put("/{plan_id}", response_model=PlanResponseDTO)
-async def update_plan(
+def update_plan(
     plan_id: UUID,
     dto: PlanUpdateDTO,
     use_case: PlanUseCase = Depends(get_plan_use_case),
@@ -84,7 +81,7 @@ async def update_plan(
 
 
 @router.post("/{plan_id}/activate", response_model=PlanResponseDTO)
-async def activate_plan(
+def activate_plan(
     plan_id: UUID,
     use_case: PlanUseCase = Depends(get_plan_use_case),
 ):
@@ -102,7 +99,7 @@ async def activate_plan(
 
 
 @router.post("/{plan_id}/deactivate", response_model=PlanResponseDTO)
-async def deactivate_plan(
+def deactivate_plan(
     plan_id: UUID,
     use_case: PlanUseCase = Depends(get_plan_use_case),
 ):
@@ -120,7 +117,7 @@ async def deactivate_plan(
 
 
 @router.delete("/{plan_id}")
-async def delete_plan(
+def delete_plan(
     plan_id: UUID,
     use_case: PlanUseCase = Depends(get_plan_use_case),
 ):
@@ -138,7 +135,7 @@ async def delete_plan(
 
 
 @router.get("/{plan_id}/pricing")
-async def get_plan_pricing(
+def get_plan_pricing(
     plan_id: UUID,
     billing_cycle: Optional[str] = Query("monthly", description="Billing cycle"),
     use_case: PlanUseCase = Depends(get_plan_use_case),
@@ -157,7 +154,7 @@ async def get_plan_pricing(
 
 
 @router.get("/{plan_id}/features")
-async def get_plan_features(
+def get_plan_features(
     plan_id: UUID,
     use_case: PlanUseCase = Depends(get_plan_use_case),
 ):
@@ -175,7 +172,7 @@ async def get_plan_features(
 
 
 @router.post("/{plan_id}/duplicate", response_model=PlanResponseDTO)
-async def duplicate_plan(
+def duplicate_plan(
     plan_id: UUID,
     new_name: str = Query(..., description="Name for the duplicated plan"),
     use_case: PlanUseCase = Depends(get_plan_use_case),

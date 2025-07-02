@@ -34,7 +34,7 @@ class UserSession(BaseModel):
         session_token: str,
         expires_at: datetime,
         ip_address: Optional[str] = None,
-        user_agent: Optional[str] = None
+        user_agent: Optional[str] = None,
     ) -> "UserSession":
         now = datetime.utcnow()
         return cls(
@@ -46,37 +46,40 @@ class UserSession(BaseModel):
             expires_at=expires_at,
             ip_address=ip_address,
             user_agent=user_agent,
-            created_at=now
+            created_at=now,
         )
 
     def logout(self) -> "UserSession":
         """Mark session as logged out."""
-        return self.model_copy(update={
-            "status": SessionStatus.LOGGED_OUT,
-            "logout_at": datetime.utcnow(),
-            "updated_at": datetime.utcnow()
-        })
+        return self.model_copy(
+            update={
+                "status": SessionStatus.LOGGED_OUT,
+                "logout_at": datetime.utcnow(),
+                "updated_at": datetime.utcnow(),
+            }
+        )
 
     def expire(self) -> "UserSession":
         """Mark session as expired."""
-        return self.model_copy(update={
-            "status": SessionStatus.EXPIRED,
-            "updated_at": datetime.utcnow()
-        })
+        return self.model_copy(
+            update={"status": SessionStatus.EXPIRED, "updated_at": datetime.utcnow()}
+        )
 
     def revoke(self) -> "UserSession":
         """Mark session as revoked (admin action)."""
-        return self.model_copy(update={
-            "status": SessionStatus.REVOKED,
-            "logout_at": datetime.utcnow(),
-            "updated_at": datetime.utcnow()
-        })
+        return self.model_copy(
+            update={
+                "status": SessionStatus.REVOKED,
+                "logout_at": datetime.utcnow(),
+                "updated_at": datetime.utcnow(),
+            }
+        )
 
     def is_active(self) -> bool:
         """Check if session is currently active."""
         if self.status != SessionStatus.ACTIVE:
             return False
-        
+
         return datetime.utcnow() < self.expires_at
 
     def is_expired(self) -> bool:
@@ -87,7 +90,7 @@ class UserSession(BaseModel):
         """Get session duration in seconds. Returns None if still active."""
         if not self.logout_at:
             return None
-        
+
         duration = self.logout_at - self.login_at
         return int(duration.total_seconds())
 
@@ -95,8 +98,7 @@ class UserSession(BaseModel):
         """Extend session expiration time."""
         if self.status != SessionStatus.ACTIVE:
             raise ValueError("Cannot extend inactive session")
-        
-        return self.model_copy(update={
-            "expires_at": new_expires_at,
-            "updated_at": datetime.utcnow()
-        })
+
+        return self.model_copy(
+            update={"expires_at": new_expires_at, "updated_at": datetime.utcnow()}
+        )

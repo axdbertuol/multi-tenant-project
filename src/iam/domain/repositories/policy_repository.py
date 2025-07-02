@@ -101,5 +101,7 @@ class PolicyRepository(ABC):
         pass
 
     @abstractmethod
-    def find_by_resource_type(self, resource_type: str, organization_id: Optional[UUID]) -> List[Policy]:
+    def find_by_resource_type(
+        self, resource_type: str, organization_id: Optional[UUID]
+    ) -> List[Policy]:
         pass

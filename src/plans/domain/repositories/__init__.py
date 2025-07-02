@@ -7,11 +7,11 @@ from .plan_feature_repository import PlanFeatureRepository
 from .subscription_repository import SubscriptionRepository
 
 __all__ = [
-    "PlanRepository", 
+    "PlanRepository",
     "PlanResourceRepository",
     "PlanConfigurationRepository",
-    "OrganizationPlanRepository", 
+    "OrganizationPlanRepository",
     "FeatureUsageRepository",
     "PlanFeatureRepository",
-    "SubscriptionRepository"
+    "SubscriptionRepository",
 ]

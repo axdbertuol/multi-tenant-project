@@ -22,7 +22,7 @@ def get_client_info(request: Request) -> tuple[Optional[str], Optional[str]]:
 
 
 @router.post("/login", response_model=AuthResponseDTO)
-async def login(
+def login(
     dto: LoginDTO,
     request: Request,
     use_case: AuthenticationUseCase = Depends(get_auth_use_case),
@@ -38,7 +38,7 @@ async def login(
 
 
 @router.post("/logout")
-async def logout(
+def logout(
     dto: LogoutDTO,
     request: Request,
     use_case: AuthenticationUseCase = Depends(get_auth_use_case),
@@ -68,7 +68,7 @@ async def logout(
 
 
 @router.post("/refresh", response_model=AuthResponseDTO)
-async def refresh_session(
+def refresh_session(
     request: Request,
     use_case: AuthenticationUseCase = Depends(get_auth_use_case),
 ):
@@ -97,7 +97,7 @@ async def refresh_session(
 
 
 @router.get("/validate")
-async def validate_session(
+def validate_session(
     request: Request,
     use_case: AuthenticationUseCase = Depends(get_auth_use_case),
 ):
@@ -126,7 +126,7 @@ async def validate_session(
 
 
 @router.post("/password-reset/request")
-async def request_password_reset(
+def request_password_reset(
     dto: PasswordResetRequestDTO,
     use_case: AuthenticationUseCase = Depends(get_auth_use_case),
 ):
@@ -139,7 +139,7 @@ async def request_password_reset(
 
 
 @router.post("/password-reset/confirm")
-async def confirm_password_reset(
+def confirm_password_reset(
     dto: PasswordResetConfirmDTO,
     use_case: AuthenticationUseCase = Depends(get_auth_use_case),
 ):

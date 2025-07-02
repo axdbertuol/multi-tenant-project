@@ -35,7 +35,9 @@ class LogoutDTO2(BaseModel):
 class LogoutDTO(BaseModel):
     """DTO para logout de usuário."""
 
-    revoke_all_sessions: bool = Field(False, description="Revogar todas as sessões do usuário")
+    revoke_all_sessions: bool = Field(
+        False, description="Revogar todas as sessões do usuário"
+    )
 
 
 class LogoutResponseDTO(BaseModel):

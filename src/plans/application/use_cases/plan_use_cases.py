@@ -85,7 +85,9 @@ class PlanUseCase:
                 return False
 
             # Check if plan has active subscriptions
-            subscription_count = self._plan_repository.get_active_subscription_count(plan_id)
+            subscription_count = self._plan_repository.get_active_subscription_count(
+                plan_id
+            )
             if subscription_count > 0:
                 raise ValueError("Cannot delete plan with active subscriptions")
 
@@ -281,7 +283,9 @@ class PlanUseCase:
 
     def _build_plan_response(self, plan: Plan) -> PlanResponseDTO:
         """Build plan response DTO."""
-        subscription_count = self._plan_repository.get_active_subscription_count(plan.id)
+        subscription_count = self._plan_repository.get_active_subscription_count(
+            plan.id
+        )
 
         return PlanResponseDTO(
             id=plan.id,

@@ -18,11 +18,15 @@ def get_plan_use_case(uow: PlansUnitOfWork = Depends(get_plans_uow)) -> PlanUseC
     return PlanUseCase(uow)
 
 
-def get_subscription_use_case(uow: PlansUnitOfWork = Depends(get_plans_uow)) -> SubscriptionUseCase:
+def get_subscription_use_case(
+    uow: PlansUnitOfWork = Depends(get_plans_uow),
+) -> SubscriptionUseCase:
     """Get SubscriptionUseCase with proper UnitOfWork dependency."""
     return SubscriptionUseCase(uow)
 
 
-def get_plan_resource_use_case(uow: PlansUnitOfWork = Depends(get_plans_uow)) -> PlanResourceUseCase:
+def get_plan_resource_use_case(
+    uow: PlansUnitOfWork = Depends(get_plans_uow),
+) -> PlanResourceUseCase:
     """Get PlanResourceUseCase with proper UnitOfWork dependency."""
     return PlanResourceUseCase(uow)

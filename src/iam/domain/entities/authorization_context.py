@@ -6,7 +6,7 @@ from pydantic import BaseModel
 
 class AuthorizationContext(BaseModel):
     """Context for authorization decisions containing all relevant information."""
-    
+
     user_id: UUID
     organization_id: Optional[UUID]
     resource_type: str
@@ -16,7 +16,7 @@ class AuthorizationContext(BaseModel):
     resource_attributes: Dict[str, Any]
     environment_attributes: Dict[str, Any]
     request_time: datetime
-    
+
     model_config = {"frozen": True}
 
     @classmethod
@@ -29,7 +29,7 @@ class AuthorizationContext(BaseModel):
         resource_id: Optional[UUID] = None,
         user_attributes: Optional[Dict[str, Any]] = None,
         resource_attributes: Optional[Dict[str, Any]] = None,
-        environment_attributes: Optional[Dict[str, Any]] = None
+        environment_attributes: Optional[Dict[str, Any]] = None,
     ) -> "AuthorizationContext":
         return cls(
             user_id=user_id,
@@ -40,7 +40,7 @@ class AuthorizationContext(BaseModel):
             user_attributes=user_attributes or {},
             resource_attributes=resource_attributes or {},
             environment_attributes=environment_attributes or {},
-            request_time=datetime.now(timezone.utc)
+            request_time=datetime.now(timezone.utc),
         )
 
     def add_user_attribute(self, key: str, value: Any) -> "AuthorizationContext":
@@ -77,14 +77,16 @@ class AuthorizationContext(BaseModel):
         """Convert context to dictionary for policy evaluation."""
         return {
             "user_id": str(self.user_id),
-            "organization_id": str(self.organization_id) if self.organization_id else None,
+            "organization_id": str(self.organization_id)
+            if self.organization_id
+            else None,
             "resource_type": self.resource_type,
             "resource_id": str(self.resource_id) if self.resource_id else None,
             "action": self.action,
             "request_time": self.request_time.isoformat(),
             **self.user_attributes,
             **{f"resource_{k}": v for k, v in self.resource_attributes.items()},
-            **{f"env_{k}": v for k, v in self.environment_attributes.items()}
+            **{f"env_{k}": v for k, v in self.environment_attributes.items()},
         }
 
     def is_same_organization(self, other_org_id: Optional[UUID]) -> bool:

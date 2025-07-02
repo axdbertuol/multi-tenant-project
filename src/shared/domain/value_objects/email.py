@@ -8,7 +8,7 @@ class Email(BaseModel):
 
     model_config = {"frozen": True}
 
-    @field_validator('value')
+    @field_validator("value")
     @classmethod
     def validate_email(cls, v: str) -> str:
         if not cls._is_valid_email(v):
@@ -17,7 +17,7 @@ class Email(BaseModel):
 
     @staticmethod
     def _is_valid_email(email: str) -> bool:
-        pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+        pattern = r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$"
         return re.match(pattern, email) is not None
 
     def __str__(self) -> str:

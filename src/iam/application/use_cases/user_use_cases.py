@@ -124,8 +124,8 @@ class UserUseCase:
             if not user:
                 raise ValueError("User not found")
 
-            can_deactivate, reason = self._user_domain_service.validate_user_deactivation(
-                user
+            can_deactivate, reason = (
+                self._user_domain_service.validate_user_deactivation(user)
             )
             if not can_deactivate:
                 raise ValueError(f"Cannot deactivate user: {reason}")
@@ -143,7 +143,9 @@ class UserUseCase:
             if not user:
                 raise ValueError("User not found")
 
-            can_activate, reason = self._user_domain_service.validate_user_activation(user)
+            can_activate, reason = self._user_domain_service.validate_user_activation(
+                user
+            )
             if not can_activate:
                 raise ValueError(f"Cannot activate user: {reason}")
 
@@ -202,4 +204,3 @@ class UserUseCase:
         """Verifica se o email está disponível para uso."""
         email_vo = Email(value=email)
         return self._user_domain_service.is_email_available(email_vo, excluding_user_id)
-

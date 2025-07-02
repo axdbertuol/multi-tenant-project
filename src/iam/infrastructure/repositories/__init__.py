@@ -7,9 +7,9 @@ from .sqlalchemy_user_session_repository import SqlAlchemyUserSessionRepository
 
 __all__ = [
     "SqlAlchemyRoleRepository",
-    "SqlAlchemyPermissionRepository", 
+    "SqlAlchemyPermissionRepository",
     "SqlAlchemyPolicyRepository",
     "SqlAlchemyResourceRepository",
     "SqlAlchemyUserRepository",
-    "SqlAlchemyUserSessionRepository"
+    "SqlAlchemyUserSessionRepository",
 ]

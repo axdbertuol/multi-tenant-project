@@ -23,7 +23,9 @@ class RBACService:
         self._role_repository = role_repository
         self._permission_repository = permission_repository
         self._role_permission_repository = role_permission_repository
-        self._role_inheritance_service = role_inheritance_service or RoleInheritanceService()
+        self._role_inheritance_service = (
+            role_inheritance_service or RoleInheritanceService()
+        )
 
     def authorize(self, context: AuthorizationContext) -> AuthorizationDecision:
         """Authorize request using RBAC."""
@@ -135,7 +137,7 @@ class RBACService:
 
         # Get all roles in the organization hierarchy
         all_roles = self._role_repository.get_role_hierarchy(organization_id)
-        
+
         # Build role permissions map
         role_permissions_map: Dict[UUID, List[Permission]] = {}
         for role in all_roles:
@@ -146,8 +148,10 @@ class RBACService:
 
         # Get effective permissions for user roles (including inherited)
         user_role_ids = [role.id for role in user_roles if role.is_active]
-        effective_permissions = self._role_inheritance_service.get_effective_permissions_for_user_roles(
-            user_role_ids, all_roles, role_permissions_map
+        effective_permissions = (
+            self._role_inheritance_service.get_effective_permissions_for_user_roles(
+                user_role_ids, all_roles, role_permissions_map
+            )
         )
 
         # Convert to permission name strings

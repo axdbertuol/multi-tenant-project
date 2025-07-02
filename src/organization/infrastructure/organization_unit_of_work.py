@@ -15,10 +15,16 @@ class OrganizationUnitOfWork(SQLAlchemyUnitOfWork):
 
     def __init__(self, session: Session, repositories: list[str]):
         if "organization" in repositories:
-            self._repositories.update({"organization": SqlAlchemyOrganizationRepository(session)})
+            self._repositories.update(
+                {"organization": SqlAlchemyOrganizationRepository(session)}
+            )
         if "user_organization_role" in repositories:
             self._repositories.update(
-                {"user_organization_role": SqlAlchemyUserOrganizationRoleRepository(session)}
+                {
+                    "user_organization_role": SqlAlchemyUserOrganizationRoleRepository(
+                        session
+                    )
+                }
             )
 
         super().__init__(session)

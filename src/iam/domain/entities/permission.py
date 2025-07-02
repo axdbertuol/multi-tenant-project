@@ -32,12 +32,12 @@ class Permission(BaseModel):
 
     @classmethod
     def create(
-        cls, 
-        name: str, 
-        description: str, 
+        cls,
+        name: str,
+        description: str,
         action: PermissionAction,
         resource_type: str,
-        is_system_permission: bool = False
+        is_system_permission: bool = False,
     ) -> "Permission":
         return cls(
             id=uuid4(),
@@ -47,29 +47,26 @@ class Permission(BaseModel):
             resource_type=resource_type,
             created_at=datetime.now(timezone.utc),
             is_active=True,
-            is_system_permission=is_system_permission
+            is_system_permission=is_system_permission,
         )
 
     def update_description(self, description: str) -> "Permission":
-        return self.model_copy(update={
-            "description": description,
-            "updated_at": datetime.utcnow()
-        })
+        return self.model_copy(
+            update={"description": description, "updated_at": datetime.utcnow()}
+        )
 
     def deactivate(self) -> "Permission":
         if self.is_system_permission:
             raise ValueError("Cannot deactivate system permissions")
-        
-        return self.model_copy(update={
-            "is_active": False,
-            "updated_at": datetime.utcnow()
-        })
+
+        return self.model_copy(
+            update={"is_active": False, "updated_at": datetime.utcnow()}
+        )
 
     def activate(self) -> "Permission":
-        return self.model_copy(update={
-            "is_active": True,
-            "updated_at": datetime.now(timezone.utc)
-        })
+        return self.model_copy(
+            update={"is_active": True, "updated_at": datetime.now(timezone.utc)}
+        )
 
     def get_full_name(self) -> str:
         """Get full permission name in format: resource_type:action"""
@@ -79,13 +76,15 @@ class Permission(BaseModel):
         """Check if permission can be deleted."""
         if self.is_system_permission:
             return False, "System permissions cannot be deleted"
-        
+
         return True, "Permission can be deleted"
 
-    def matches_resource_and_action(self, resource_type: str, action: PermissionAction) -> bool:
+    def matches_resource_and_action(
+        self, resource_type: str, action: PermissionAction
+    ) -> bool:
         """Check if this permission matches the given resource and action."""
         return (
-            self.resource_type == resource_type and 
-            self.action == action and 
-            self.is_active
+            self.resource_type == resource_type
+            and self.action == action
+            and self.is_active
         )

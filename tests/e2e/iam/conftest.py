@@ -7,17 +7,14 @@ def test_iam_user_data():
     return {
         "email": "iamtest@example.com",
         "name": "IAM Test User",
-        "password": "Password123!"
+        "password": "Password123!",
     }
 
 
 @pytest.fixture
 def test_iam_login_data():
     """Login data for IAM e2e tests."""
-    return {
-        "email": "iamtest@example.com",
-        "password": "Password123!"
-    }
+    return {"email": "iamtest@example.com", "password": "Password123!"}
 
 
 @pytest.fixture
@@ -26,14 +23,11 @@ def admin_user_data():
     return {
         "email": "admin@example.com",
         "name": "Admin User",
-        "password": "AdminPass123!"
+        "password": "AdminPass123!",
     }
 
 
 @pytest.fixture
 def admin_login_data():
     """Admin login data for IAM e2e tests."""
-    return {
-        "email": "admin@example.com",
-        "password": "AdminPass123!"
-    }
+    return {"email": "admin@example.com", "password": "AdminPass123!"}

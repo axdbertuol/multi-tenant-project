@@ -248,7 +248,7 @@ class PlanResourceUseCase:
             resource.updated_at = datetime.now(timezone.utc)
 
             updated_resource = self._plan_resource_repository.save(resource)
-            
+
         return self._build_resource_response(updated_resource)
 
     def disable_resource(self, resource_id: UUID) -> Optional[PlanResourceResponseDTO]:
@@ -262,7 +262,7 @@ class PlanResourceUseCase:
             resource.updated_at = datetime.now(timezone.utc)
 
             updated_resource = self._plan_resource_repository.save(resource)
-            
+
         return self._build_resource_response(updated_resource)
 
     def duplicate_resource(
@@ -295,7 +295,7 @@ class PlanResourceUseCase:
             )
 
             saved_duplicate = self._plan_resource_repository.save(duplicate_resource)
-            
+
         return self._build_resource_response(saved_duplicate)
 
     def _generate_configuration_recommendations(

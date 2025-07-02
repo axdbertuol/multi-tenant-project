@@ -53,7 +53,9 @@ def create_organization(
 )
 def list_organizations(
     page: int = Query(1, ge=1, description="Page number"),
-    page_size: int = Query(100, ge=1, le=1000, description="Number of organizations per page"),
+    page_size: int = Query(
+        100, ge=1, le=1000, description="Number of organizations per page"
+    ),
     active_only: bool = Query(True, description="Filter for active organizations only"),
     use_case: OrganizationUseCase = Depends(get_organization_use_case),
 ) -> OrganizationListResponseDTO:
@@ -134,7 +136,9 @@ def update_organization(
     use_case: OrganizationUseCase = Depends(get_organization_use_case),
 ) -> OrganizationResponseDTO:
     try:
-        return use_case.update_organization(organization_id, update_data, current_user_id)
+        return use_case.update_organization(
+            organization_id, update_data, current_user_id
+        )
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
     except Exception as e:

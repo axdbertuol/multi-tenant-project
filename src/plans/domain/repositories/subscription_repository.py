@@ -25,7 +25,9 @@ class SubscriptionRepository(ABC):
         pass
 
     @abstractmethod
-    def find_active_by_organization(self, organization_id: UUID) -> Optional[Subscription]:
+    def find_active_by_organization(
+        self, organization_id: UUID
+    ) -> Optional[Subscription]:
         """Find active subscription for an organization."""
         pass
 
@@ -60,7 +62,7 @@ class SubscriptionRepository(ABC):
         limit: int = 20,
     ) -> Tuple[List[Subscription], int]:
         """Find subscriptions with pagination and filters.
-        
+
         Returns:
             Tuple of (subscriptions, total_count)
         """
@@ -69,7 +71,7 @@ class SubscriptionRepository(ABC):
     @abstractmethod
     def delete(self, subscription_id: UUID) -> bool:
         """Delete a subscription (hard delete).
-        
+
         Returns:
             True if subscription was deleted, False if not found
         """
@@ -78,7 +80,7 @@ class SubscriptionRepository(ABC):
     @abstractmethod
     def update_status(self, subscription_id: UUID, status: str) -> bool:
         """Update subscription status.
-        
+
         Returns:
             True if subscription was updated, False if not found
         """
@@ -92,12 +94,12 @@ class SubscriptionRepository(ABC):
         cancellation_reason: Optional[str] = None,
     ) -> bool:
         """Cancel a subscription.
-        
+
         Args:
             subscription_id: ID of subscription to cancel
             cancelled_at: Timestamp when subscription was cancelled
             cancellation_reason: Optional reason for cancellation
-            
+
         Returns:
             True if subscription was cancelled, False if not found
         """
@@ -108,7 +110,7 @@ class SubscriptionRepository(ABC):
         self, subscription_id: UUID, next_billing_date: datetime
     ) -> bool:
         """Update subscription billing date.
-        
+
         Returns:
             True if subscription was updated, False if not found
         """
@@ -119,7 +121,7 @@ class SubscriptionRepository(ABC):
         self, subscription_id: UUID, new_end_date: datetime
     ) -> bool:
         """Extend subscription end date.
-        
+
         Returns:
             True if subscription was extended, False if not found
         """
@@ -128,7 +130,7 @@ class SubscriptionRepository(ABC):
     @abstractmethod
     def change_plan(self, subscription_id: UUID, new_plan_id: UUID) -> bool:
         """Change subscription plan.
-        
+
         Returns:
             True if plan was changed, False if not found
         """
@@ -142,7 +144,7 @@ class SubscriptionRepository(ABC):
     @abstractmethod
     def get_revenue_by_period(self, start_date: datetime, end_date: datetime) -> dict:
         """Get revenue data for a period.
-        
+
         Returns:
             Dictionary with revenue metrics for the period
         """

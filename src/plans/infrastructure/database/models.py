@@ -1,9 +1,21 @@
-from sqlalchemy import Column, String, Boolean, ForeignKey, Text, Enum, Integer, Numeric, DateTime
+from sqlalchemy import (
+    Column,
+    String,
+    Boolean,
+    ForeignKey,
+    Text,
+    Enum,
+    Integer,
+    Numeric,
+    DateTime,
+    UniqueConstraint,
+    Index,
+)
 from sqlalchemy.dialects.postgresql import UUID, JSON
 from sqlalchemy.sql import func
 import enum
 
-from shared.infrastructure.database.models.base import BaseModel
+from shared.infrastructure.database.base import BaseModel
 
 
 class PlanTypeEnum(str, enum.Enum):
@@ -36,6 +48,7 @@ class BillingCycleEnum(str, enum.Enum):
 
 class PlanModel(BaseModel):
     """SQLAlchemy model for Plan entity."""
+
     __tablename__ = "plans"
 
     name = Column(String(100), nullable=False, unique=True, index=True)
@@ -51,70 +64,108 @@ class PlanModel(BaseModel):
 
 class PlanResourceModel(BaseModel):
     """SQLAlchemy model for PlanResource entity."""
+
     __tablename__ = "plan_resources"
 
-    plan_id = Column(UUID(as_uuid=True), ForeignKey("plans.id"), nullable=False, index=True)
+    plan_id = Column(
+        UUID(as_uuid=True), ForeignKey("contas.plans.id"), nullable=False, index=True
+    )
     resource_type = Column(Enum(PlanResourceTypeEnum), nullable=False, index=True)
-    configuration = Column(JSON, nullable=False, default={})  # Resource-specific configuration
+    configuration = Column(
+        JSON, nullable=False, default={}
+    )  # Resource-specific configuration
     is_enabled = Column(Boolean, default=True, nullable=False)
     limits = Column(JSON, nullable=False, default={})  # Resource limits
-    
+
     # Ensure unique resource type per plan
     __table_args__ = (
-        {'postgresql_unique': ['plan_id', 'resource_type']},
+        UniqueConstraint("plan_id", "resource_type", name="uq_plan_resource_type"),
     )
 
 
 class SubscriptionModel(BaseModel):
     """SQLAlchemy model for Subscription entity."""
+
     __tablename__ = "subscriptions"
 
-    organization_id = Column(UUID(as_uuid=True), ForeignKey("organizations.id"), nullable=False, index=True)
-    plan_id = Column(UUID(as_uuid=True), ForeignKey("plans.id"), nullable=False, index=True)
-    status = Column(Enum(SubscriptionStatusEnum), nullable=False, default=SubscriptionStatusEnum.PENDING, index=True)
+    organization_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("contas.organizations.id"),
+        nullable=False,
+        index=True,
+    )
+    plan_id = Column(
+        UUID(as_uuid=True), ForeignKey("contas.plans.id"), nullable=False, index=True
+    )
+    status = Column(
+        Enum(SubscriptionStatusEnum),
+        nullable=False,
+        default=SubscriptionStatusEnum.PENDING,
+        index=True,
+    )
     billing_cycle = Column(Enum(BillingCycleEnum), nullable=False, index=True)
     starts_at = Column(DateTime(timezone=True), nullable=False, index=True)
     ends_at = Column(DateTime(timezone=True), nullable=True)
     next_billing_date = Column(DateTime(timezone=True), nullable=True)
     cancelled_at = Column(DateTime(timezone=True), nullable=True)
-    metadata = Column(JSON, nullable=False, default={})  # Additional subscription data
-    
+    subscription_metadata = Column(
+        JSON, nullable=False, default={}
+    )  # Additional subscription data
+
     # Ensure one active subscription per organization
-    __table_args__ = (
-        {'postgresql_where': 'status = \'active\''},
-    )
+    # __table_args__ = ({"postgresql_where": "status = 'active'"},)
 
 
 class PlanConfigurationModel(BaseModel):
     """SQLAlchemy model for PlanConfiguration entity."""
+
     __tablename__ = "plan_configurations"
 
-    organization_id = Column(UUID(as_uuid=True), ForeignKey("organizations.id"), nullable=False, index=True)
-    plan_id = Column(UUID(as_uuid=True), ForeignKey("plans.id"), nullable=False, index=True)
-    configuration_data = Column(JSON, nullable=False, default={})  # Configuration settings
+    organization_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("contas.organizations.id"),
+        nullable=False,
+        index=True,
+    )
+    plan_id = Column(
+        UUID(as_uuid=True), ForeignKey("contas.plans.id"), nullable=False, index=True
+    )
+    configuration_data = Column(
+        JSON, nullable=False, default={}
+    )  # Configuration settings
     api_keys = Column(JSON, nullable=False, default={})  # Encrypted API keys
     limits = Column(JSON, nullable=False, default={})  # Custom limits
     is_active = Column(Boolean, default=True, nullable=False)
-    
+
     # Ensure unique configuration per organization-plan
     __table_args__ = (
-        {'postgresql_unique': ['organization_id', 'plan_id']},
+        UniqueConstraint(
+            "plan_id", "organization_id", name="uq_plan_organization_type"
+        ),
     )
 
 
 class FeatureUsageModel(BaseModel):
     """SQLAlchemy model for FeatureUsage entity."""
+
     __tablename__ = "feature_usage"
 
-    organization_id = Column(UUID(as_uuid=True), ForeignKey("organizations.id"), nullable=False, index=True)
+    organization_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("contas.organizations.id"),
+        nullable=False,
+        index=True,
+    )
     resource_type = Column(String(50), nullable=False, index=True)
     feature_name = Column(String(100), nullable=False, index=True)
     usage_count = Column(Integer, default=0, nullable=False)
     usage_date = Column(DateTime(timezone=True), nullable=False, index=True)
-    usage_details = Column(JSON, nullable=False, default={})  # Detailed usage information
+    usage_details = Column(
+        JSON, nullable=False, default={}
+    )  # Detailed usage information
     cost = Column(Numeric(10, 4), nullable=True)  # Cost associated with usage
-    
+
     # Index for efficient usage queries
     __table_args__ = (
-        {'postgresql_index': ['organization_id', 'resource_type', 'usage_date']},
+        Index("ix_usage_lookup", "organization_id", "resource_type", "usage_date"),
     )

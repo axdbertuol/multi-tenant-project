@@ -35,6 +35,11 @@ def db_session() -> Generator:
     # Create tables
     with test_engine.connect() as conn:
         conn.execute(text("CREATE SCHEMA IF NOT EXISTS contas"))
+        conn.commit()
+    import src.iam.infrastructure.database.models
+    import src.plans.infrastructure.database.models
+    import src.organization.infrastructure.database.models
+
     Base.metadata.create_all(bind=test_engine)
     session = TestSessionLocal()
 
@@ -70,25 +75,25 @@ def client(db_session) -> Generator:
     app.dependency_overrides.clear()
 
 
-@pytest.fixture
-def _client(db_session):
-    """Create an  test client for testing."""
+# @pytest.fixture
+# def _client(db_session):
+#     """Create an  test client for testing."""
 
-    def override_get_db():
-        try:
-            yield db_session
-        finally:
-            pass
+#     def override_get_db():
+#         try:
+#             yield db_session
+#         finally:
+#             pass
 
-    app.dependency_overrides[get_db] = override_get_db
-    from httpx import Client, ASGITransport
+#     app.dependency_overrides[get_db] = override_get_db
+#     from httpx import Client, ASGITransport
 
-    transport = ASGITransport(app=app)
-    try:
-        with Client(transport=transport, base_url="http://test") as client:
-            yield client
-    finally:
-        app.dependency_overrides.clear()
+#     transport = ASGITransport(app=app)
+#     try:
+#         with Client(transport=transport, base_url="http://test") as client:
+#             yield client
+#     finally:
+#         app.dependency_overrides.clear()
 
 
 @pytest.fixture

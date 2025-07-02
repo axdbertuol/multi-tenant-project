@@ -47,7 +47,7 @@ class PlanFeature(BaseModel):
         category: FeatureCategory,
         default_value: Any = None,
         configuration_schema: Optional[Dict[str, Any]] = None,
-        is_system_feature: bool = False
+        is_system_feature: bool = False,
     ) -> "PlanFeature":
         return cls(
             id=uuid4(),
@@ -60,7 +60,7 @@ class PlanFeature(BaseModel):
             configuration_schema=configuration_schema or {},
             is_system_feature=is_system_feature,
             created_at=datetime.utcnow(),
-            is_active=True
+            is_active=True,
         )
 
     @classmethod
@@ -86,12 +86,12 @@ class PlanFeature(BaseModel):
                             "enabled": {"type": "boolean"},
                             "start_time": {"type": "string"},
                             "end_time": {"type": "string"},
-                            "timezone": {"type": "string"}
-                        }
-                    }
-                }
+                            "timezone": {"type": "string"},
+                        },
+                    },
+                },
             },
-            is_system_feature=True
+            is_system_feature=True,
         )
 
     @classmethod
@@ -114,72 +114,71 @@ class PlanFeature(BaseModel):
                             "primary_color": {"type": "string"},
                             "secondary_color": {"type": "string"},
                             "font_family": {"type": "string"},
-                            "border_radius": {"type": "number"}
-                        }
+                            "border_radius": {"type": "number"},
+                        },
                     },
                     "position": {
                         "type": "string",
-                        "enum": ["bottom-right", "bottom-left", "top-right", "top-left"]
+                        "enum": [
+                            "bottom-right",
+                            "bottom-left",
+                            "top-right",
+                            "top-left",
+                        ],
                     },
                     "welcome_message": {"type": "string"},
                     "offline_message": {"type": "string"},
-                    "allowed_domains": {
-                        "type": "array",
-                        "items": {"type": "string"}
-                    }
-                }
+                    "allowed_domains": {"type": "array", "items": {"type": "string"}},
+                },
             },
-            is_system_feature=True
+            is_system_feature=True,
         )
 
     def update_description(self, description: str) -> "PlanFeature":
-        return self.model_copy(update={
-            "description": description,
-            "updated_at": datetime.utcnow()
-        })
+        return self.model_copy(
+            update={"description": description, "updated_at": datetime.utcnow()}
+        )
 
     def update_default_value(self, default_value: Any) -> "PlanFeature":
-        return self.model_copy(update={
-            "default_value": default_value,
-            "updated_at": datetime.utcnow()
-        })
+        return self.model_copy(
+            update={"default_value": default_value, "updated_at": datetime.utcnow()}
+        )
 
     def update_configuration_schema(self, schema: Dict[str, Any]) -> "PlanFeature":
-        return self.model_copy(update={
-            "configuration_schema": schema,
-            "updated_at": datetime.utcnow()
-        })
+        return self.model_copy(
+            update={"configuration_schema": schema, "updated_at": datetime.utcnow()}
+        )
 
     def deactivate(self) -> "PlanFeature":
         if self.is_system_feature:
             raise ValueError("Cannot deactivate system features")
-        
-        return self.model_copy(update={
-            "is_active": False,
-            "updated_at": datetime.utcnow()
-        })
+
+        return self.model_copy(
+            update={"is_active": False, "updated_at": datetime.utcnow()}
+        )
 
     def activate(self) -> "PlanFeature":
-        return self.model_copy(update={
-            "is_active": True,
-            "updated_at": datetime.utcnow()
-        })
+        return self.model_copy(
+            update={"is_active": True, "updated_at": datetime.utcnow()}
+        )
 
     def validate_configuration(self, config: Any) -> tuple[bool, str]:
         """Validate a configuration against the schema."""
         # Basic validation - in a real implementation, use jsonschema library
         if self.feature_type == FeatureType.BOOLEAN and not isinstance(config, bool):
             return False, "Configuration must be a boolean value"
-        
-        if self.feature_type == FeatureType.NUMERIC and not isinstance(config, (int, float)):
+
+        if self.feature_type == FeatureType.NUMERIC and not isinstance(
+            config, (int, float)
+        ):
             return False, "Configuration must be a numeric value"
-        
+
         if self.feature_type == FeatureType.STRING and not isinstance(config, str):
             return False, "Configuration must be a string value"
-        
+
         if self.feature_type == FeatureType.OBJECT and not isinstance(config, dict):
             return False, "Configuration must be an object"
-        
+
         return True, "Configuration is valid"
 
     def get_typed_default_value(self) -> Any:
@@ -192,9 +191,12 @@ class PlanFeature(BaseModel):
             return str(self.default_value) if self.default_value is not None else ""
         elif self.feature_type == FeatureType.OBJECT:
             return self.default_value if self.default_value is not None else {}
-        
+
         return self.default_value
 
     def is_chat_feature(self) -> bool:
         """Check if this is a chat-related feature."""
-        return self.name in ["chat_whatsapp", "chat_iframe"] or self.category == FeatureCategory.COMMUNICATION
+        return (
+            self.name in ["chat_whatsapp", "chat_iframe"]
+            or self.category == FeatureCategory.COMMUNICATION
+        )

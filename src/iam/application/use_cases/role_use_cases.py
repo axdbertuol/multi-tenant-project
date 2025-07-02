@@ -33,30 +33,30 @@ class RoleUseCase:
     def create_role(self, dto: RoleCreateDTO, created_by: UUID) -> RoleResponseDTO:
         """Create a new role."""
         # Validate parent role if provided
-        if hasattr(dto, 'parent_role_id') and dto.parent_role_id:
+        if hasattr(dto, "parent_role_id") and dto.parent_role_id:
             parent_role = self.role_repository.get_by_id(dto.parent_role_id)
             if not parent_role:
                 raise ValueError("Parent role not found")
-            
+
             # Validate inheritance rules
             temp_role = Role.create(
                 name=dto.name,
                 description=dto.description,
                 created_by=created_by,
                 organization_id=dto.organization_id,
-                parent_role_id=dto.parent_role_id
+                parent_role_id=dto.parent_role_id,
             )
-            
+
             all_roles = self.role_repository.get_role_hierarchy(dto.organization_id)
             can_inherit, reason = self.role_inheritance_service.can_role_inherit_from(
                 temp_role, parent_role, all_roles
             )
-            
+
             if not can_inherit:
                 raise ValueError(f"Invalid inheritance: {reason}")
 
         # Validate permissions exist
-        if hasattr(dto, 'permission_ids') and dto.permission_ids:
+        if hasattr(dto, "permission_ids") and dto.permission_ids:
             permissions = self.permission_repository.find_by_ids(dto.permission_ids)
             if len(permissions) != len(dto.permission_ids):
                 raise ValueError("One or more permissions not found")
@@ -67,14 +67,14 @@ class RoleUseCase:
             description=dto.description,
             created_by=created_by,
             organization_id=dto.organization_id,
-            parent_role_id=getattr(dto, 'parent_role_id', None)
+            parent_role_id=getattr(dto, "parent_role_id", None),
         )
 
         # Save role
         saved_role = self.role_repository.save(role)
 
         # Assign permissions if provided
-        if hasattr(dto, 'permission_ids') and dto.permission_ids:
+        if hasattr(dto, "permission_ids") and dto.permission_ids:
             self.role_repository.assign_permissions(saved_role.id, dto.permission_ids)
 
         return self._build_role_response(saved_role)
@@ -207,29 +207,31 @@ class RoleUseCase:
 
         return role_responses
 
-    def set_role_parent(self, role_id: UUID, parent_role_id: UUID) -> Optional[RoleResponseDTO]:
+    def set_role_parent(
+        self, role_id: UUID, parent_role_id: UUID
+    ) -> Optional[RoleResponseDTO]:
         """Set parent role for inheritance."""
         role = self.role_repository.get_by_id(role_id)
         if not role:
             raise ValueError("Role not found")
-        
+
         parent_role = self.role_repository.get_by_id(parent_role_id)
         if not parent_role:
             raise ValueError("Parent role not found")
-        
+
         # Validate inheritance rules
         all_roles = self.role_repository.get_role_hierarchy(role.organization_id)
         can_inherit, reason = self.role_inheritance_service.can_role_inherit_from(
             role, parent_role, all_roles
         )
-        
+
         if not can_inherit:
             raise ValueError(f"Invalid inheritance: {reason}")
-        
+
         # Update role
         updated_role = role.set_parent_role(parent_role_id)
         saved_role = self.role_repository.save(updated_role)
-        
+
         return self._build_role_response(saved_role)
 
     def remove_role_parent(self, role_id: UUID) -> Optional[RoleResponseDTO]:
@@ -237,31 +239,33 @@ class RoleUseCase:
         role = self.role_repository.get_by_id(role_id)
         if not role:
             raise ValueError("Role not found")
-        
+
         # Update role
         updated_role = role.remove_parent_role()
         saved_role = self.role_repository.save(updated_role)
-        
+
         return self._build_role_response(saved_role)
 
-    def get_role_hierarchy(self, organization_id: Optional[UUID] = None) -> List[RoleResponseDTO]:
+    def get_role_hierarchy(
+        self, organization_id: Optional[UUID] = None
+    ) -> List[RoleResponseDTO]:
         """Get role hierarchy for an organization."""
         roles = self.role_repository.get_role_hierarchy(organization_id)
-        
+
         role_responses = []
         for role in roles:
             role_responses.append(self._build_role_response(role))
-        
+
         return role_responses
 
     def get_role_children(self, role_id: UUID) -> List[RoleResponseDTO]:
         """Get direct child roles of a role."""
         child_roles = self.role_repository.get_child_roles(role_id)
-        
+
         role_responses = []
         for role in child_roles:
             role_responses.append(self._build_role_response(role))
-        
+
         return role_responses
 
     def get_effective_permissions(self, role_id: UUID) -> List[PermissionResponseDTO]:
@@ -269,21 +273,23 @@ class RoleUseCase:
         role = self.role_repository.get_by_id(role_id)
         if not role:
             raise ValueError("Role not found")
-        
+
         # Get all roles for hierarchy calculation
         all_roles = self.role_repository.get_role_hierarchy(role.organization_id)
-        
+
         # Get role permissions mapping
         role_permissions = {}
         for r in all_roles:
             permissions = self.role_repository.get_role_permissions(r.id)
             role_permissions[r.id] = permissions
-        
+
         # Calculate inherited permissions
-        effective_permissions = self.role_inheritance_service.calculate_inherited_permissions(
-            role, all_roles, role_permissions
+        effective_permissions = (
+            self.role_inheritance_service.calculate_inherited_permissions(
+                role, all_roles, role_permissions
+            )
         )
-        
+
         # Convert to DTOs
         permission_responses = []
         for perm in effective_permissions:
@@ -302,10 +308,12 @@ class RoleUseCase:
                     role_count=0,
                 )
             )
-        
+
         return permission_responses
 
-    def validate_role_hierarchy(self, organization_id: Optional[UUID] = None) -> List[str]:
+    def validate_role_hierarchy(
+        self, organization_id: Optional[UUID] = None
+    ) -> List[str]:
         """Validate role hierarchy for issues."""
         roles = self.role_repository.get_role_hierarchy(organization_id)
         return self.role_inheritance_service.validate_role_hierarchy(roles)
@@ -314,7 +322,7 @@ class RoleUseCase:
         """Get role hierarchy as tree structure."""
         roles = self.role_repository.get_role_hierarchy(organization_id)
         tree = self.role_inheritance_service.build_role_tree(roles)
-        
+
         # Convert to response DTOs
         response_tree = {}
         for parent_id, child_roles in tree.items():
@@ -322,7 +330,7 @@ class RoleUseCase:
             response_tree[parent_key] = [
                 self._build_role_response(role) for role in child_roles
             ]
-        
+
         return response_tree
 
     def _build_role_response(self, role: Role) -> RoleResponseDTO:
@@ -330,7 +338,7 @@ class RoleUseCase:
         permission_count = self.role_repository.get_permission_count(role.id)
         assignment_count = self.role_repository.get_assignment_count(role.id)
         has_children = self.role_repository.has_child_roles(role.id)
-        
+
         # Calculate inheritance level
         inheritance_level = 0
         if role.has_parent():

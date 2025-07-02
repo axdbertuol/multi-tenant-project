@@ -28,41 +28,35 @@ class AuthorizationDecision(BaseModel):
 
     @classmethod
     def allow(
-        cls, 
-        reasons: List[DecisionReason], 
-        evaluation_time_ms: float = 0.0
+        cls, reasons: List[DecisionReason], evaluation_time_ms: float = 0.0
     ) -> "AuthorizationDecision":
         return cls(
             result=DecisionResult.ALLOW,
             reasons=reasons,
             evaluated_at=datetime.now(timezone.utc),
-            evaluation_time_ms=evaluation_time_ms
+            evaluation_time_ms=evaluation_time_ms,
         )
 
     @classmethod
     def deny(
-        cls, 
-        reasons: List[DecisionReason], 
-        evaluation_time_ms: float = 0.0
+        cls, reasons: List[DecisionReason], evaluation_time_ms: float = 0.0
     ) -> "AuthorizationDecision":
         return cls(
             result=DecisionResult.DENY,
             reasons=reasons,
             evaluated_at=datetime.now(timezone.utc),
-            evaluation_time_ms=evaluation_time_ms
+            evaluation_time_ms=evaluation_time_ms,
         )
 
     @classmethod
     def not_applicable(
-        cls, 
-        reasons: List[DecisionReason], 
-        evaluation_time_ms: float = 0.0
+        cls, reasons: List[DecisionReason], evaluation_time_ms: float = 0.0
     ) -> "AuthorizationDecision":
         return cls(
             result=DecisionResult.NOT_APPLICABLE,
             reasons=reasons,
             evaluated_at=datetime.now(timezone.utc),
-            evaluation_time_ms=evaluation_time_ms
+            evaluation_time_ms=evaluation_time_ms,
         )
 
     def is_allowed(self) -> bool:
@@ -95,7 +89,7 @@ class AuthorizationDecision(BaseModel):
         """Get a summary of the decision."""
         if not self.reasons:
             return f"Access {self.result.value}"
-        
+
         primary_reason = self.get_primary_reason()
         return f"Access {self.result.value}: {primary_reason.message}"
 
@@ -107,10 +101,10 @@ class AuthorizationDecision(BaseModel):
                 {
                     "type": reason.type,
                     "message": reason.message,
-                    "details": reason.details
+                    "details": reason.details,
                 }
                 for reason in self.reasons
             ],
             "evaluated_at": self.evaluated_at.isoformat(),
-            "evaluation_time_ms": self.evaluation_time_ms
+            "evaluation_time_ms": self.evaluation_time_ms,
         }

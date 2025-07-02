@@ -190,17 +190,20 @@ class ABACService:
 
         return resource.belongs_to_organization(organization_id)
 
-    def evaluate_policy_conditions(self, policy: Policy, context: AuthorizationContext) -> tuple[bool, list[dict[str, Any]]]:
+    def evaluate_policy_conditions(
+        self, policy: Policy, context: AuthorizationContext
+    ) -> tuple[bool, list[dict[str, Any]]]:
         """Evaluate policy conditions against context."""
         condition_results = []
         all_conditions_met = True
 
         for condition in policy.conditions:
-            result = self._policy_evaluation_service.evaluate_condition(condition, context.to_dict())
-            condition_results.append({
-                "condition": condition.model_dump(),
-                "result": result
-            })
+            result = self._policy_evaluation_service.evaluate_condition(
+                condition, context.to_dict()
+            )
+            condition_results.append(
+                {"condition": condition.model_dump(), "result": result}
+            )
             if not result:
                 all_conditions_met = False
 

@@ -18,8 +18,15 @@ import importlib.util
 
 # Import IAM models (combines user and authorization models)
 iam_spec = importlib.util.spec_from_file_location(
-    "iam_models", 
-    os.path.join(os.path.dirname(os.path.dirname(__file__)), "src", "iam", "infrastructure", "database", "models.py")
+    "iam_models",
+    os.path.join(
+        os.path.dirname(os.path.dirname(__file__)),
+        "src",
+        "iam",
+        "infrastructure",
+        "database",
+        "models.py",
+    ),
 )
 iam_models = importlib.util.module_from_spec(iam_spec)
 iam_spec.loader.exec_module(iam_models)
@@ -39,6 +46,7 @@ plans_spec = importlib.util.spec_from_file_location(
 )
 plans_models = importlib.util.module_from_spec(plans_spec)
 plans_spec.loader.exec_module(plans_models)
+
 
 config = context.config
 

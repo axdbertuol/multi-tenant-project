@@ -57,7 +57,7 @@ class SqlAlchemyUserSessionRepository(UserSessionRepository):
             self.session.flush()
             return self._to_domain_entity(session_model)
 
-    def find_by_id(self, session_id: UUID) -> Optional[UserSession]:
+    def get_by_id(self, session_id: UUID) -> Optional[UserSession]:
         """Encontra uma sessão pelo ID."""
         result = self.session.execute(
             select(UserSessionModel).where(UserSessionModel.id == session_id)
@@ -68,7 +68,7 @@ class SqlAlchemyUserSessionRepository(UserSessionRepository):
             return self._to_domain_entity(session_model)
         return None
 
-    def find_by_token(self, session_token: str) -> Optional[UserSession]:
+    def get_by_token(self, session_token: str) -> Optional[UserSession]:
         """Encontra uma sessão pelo token."""
         result = self.session.execute(
             select(UserSessionModel).where(
@@ -81,7 +81,7 @@ class SqlAlchemyUserSessionRepository(UserSessionRepository):
             return self._to_domain_entity(session_model)
         return None
 
-    def find_active_by_user(self, user_id: UUID) -> List[UserSession]:
+    def get_active_by_user(self, user_id: UUID) -> List[UserSession]:
         """Encontra todas as sessões ativas para um usuário."""
         result = self.session.execute(
             select(UserSessionModel).where(
@@ -94,7 +94,7 @@ class SqlAlchemyUserSessionRepository(UserSessionRepository):
 
         return [self._to_domain_entity(model) for model in session_models]
 
-    def find_expired_sessions(self) -> List[UserSession]:
+    def get_expired_sessions(self) -> List[UserSession]:
         """Encontra todas as sessões expiradas."""
         result = self.session.execute(
             select(UserSessionModel).where(
@@ -106,7 +106,7 @@ class SqlAlchemyUserSessionRepository(UserSessionRepository):
 
         return [self._to_domain_entity(model) for model in session_models]
 
-    def find_user_sessions(
+    def get_user_sessions(
         self, user_id: UUID, status: Optional[str] = None, limit: int = 10
     ) -> List[UserSession]:
         """Encontra sessões para um usuário com filtro de status opcional."""

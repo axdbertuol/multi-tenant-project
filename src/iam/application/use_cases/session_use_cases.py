@@ -26,12 +26,12 @@ class SessionUseCase:
         )
         self._auth_service = AuthenticationService(uow)
         self._uow = uow
-        
+
         # Initialize authorization service for permission checking
         from ...domain.services.rbac_service import RBACService
         from ...domain.services.abac_service import ABACService
         from ...domain.services.policy_evaluation_service import PolicyEvaluationService
-        
+
         rbac_service = RBACService(
             role_repository=uow.get_repository("role"),
             permission_repository=uow.get_repository("permission"),
@@ -187,23 +187,23 @@ class SessionUseCase:
         return result
 
     def validate_session_access(
-        self, 
-        token: str, 
+        self,
+        token: str,
         required_permissions: list[str] = None,
         resource_type: str = None,
         resource_id: str = None,
-        organization_id: str = None
+        organization_id: str = None,
     ) -> bool:
         """
         Valida a sessão e permissões opcionais.
-        
+
         Args:
             token: Token da sessão
             required_permissions: Lista de permissões necessárias (ex: ["user:read", "organization:manage"])
             resource_type: Tipo do recurso para verificação de permissão (ex: "user", "organization")
             resource_id: ID específico do recurso
             organization_id: ID da organização para escopo de permissões
-            
+
         Returns:
             bool: True se a sessão é válida e o usuário tem as permissões necessárias
         """
@@ -220,20 +220,29 @@ class SessionUseCase:
         for permission in required_permissions:
             # Create authorization context
             from uuid import UUID as UUIDType
-            
+
             # Handle UUID conversion for organization_id and resource_id
             org_uuid = None
             if organization_id:
-                org_uuid = UUIDType(organization_id) if isinstance(organization_id, str) else organization_id
-                
+                org_uuid = (
+                    UUIDType(organization_id)
+                    if isinstance(organization_id, str)
+                    else organization_id
+                )
+
             res_uuid = None
             if resource_id:
-                res_uuid = UUIDType(resource_id) if isinstance(resource_id, str) else resource_id
-            
+                res_uuid = (
+                    UUIDType(resource_id)
+                    if isinstance(resource_id, str)
+                    else resource_id
+                )
+
             context = AuthorizationContext.create(
                 user_id=user.id,
-                resource_type=resource_type or permission.split(':')[0],  # Extract from permission if not provided
-                action=permission.split(':')[1] if ':' in permission else permission,
+                resource_type=resource_type
+                or permission.split(":")[0],  # Extract from permission if not provided
+                action=permission.split(":")[1] if ":" in permission else permission,
                 organization_id=org_uuid,
                 resource_id=res_uuid,
                 user_attributes={
@@ -241,32 +250,32 @@ class SessionUseCase:
                     "name": user.name,
                     "is_active": user.is_active,
                     "is_verified": user.is_verified,
-                }
+                },
             )
-            
+
             # Check permission using authorization service
             decision = self._authorization_service.authorize(context)
             if not decision.is_allowed():
                 return False
-                
+
         return True
 
     def validate_session_access_simple(
-        self, 
-        token: str, 
-        action: str, 
+        self,
+        token: str,
+        action: str,
         resource_type: str = "system",
-        organization_id: str = None
+        organization_id: str = None,
     ) -> bool:
         """
         Método simplificado para validação de sessão e permissão única.
-        
+
         Args:
             token: Token da sessão
             action: Ação específica (ex: "read", "write", "delete")
             resource_type: Tipo do recurso (padrão: "system")
             organization_id: ID da organização para escopo
-            
+
         Returns:
             bool: True se autorizado
         """
@@ -275,31 +284,37 @@ class SessionUseCase:
             token=token,
             required_permissions=[permission],
             resource_type=resource_type,
-            organization_id=organization_id
+            organization_id=organization_id,
         )
 
-    def get_session_user_permissions(self, token: str, organization_id: str = None) -> list[str]:
+    def get_session_user_permissions(
+        self, token: str, organization_id: str = None
+    ) -> list[str]:
         """
         Obtém todas as permissões do usuário da sessão.
-        
+
         Args:
             token: Token da sessão
             organization_id: ID da organização para escopo
-            
+
         Returns:
             list[str]: Lista de permissões do usuário
         """
         user = self._auth_service.validate_session(token)
         if not user:
             return []
-            
+
         # Create a basic context to get user permissions
         from uuid import UUID as UUIDType
-        
+
         org_uuid = None
         if organization_id:
-            org_uuid = UUIDType(organization_id) if isinstance(organization_id, str) else organization_id
-            
+            org_uuid = (
+                UUIDType(organization_id)
+                if isinstance(organization_id, str)
+                else organization_id
+            )
+
         context = AuthorizationContext.create(
             user_id=user.id,
             resource_type="system",
@@ -310,13 +325,12 @@ class SessionUseCase:
                 "name": user.name,
                 "is_active": user.is_active,
                 "is_verified": user.is_verified,
-            }
+            },
         )
-        
+
         # Get user permissions through RBAC service
         return self._authorization_service._rbac_service.get_user_permissions(
-            user_id=user.id,
-            organization_id=organization_id
+            user_id=user.id, organization_id=organization_id
         )
 
     def _generate_session_token(self) -> str:

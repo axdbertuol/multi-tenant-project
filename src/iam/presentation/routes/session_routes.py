@@ -24,8 +24,10 @@ def get_auth_token(request: Request) -> str:
     return auth_header.split(" ")[1]
 
 
-@router.post("/", response_model=SessionResponseDTO, status_code=status.HTTP_201_CREATED)
-async def create_session(
+@router.post(
+    "/", response_model=SessionResponseDTO, status_code=status.HTTP_201_CREATED
+)
+def create_session(
     dto: SessionCreateDTO,
     request: Request,
     use_case: SessionUseCase = Depends(get_session_use_case),
@@ -35,7 +37,7 @@ async def create_session(
         # Add client info to DTO
         dto.user_agent = request.headers.get("user-agent")
         dto.ip_address = request.client.host if request.client else None
-        
+
         return use_case.create_session(dto)
     except ValueError as e:
         if "not found" in str(e).lower():
@@ -47,7 +49,7 @@ async def create_session(
 
 
 @router.get("/{session_id}", response_model=SessionResponseDTO)
-async def get_session_by_id(
+def get_session_by_id(
     session_id: UUID,
     use_case: SessionUseCase = Depends(get_session_use_case),
 ):
@@ -65,7 +67,7 @@ async def get_session_by_id(
 
 
 @router.get("/by-token/{token}", response_model=SessionResponseDTO)
-async def get_session_by_token(
+def get_session_by_token(
     token: str,
     use_case: SessionUseCase = Depends(get_session_use_case),
 ):
@@ -83,7 +85,7 @@ async def get_session_by_token(
 
 
 @router.get("/user/{user_id}", response_model=SessionListResponseDTO)
-async def get_user_sessions(
+def get_user_sessions(
     user_id: UUID,
     use_case: SessionUseCase = Depends(get_session_use_case),
 ):
@@ -95,7 +97,7 @@ async def get_user_sessions(
 
 
 @router.delete("/{session_id}")
-async def revoke_session(
+def revoke_session(
     session_id: UUID,
     use_case: SessionUseCase = Depends(get_session_use_case),
 ):
@@ -113,7 +115,7 @@ async def revoke_session(
 
 
 @router.delete("/by-token/{token}")
-async def revoke_session_by_token(
+def revoke_session_by_token(
     token: str,
     use_case: SessionUseCase = Depends(get_session_use_case),
 ):
@@ -131,7 +133,7 @@ async def revoke_session_by_token(
 
 
 @router.delete("/user/{user_id}/all")
-async def revoke_all_user_sessions(
+def revoke_all_user_sessions(
     user_id: UUID,
     use_case: SessionUseCase = Depends(get_session_use_case),
 ):
@@ -144,7 +146,7 @@ async def revoke_all_user_sessions(
 
 
 @router.put("/{session_id}/extend", response_model=SessionResponseDTO)
-async def extend_session(
+def extend_session(
     session_id: UUID,
     hours: int = Query(24, ge=1, le=720, description="Hours to extend session"),
     use_case: SessionUseCase = Depends(get_session_use_case),
@@ -163,7 +165,7 @@ async def extend_session(
 
 
 @router.post("/cleanup")
-async def cleanup_expired_sessions(
+def cleanup_expired_sessions(
     use_case: SessionUseCase = Depends(get_session_use_case),
 ):
     """Limpa sessões expiradas."""
@@ -175,7 +177,7 @@ async def cleanup_expired_sessions(
 
 
 @router.get("/validate/{token}")
-async def validate_session_access(
+def validate_session_access(
     token: str,
     permissions: List[str] = Query(None, description="Required permissions"),
     use_case: SessionUseCase = Depends(get_session_use_case),

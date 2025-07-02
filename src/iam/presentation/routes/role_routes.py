@@ -22,7 +22,7 @@ router = APIRouter(prefix="/roles", tags=["Roles"])
 
 
 @router.post("/", response_model=RoleResponseDTO, status_code=status.HTTP_201_CREATED)
-async def create_role(
+def create_role(
     role_data: RoleCreateDTO,
     created_by: UUID = Query(..., description="User ID who is creating the role"),
     role_use_case: RoleUseCase = Depends(get_role_use_case),
@@ -33,23 +33,27 @@ async def create_role(
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
     except Exception as e:
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
+        )
 
 
 @router.get("/{role_id}", response_model=RoleDetailResponseDTO)
-async def get_role(
+def get_role(
     role_id: UUID,
     role_use_case: RoleUseCase = Depends(get_role_use_case),
 ):
     """Get role by ID with permissions."""
     role = role_use_case.get_role_by_id(role_id)
     if not role:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Role not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Role not found"
+        )
     return role
 
 
 @router.put("/{role_id}", response_model=RoleResponseDTO)
-async def update_role(
+def update_role(
     role_id: UUID,
     role_data: RoleUpdateDTO,
     role_use_case: RoleUseCase = Depends(get_role_use_case),
@@ -58,16 +62,20 @@ async def update_role(
     try:
         role = role_use_case.update_role(role_id, role_data)
         if not role:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Role not found")
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="Role not found"
+            )
         return role
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
     except Exception as e:
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
+        )
 
 
 @router.delete("/{role_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_role(
+def delete_role(
     role_id: UUID,
     role_use_case: RoleUseCase = Depends(get_role_use_case),
 ):
@@ -75,15 +83,19 @@ async def delete_role(
     try:
         success = role_use_case.delete_role(role_id)
         if not success:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Role not found")
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="Role not found"
+            )
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
     except Exception as e:
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
+        )
 
 
 @router.get("/", response_model=RoleListResponseDTO)
-async def list_roles(
+def list_roles(
     organization_id: Optional[UUID] = Query(None, description="Filter by organization"),
     page: int = Query(1, ge=1, description="Page number"),
     page_size: int = Query(20, ge=1, le=100, description="Items per page"),
@@ -99,11 +111,13 @@ async def list_roles(
             include_system=include_system,
         )
     except Exception as e:
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
+        )
 
 
 @router.post("/{role_id}/permissions", response_model=RoleDetailResponseDTO)
-async def assign_permissions(
+def assign_permissions(
     role_id: UUID,
     permission_data: RolePermissionAssignDTO,
     role_use_case: RoleUseCase = Depends(get_role_use_case),
@@ -112,16 +126,20 @@ async def assign_permissions(
     try:
         role = role_use_case.assign_permissions(role_id, permission_data)
         if not role:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Role not found")
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="Role not found"
+            )
         return role
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
     except Exception as e:
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
+        )
 
 
 @router.delete("/{role_id}/permissions", response_model=RoleDetailResponseDTO)
-async def remove_permissions(
+def remove_permissions(
     role_id: UUID,
     permission_data: RolePermissionRemoveDTO,
     role_use_case: RoleUseCase = Depends(get_role_use_case),
@@ -130,18 +148,23 @@ async def remove_permissions(
     try:
         role = role_use_case.remove_permissions(role_id, permission_data)
         if not role:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Role not found")
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="Role not found"
+            )
         return role
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
     except Exception as e:
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
+        )
 
 
 # Role Inheritance Endpoints
 
+
 @router.put("/{role_id}/parent", response_model=RoleResponseDTO)
-async def set_role_parent(
+def set_role_parent(
     role_id: UUID,
     inheritance_data: RoleInheritanceDTO,
     role_use_case: RoleUseCase = Depends(get_role_use_case),
@@ -150,16 +173,20 @@ async def set_role_parent(
     try:
         role = role_use_case.set_role_parent(role_id, inheritance_data.parent_role_id)
         if not role:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Role not found")
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="Role not found"
+            )
         return role
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
     except Exception as e:
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
+        )
 
 
 @router.delete("/{role_id}/parent", response_model=RoleResponseDTO)
-async def remove_role_parent(
+def remove_role_parent(
     role_id: UUID,
     role_use_case: RoleUseCase = Depends(get_role_use_case),
 ):
@@ -167,16 +194,20 @@ async def remove_role_parent(
     try:
         role = role_use_case.remove_role_parent(role_id)
         if not role:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Role not found")
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="Role not found"
+            )
         return role
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
     except Exception as e:
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
+        )
 
 
 @router.get("/hierarchy/", response_model=List[RoleResponseDTO])
-async def get_role_hierarchy(
+def get_role_hierarchy(
     organization_id: Optional[UUID] = Query(None, description="Organization ID"),
     role_use_case: RoleUseCase = Depends(get_role_use_case),
 ):
@@ -184,11 +215,13 @@ async def get_role_hierarchy(
     try:
         return role_use_case.get_role_hierarchy(organization_id)
     except Exception as e:
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
+        )
 
 
 @router.get("/{role_id}/children", response_model=List[RoleResponseDTO])
-async def get_role_children(
+def get_role_children(
     role_id: UUID,
     role_use_case: RoleUseCase = Depends(get_role_use_case),
 ):
@@ -196,11 +229,15 @@ async def get_role_children(
     try:
         return role_use_case.get_role_children(role_id)
     except Exception as e:
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
+        )
 
 
-@router.get("/{role_id}/effective-permissions", response_model=List[PermissionResponseDTO])
-async def get_effective_permissions(
+@router.get(
+    "/{role_id}/effective-permissions", response_model=List[PermissionResponseDTO]
+)
+def get_effective_permissions(
     role_id: UUID,
     role_use_case: RoleUseCase = Depends(get_role_use_case),
 ):
@@ -210,11 +247,13 @@ async def get_effective_permissions(
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
     except Exception as e:
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
+        )
 
 
 @router.get("/hierarchy/tree", response_model=dict)
-async def get_role_tree(
+def get_role_tree(
     organization_id: Optional[UUID] = Query(None, description="Organization ID"),
     role_use_case: RoleUseCase = Depends(get_role_use_case),
 ):
@@ -222,11 +261,13 @@ async def get_role_tree(
     try:
         return role_use_case.get_role_tree(organization_id)
     except Exception as e:
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
+        )
 
 
 @router.get("/hierarchy/validate", response_model=List[str])
-async def validate_role_hierarchy(
+def validate_role_hierarchy(
     organization_id: Optional[UUID] = Query(None, description="Organization ID"),
     role_use_case: RoleUseCase = Depends(get_role_use_case),
 ):
@@ -234,11 +275,13 @@ async def validate_role_hierarchy(
     try:
         return role_use_case.validate_role_hierarchy(organization_id)
     except Exception as e:
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
+        )
 
 
 @router.get("/organization/{organization_id}", response_model=List[RoleResponseDTO])
-async def get_roles_by_organization(
+def get_roles_by_organization(
     organization_id: UUID,
     role_use_case: RoleUseCase = Depends(get_role_use_case),
 ):
@@ -246,4 +289,6 @@ async def get_roles_by_organization(
     try:
         return role_use_case.get_roles_by_organization(organization_id)
     except Exception as e:
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
+        )

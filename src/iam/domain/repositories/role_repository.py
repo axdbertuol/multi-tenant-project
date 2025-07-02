@@ -95,7 +95,11 @@ class RoleRepository(ABC):
 
     @abstractmethod
     def find_paginated(
-        self, organization_id: Optional[UUID], include_system: bool, offset: int, limit: int
+        self,
+        organization_id: Optional[UUID],
+        include_system: bool,
+        offset: int,
+        limit: int,
     ) -> tuple[List[Role], int]:
         pass
 
@@ -124,7 +128,9 @@ class RoleRepository(ABC):
         pass
 
     @abstractmethod
-    def find_user_roles(self, user_id: UUID, organization_id: Optional[UUID]) -> List[Role]:
+    def find_user_roles(
+        self, user_id: UUID, organization_id: Optional[UUID]
+    ) -> List[Role]:
         pass
 
     @abstractmethod
@@ -133,10 +139,17 @@ class RoleRepository(ABC):
 
     @abstractmethod
     def assign_role_to_user(
-        self, user_id: UUID, role_id: UUID, organization_id: Optional[UUID], assigned_by: UUID, expires_at: Optional[datetime]
+        self,
+        user_id: UUID,
+        role_id: UUID,
+        organization_id: Optional[UUID],
+        assigned_by: UUID,
+        expires_at: Optional[datetime],
     ) -> None:
         pass
 
     @abstractmethod
-    def remove_role_from_user(self, user_id: UUID, role_id: UUID, organization_id: Optional[UUID]) -> bool:
+    def remove_role_from_user(
+        self, user_id: UUID, role_id: UUID, organization_id: Optional[UUID]
+    ) -> bool:
         pass

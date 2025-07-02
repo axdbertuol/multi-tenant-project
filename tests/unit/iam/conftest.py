@@ -58,13 +58,13 @@ def sample_iam_user():
 def sample_iam_session(sample_iam_user):
     """Create a sample IAM session for testing."""
     from datetime import datetime, timezone, timedelta
-    
+
     return UserSession.create(
         user_id=sample_iam_user.id,
         session_token="test-session-token-123",
         expires_at=datetime.now(timezone.utc) + timedelta(hours=1),
         ip_address="127.0.0.1",
-        user_agent="Test User Agent"
+        user_agent="Test User Agent",
     )
 
 
@@ -72,9 +72,7 @@ def sample_iam_session(sample_iam_user):
 def sample_iam_role(sample_iam_user):
     """Create a sample IAM role for testing."""
     return Role.create(
-        name="test_role",
-        description="Test Role",
-        created_by=sample_iam_user.id
+        name="test_role", description="Test Role", created_by=sample_iam_user.id
     )
 
 
@@ -85,7 +83,7 @@ def sample_iam_permission():
         name="user:read",
         description="Read user data",
         action="read",
-        resource_type="user"
+        resource_type="user",
     )
 
 

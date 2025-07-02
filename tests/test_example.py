@@ -13,6 +13,7 @@ def test_example():
 def test_python_version():
     """Verificar se estamos usando Python 3.11+"""
     import sys
+
     assert sys.version_info >= (3, 11)
 
 
@@ -30,6 +31,7 @@ def test_imports():
         import sys
         import os
         import pathlib
+
         assert True
     except ImportError:
         pytest.fail("Imports básicos falharam")

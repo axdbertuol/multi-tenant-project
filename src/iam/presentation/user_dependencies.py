@@ -10,7 +10,9 @@ from ..infrastructure.iam_unit_of_work import IAMUnitOfWork
 
 def get_iam_uow(db: Session = Depends(get_db)) -> IAMUnitOfWork:
     """Obtém uma instância de IAMUnitOfWork com repositórios IAM."""
-    return IAMUnitOfWork(db, ["user", "user_session", "role", "permission", "policy", "resource"])
+    return IAMUnitOfWork(
+        db, ["user", "user_session", "role", "permission", "policy", "resource"]
+    )
 
 
 def get_auth_use_case(

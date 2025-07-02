@@ -26,32 +26,29 @@ class User(BaseModel):
             name=name,
             password=Password.create(password),
             created_at=datetime.utcnow(),
-            is_active=True
+            is_active=True,
         )
 
     def update_name(self, name: str) -> "User":
-        return self.model_copy(update={
-            "name": name,
-            "updated_at": datetime.utcnow()
-        })
+        return self.model_copy(update={"name": name, "updated_at": datetime.utcnow()})
 
     def deactivate(self) -> "User":
-        return self.model_copy(update={
-            "is_active": False,
-            "updated_at": datetime.utcnow()
-        })
+        return self.model_copy(
+            update={"is_active": False, "updated_at": datetime.utcnow()}
+        )
 
     def activate(self) -> "User":
-        return self.model_copy(update={
-            "is_active": True,
-            "updated_at": datetime.utcnow()
-        })
-    
+        return self.model_copy(
+            update={"is_active": True, "updated_at": datetime.utcnow()}
+        )
+
     def change_password(self, new_password: str) -> "User":
-        return self.model_copy(update={
-            "password": Password.create(new_password),
-            "updated_at": datetime.utcnow()
-        })
-    
+        return self.model_copy(
+            update={
+                "password": Password.create(new_password),
+                "updated_at": datetime.utcnow(),
+            }
+        )
+
     def verify_password(self, plain_password: str) -> bool:
         return self.password.verify(plain_password)

@@ -12,7 +12,7 @@ class OrganizationSettings(BaseModel):
 
     model_config = {"frozen": True}
 
-    @field_validator('max_users')
+    @field_validator("max_users")
     @classmethod
     def validate_max_users(cls, v: int) -> int:
         if v < 1:
@@ -21,7 +21,7 @@ class OrganizationSettings(BaseModel):
             raise ValueError("Maximum users cannot exceed 10,000")
         return v
 
-    @field_validator('session_timeout_hours')
+    @field_validator("session_timeout_hours")
     @classmethod
     def validate_session_timeout(cls, v: int) -> int:
         if v < 1:
@@ -42,23 +42,23 @@ class OrganizationSettings(BaseModel):
                 "chat_iframe": False,
                 "api_access": True,
                 "custom_branding": False,
-                "analytics": True
+                "analytics": True,
             },
-            custom_settings={}
+            custom_settings={},
         )
 
     def enable_feature(self, feature_name: str) -> "OrganizationSettings":
         """Enable a specific feature."""
         new_features = self.features_enabled.copy()
         new_features[feature_name] = True
-        
+
         return self.model_copy(update={"features_enabled": new_features})
 
     def disable_feature(self, feature_name: str) -> "OrganizationSettings":
         """Disable a specific feature."""
         new_features = self.features_enabled.copy()
         new_features[feature_name] = False
-        
+
         return self.model_copy(update={"features_enabled": new_features})
 
     def is_feature_enabled(self, feature_name: str) -> bool:
@@ -73,7 +73,7 @@ class OrganizationSettings(BaseModel):
         """Update a custom setting."""
         new_custom = self.custom_settings.copy()
         new_custom[key] = value
-        
+
         return self.model_copy(update={"custom_settings": new_custom})
 
     def get_custom_setting(self, key: str, default: Any = None) -> Any:

@@ -9939,7 +9939,7 @@ from fastapi import Depends
 from sqlalchemy.orm import Session
 
 from shared.infrastructure.database.connection import get_db
-from user.application.use_cases.auth_use_cases import AuthUseCase
+from user.application.use_cases.auth_use_cases import AuthenticationUseCase
 from user.application.use_cases.user_use_cases import UserUseCase
 from user.application.use_cases.session_use_cases import SessionUseCase
 from user.infrastructure.user_unit_of_work import UserUnitOfWork
@@ -9950,9 +9950,9 @@ def get_user_uow(db: Session = Depends(get_db)) -> UserUnitOfWork:
     return UserUnitOfWork(db, ["user", "user_session"])
 
 
-def get_auth_use_case(uow: UserUnitOfWork = Depends(get_user_uow)) -> AuthUseCase:
-    """Obtém AuthUseCase com a dependência UnitOfWork apropriada."""
-    return AuthUseCase(uow)
+def get_auth_use_case(uow: UserUnitOfWork = Depends(get_user_uow)) -> AuthenticationUseCase:
+    """Obtém AuthenticationUseCase com a dependência UnitOfWork apropriada."""
+    return AuthenticationUseCase(uow)
 
 
 def get_user_use_case(uow: UserUnitOfWork = Depends(get_user_uow)) -> UserUseCase:
@@ -10347,7 +10347,7 @@ from ...application.dtos.auth_dto import (
     PasswordResetRequestDTO,
     PasswordResetConfirmDTO,
 )
-from ...application.use_cases.auth_use_cases import AuthUseCase
+from ...application.use_cases.auth_use_cases import AuthenticationUseCase
 
 router = APIRouter(prefix="/auth", tags=["Autenticação"])
 
@@ -10363,7 +10363,7 @@ def get_client_info(request: Request) -> tuple[Optional[str], Optional[str]]:
 async def login(
     dto: LoginDTO,
     request: Request,
-    use_case: AuthUseCase = Depends(get_auth_use_case),
+    use_case: AuthenticationUseCase = Depends(get_auth_use_case),
 ):
     """Autentica o usuário e cria uma sessão."""
     try:
@@ -10379,7 +10379,7 @@ async def login(
 async def logout(
     dto: LogoutDTO,
     request: Request,
-    use_case: AuthUseCase = Depends(get_auth_use_case),
+    use_case: AuthenticationUseCase = Depends(get_auth_use_case),
 ):
     """Realiza o logout do usuário, revogando a(s) sessão(ões)."""
     try:
@@ -10408,7 +10408,7 @@ async def logout(
 @router.post("/refresh", response_model=AuthResponseDTO)
 async def refresh_session(
     request: Request,
-    use_case: AuthUseCase = Depends(get_auth_use_case),
+    use_case: AuthenticationUseCase = Depends(get_auth_use_case),
 ):
     """Atualiza o token da sessão."""
     try:
@@ -10437,7 +10437,7 @@ async def refresh_session(
 @router.get("/validate")
 async def validate_session(
     request: Request,
-    use_case: AuthUseCase = Depends(get_auth_use_case),
+    use_case: AuthenticationUseCase = Depends(get_auth_use_case),
 ):
     """Valida o token da sessão e retorna as informações do usuário."""
     try:
@@ -10466,7 +10466,7 @@ async def validate_session(
 @router.post("/password-reset/request")
 async def request_password_reset(
     dto: PasswordResetRequestDTO,
-    use_case: AuthUseCase = Depends(get_auth_use_case),
+    use_case: AuthenticationUseCase = Depends(get_auth_use_case),
 ):
     """Solicita a redefinição de senha para o usuário."""
     try:
@@ -10479,7 +10479,7 @@ async def request_password_reset(
 @router.post("/password-reset/confirm")
 async def confirm_password_reset(
     dto: PasswordResetConfirmDTO,
-    use_case: AuthUseCase = Depends(get_auth_use_case),
+    use_case: AuthenticationUseCase = Depends(get_auth_use_case),
 ):
     """Confirma a redefinição de senha com o token."""
     try:
@@ -10687,7 +10687,7 @@ from ..dtos.session_dto import SessionResponseDTO
 from ...domain.services.authentication_service import AuthenticationService
 
 
-class AuthUseCase:
+class AuthenticationUseCase:
     """Casos de uso para autenticação e autorização."""
 
     def __init__(self, uow: UnitOfWork):

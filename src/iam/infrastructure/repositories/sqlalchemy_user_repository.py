@@ -52,7 +52,7 @@ class SqlAlchemyUserRepository(UserRepository):
             self.session.flush()
             return self._to_domain_entity(user_model)
 
-    def find_by_id(self, user_id: UUID) -> Optional[User]:
+    def get_by_id(self, user_id: UUID) -> Optional[User]:
         """Encontra um usuário pelo ID."""
         result = self.session.execute(select(UserModel).where(UserModel.id == user_id))
         user_model = result.scalar_one_or_none()
@@ -61,7 +61,7 @@ class SqlAlchemyUserRepository(UserRepository):
             return self._to_domain_entity(user_model)
         return None
 
-    def find_by_email(self, email: Email) -> Optional[User]:
+    def get_by_email(self, email: Email) -> Optional[User]:
         """Encontra um usuário pelo email."""
         result = self.session.execute(
             select(UserModel).where(UserModel.email == str(email.value))
@@ -72,7 +72,7 @@ class SqlAlchemyUserRepository(UserRepository):
             return self._to_domain_entity(user_model)
         return None
 
-    def find_active_users(self) -> List[User]:
+    def list_active_users(self) -> List[User]:
         """Encontra todos os usuários ativos."""
         result = self.session.execute(select(UserModel).where(UserModel.is_active))
         user_models = result.scalars().all()
@@ -133,7 +133,7 @@ class SqlAlchemyUserRepository(UserRepository):
         result = self.session.execute(select(UserModel).where(UserModel.is_active))
         return len(result.scalars().all())
 
-    def find_users_created_after(self, date: datetime) -> List[User]:
+    def get_users_created_after(self, date: datetime) -> List[User]:
         """Encontra usuários criados após uma data específica."""
         result = self.session.execute(
             select(UserModel).where(UserModel.created_at >= date)

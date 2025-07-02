@@ -16,7 +16,7 @@ router = APIRouter(prefix="/users", tags=["Usuários"])
 
 
 @router.post("/", response_model=UserResponseDTO, status_code=status.HTTP_201_CREATED)
-async def create_user(
+def create_user(
     dto: UserCreateDTO,
     use_case: UserUseCase = Depends(get_user_use_case),
 ):
@@ -28,7 +28,7 @@ async def create_user(
 
 
 @router.get("/{user_id}", response_model=UserResponseDTO)
-async def get_user_by_id(
+def get_user_by_id(
     user_id: UUID,
     use_case: UserUseCase = Depends(get_user_use_case),
 ):
@@ -46,7 +46,7 @@ async def get_user_by_id(
 
 
 @router.get("/", response_model=UserListResponseDTO)
-async def list_users(
+def list_users(
     page: int = Query(1, ge=1, description="Page number"),
     page_size: int = Query(100, ge=1, le=1000, description="Items per page"),
     active_only: bool = Query(True, description="Show only active users"),
@@ -54,13 +54,15 @@ async def list_users(
 ):
     """Lista usuários com paginação."""
     try:
-        return use_case.list_users(page=page, page_size=page_size, active_only=active_only)
+        return use_case.list_users(
+            page=page, page_size=page_size, active_only=active_only
+        )
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
 
 @router.get("/by-email/{email}", response_model=UserResponseDTO)
-async def get_user_by_email(
+def get_user_by_email(
     email: str,
     use_case: UserUseCase = Depends(get_user_use_case),
 ):
@@ -78,7 +80,7 @@ async def get_user_by_email(
 
 
 @router.put("/{user_id}", response_model=UserResponseDTO)
-async def update_user(
+def update_user(
     user_id: UUID,
     dto: UserUpdateDTO,
     use_case: UserUseCase = Depends(get_user_use_case),
@@ -96,7 +98,7 @@ async def update_user(
 
 
 @router.post("/{user_id}/change-password")
-async def change_password(
+def change_password(
     user_id: UUID,
     dto: UserChangePasswordDTO,
     use_case: UserUseCase = Depends(get_user_use_case),
@@ -120,7 +122,7 @@ async def change_password(
 
 
 @router.post("/{user_id}/activate", response_model=UserResponseDTO)
-async def activate_user(
+def activate_user(
     user_id: UUID,
     use_case: UserUseCase = Depends(get_user_use_case),
 ):
@@ -137,7 +139,7 @@ async def activate_user(
 
 
 @router.post("/{user_id}/deactivate", response_model=UserResponseDTO)
-async def deactivate_user(
+def deactivate_user(
     user_id: UUID,
     use_case: UserUseCase = Depends(get_user_use_case),
 ):
@@ -154,7 +156,7 @@ async def deactivate_user(
 
 
 @router.delete("/{user_id}")
-async def delete_user(
+def delete_user(
     user_id: UUID,
     use_case: UserUseCase = Depends(get_user_use_case),
 ):
@@ -172,9 +174,11 @@ async def delete_user(
 
 
 @router.get("/check-email/{email}")
-async def check_email_availability(
+def check_email_availability(
     email: str,
-    excluding_user_id: Optional[UUID] = Query(None, description="Exclude this user ID from check"),
+    excluding_user_id: Optional[UUID] = Query(
+        None, description="Exclude this user ID from check"
+    ),
     use_case: UserUseCase = Depends(get_user_use_case),
 ):
     """Verifica se o email está disponível para uso."""

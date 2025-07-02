@@ -29,8 +29,12 @@ class MembershipUseCase:
     """Use cases for organization membership management."""
 
     def __init__(self, uow: UnitOfWork):
-        self._organization_repository: OrganizationRepository = uow.get_repository("organization")
-        self._role_repository: UserOrganizationRoleRepository = uow.get_repository("user_organization_role")
+        self._organization_repository: OrganizationRepository = uow.get_repository(
+            "organization"
+        )
+        self._role_repository: UserOrganizationRoleRepository = uow.get_repository(
+            "user_organization_role"
+        )
         self._organization_domain_service = OrganizationDomainService(uow)
         self._membership_service = MembershipService(uow)
         self._uow = uow
@@ -275,8 +279,10 @@ class MembershipUseCase:
         """Transfer organization ownership."""
         with self._uow:
             # Validate transfer
-            can_transfer, reason = self._organization_domain_service.can_transfer_ownership(
-                organization_id, current_owner_id, dto.new_owner_id
+            can_transfer, reason = (
+                self._organization_domain_service.can_transfer_ownership(
+                    organization_id, current_owner_id, dto.new_owner_id
+                )
             )
 
             if not can_transfer:

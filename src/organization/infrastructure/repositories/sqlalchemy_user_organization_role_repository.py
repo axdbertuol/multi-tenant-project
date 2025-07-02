@@ -142,7 +142,6 @@ class SqlAlchemyUserOrganizationRoleRepository(UserOrganizationRoleRepository):
         )
         return result.scalar_one_or_none() is not None
 
-
     def count_organization_users(self, organization_id: UUID) -> int:
         """Count active users in organization."""
         result = self.session.execute(

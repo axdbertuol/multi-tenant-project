@@ -301,68 +301,82 @@ class SqlAlchemyPermissionRepository(PermissionRepository):
         """Get all permissions assigned to a role."""
         result = self.session.execute(
             select(PermissionModel)
-            .join(role_permission_association, PermissionModel.id == role_permission_association.c.permission_id)
+            .join(
+                role_permission_association,
+                PermissionModel.id == role_permission_association.c.permission_id,
+            )
             .where(
                 and_(
                     role_permission_association.c.role_id == role_id,
-                    PermissionModel.is_active
+                    PermissionModel.is_active,
                 )
             )
             .order_by(PermissionModel.created_at.desc())
         )
         permission_models = result.scalars().all()
-        
+
         return [self._to_domain_entity(model) for model in permission_models]
 
-    def get_by_resource_and_type(self, resource_type: str, action: PermissionAction) -> List[Permission]:
+    def get_by_resource_and_type(
+        self, resource_type: str, action: PermissionAction
+    ) -> List[Permission]:
         """Get permissions by resource type and action."""
         result = self.session.execute(
-            select(PermissionModel).where(
+            select(PermissionModel)
+            .where(
                 and_(
                     PermissionModel.resource_type == resource_type,
                     PermissionModel.action == PermissionActionEnum(action),
-                    PermissionModel.is_active
+                    PermissionModel.is_active,
                 )
             )
             .order_by(PermissionModel.created_at.desc())
         )
         permission_models = result.scalars().all()
-        
+
         return [self._to_domain_entity(model) for model in permission_models]
 
-    def get_user_permissions(self, user_id: UUID, organization_id: Optional[UUID] = None) -> List[Permission]:
+    def get_user_permissions(
+        self, user_id: UUID, organization_id: Optional[UUID] = None
+    ) -> List[Permission]:
         """Get all permissions for a user (through roles)."""
         query = (
             select(PermissionModel)
-            .join(role_permission_association, PermissionModel.id == role_permission_association.c.permission_id)
-            .join(user_role_assignment, role_permission_association.c.role_id == user_role_assignment.c.role_id)
+            .join(
+                role_permission_association,
+                PermissionModel.id == role_permission_association.c.permission_id,
+            )
+            .join(
+                user_role_assignment,
+                role_permission_association.c.role_id == user_role_assignment.c.role_id,
+            )
             .where(
                 and_(
                     user_role_assignment.c.user_id == user_id,
                     user_role_assignment.c.is_active,
-                    PermissionModel.is_active
+                    PermissionModel.is_active,
                 )
             )
         )
-        
+
         # Add organization filter if provided
         if organization_id is not None:
             query = query.where(
                 user_role_assignment.c.organization_id == organization_id
             )
-        
+
         query = query.distinct().order_by(PermissionModel.created_at.desc())
-        
+
         result = self.session.execute(query)
         permission_models = result.scalars().all()
-        
+
         return [self._to_domain_entity(model) for model in permission_models]
 
     def exists_by_name(self, name) -> bool:
         """Check if permission exists by name."""
         # Handle both string and PermissionName value object
-        name_value = name.value if hasattr(name, 'value') else str(name)
-        
+        name_value = name.value if hasattr(name, "value") else str(name)
+
         result = self.session.execute(
             select(PermissionModel.id)
             .where(PermissionModel.name == name_value)

@@ -22,7 +22,9 @@ class SubscriptionUseCase:
     """Use case for subscription management operations."""
 
     def __init__(self, uow: UnitOfWork):
-        self._subscription_repository: SubscriptionRepository = uow.get_repository("subscription")
+        self._subscription_repository: SubscriptionRepository = uow.get_repository(
+            "subscription"
+        )
         self._plan_repository: PlanRepository = uow.get_repository("plan")
         self._subscription_service = SubscriptionService(uow)
         self._uow = uow

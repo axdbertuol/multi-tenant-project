@@ -6,18 +6,26 @@ from pydantic import BaseModel, Field
 
 class AuthorizationRequestDTO(BaseModel):
     """DTO for authorization request."""
+
     user_id: UUID = Field(..., description="User ID")
     resource_type: str = Field(..., description="Resource type")
     action: str = Field(..., description="Action to perform")
     organization_id: Optional[UUID] = Field(None, description="Organization ID")
     resource_id: Optional[UUID] = Field(None, description="Specific resource ID")
-    user_attributes: Dict[str, Any] = Field(default_factory=dict, description="User attributes")
-    resource_attributes: Dict[str, Any] = Field(default_factory=dict, description="Resource attributes")
-    environment_attributes: Dict[str, Any] = Field(default_factory=dict, description="Environment attributes")
+    user_attributes: Dict[str, Any] = Field(
+        default_factory=dict, description="User attributes"
+    )
+    resource_attributes: Dict[str, Any] = Field(
+        default_factory=dict, description="Resource attributes"
+    )
+    environment_attributes: Dict[str, Any] = Field(
+        default_factory=dict, description="Environment attributes"
+    )
 
 
 class AuthorizationResponseDTO(BaseModel):
     """DTO for authorization response."""
+
     user_id: UUID
     resource_type: str
     action: str
@@ -33,11 +41,15 @@ class AuthorizationResponseDTO(BaseModel):
 
 class BulkAuthorizationRequestDTO(BaseModel):
     """DTO for bulk authorization request."""
-    requests: List[AuthorizationRequestDTO] = Field(..., description="List of authorization requests")
+
+    requests: List[AuthorizationRequestDTO] = Field(
+        ..., description="List of authorization requests"
+    )
 
 
 class BulkAuthorizationResponseDTO(BaseModel):
     """DTO for bulk authorization response."""
+
     results: List[AuthorizationResponseDTO]
     total_requests: int
     authorized_count: int
@@ -47,6 +59,7 @@ class BulkAuthorizationResponseDTO(BaseModel):
 
 class UserPermissionsResponseDTO(BaseModel):
     """DTO for user permissions response."""
+
     user_id: UUID
     organization_id: Optional[UUID] = None
     resource_type: Optional[str] = None
@@ -57,6 +70,7 @@ class UserPermissionsResponseDTO(BaseModel):
 
 class RoleAssignmentDTO(BaseModel):
     """DTO for role assignment."""
+
     user_id: UUID = Field(..., description="User ID")
     role_id: UUID = Field(..., description="Role ID")
     organization_id: Optional[UUID] = Field(None, description="Organization ID")

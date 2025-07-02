@@ -8,13 +8,13 @@ class PermissionFactory:
         name: str = "test_permission",
         resource_type: str = "test_resource",
         action: PermissionAction = PermissionAction.READ,
-        description: str = "Test permission"
+        description: str = "Test permission",
     ) -> Permission:
         return Permission.create(
             name=name,
             resource_type=resource_type,
             action=action,
-            description=description
+            description=description,
         )
 
     @staticmethod
@@ -23,7 +23,7 @@ class PermissionFactory:
             name="users.read",
             resource_type="user",
             action=PermissionAction.READ,
-            description="Read users permission"
+            description="Read users permission",
         )
 
     @staticmethod
@@ -32,7 +32,7 @@ class PermissionFactory:
             name="users.update",
             resource_type="user",
             action=PermissionAction.UPDATE,
-            description="Update users permission"
+            description="Update users permission",
         )
 
     @staticmethod
@@ -41,7 +41,7 @@ class PermissionFactory:
             name="users.delete",
             resource_type="user",
             action=PermissionAction.DELETE,
-            description="Delete users permission"
+            description="Delete users permission",
         )
 
     @staticmethod
@@ -50,7 +50,7 @@ class PermissionFactory:
             name="organizations.read",
             resource_type="organization",
             action=PermissionAction.READ,
-            description="Read organizations permission"
+            description="Read organizations permission",
         )
 
     @staticmethod
@@ -59,5 +59,5 @@ class PermissionFactory:
             name="organizations.update",
             resource_type="organization",
             action=PermissionAction.UPDATE,
-            description="Update organizations permission"
+            description="Update organizations permission",
         )

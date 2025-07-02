@@ -4,12 +4,12 @@ from .repositories import OrganizationRepository, UserOrganizationRoleRepository
 from .services import OrganizationDomainService, MembershipService
 
 __all__ = [
-    "Organization", 
+    "Organization",
     "UserOrganizationRole",
-    "OrganizationName", 
+    "OrganizationName",
     "OrganizationSettings",
-    "OrganizationRepository", 
+    "OrganizationRepository",
     "UserOrganizationRoleRepository",
     "OrganizationDomainService",
-    "MembershipService"
+    "MembershipService",
 ]

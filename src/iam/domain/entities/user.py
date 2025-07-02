@@ -9,6 +9,7 @@ from ..value_objects.password import Password
 
 class User(BaseModel):
     """Entidade de domínio do Usuário."""
+
     id: UUID
     email: Email
     name: str
@@ -35,7 +36,9 @@ class User(BaseModel):
 
     def update_name(self, name: str) -> "User":
         """Atualiza o nome do usuário."""
-        return self.model_copy(update={"name": name, "updated_at": datetime.now(timezone.utc)})
+        return self.model_copy(
+            update={"name": name, "updated_at": datetime.now(timezone.utc)}
+        )
 
     def deactivate(self) -> "User":
         """Desativa a conta do usuário."""
@@ -65,7 +68,10 @@ class User(BaseModel):
     def update_last_login(self, login_time: datetime) -> "User":
         """Atualiza o timestamp do último login do usuário."""
         return self.model_copy(
-            update={"last_login_at": login_time, "updated_at": datetime.now(timezone.utc)}
+            update={
+                "last_login_at": login_time,
+                "updated_at": datetime.now(timezone.utc),
+            }
         )
 
     def can_access_organization(self, organization_id: UUID) -> bool:

@@ -131,10 +131,9 @@ class Policy(BaseModel):
         )
 
     def deactivate(self) -> "Policy":
-        return self.model_copy(update={
-            "is_active": False,
-            "updated_at": datetime.now(timezone.utc)
-        })
+        return self.model_copy(
+            update={"is_active": False, "updated_at": datetime.now(timezone.utc)}
+        )
 
     def activate(self) -> "Policy":
         return self.model_copy(

@@ -7317,7 +7317,7 @@ from .dtos import (
     SessionCreateDTO, SessionResponseDTO,
     LoginDTO, AuthResponseDTO
 )
-from .use_cases import UserUseCase, AuthUseCase, SessionUseCase
+from .use_cases import UserUseCase, AuthenticationUseCase, SessionUseCase
 
 __all__ = [
     # DTOs
@@ -7326,7 +7326,7 @@ __all__ = [
     "LoginDTO", "AuthResponseDTO",
     
     # Use Cases
-    "UserUseCase", "AuthUseCase", "SessionUseCase"
+    "UserUseCase", "AuthenticationUseCase", "SessionUseCase"
 ]
 from typing import Optional
 from uuid import UUID, uuid4
@@ -7344,7 +7344,7 @@ from ...domain.repositories.user_session_repository import UserSessionRepository
 from ...domain.services.authentication_service import AuthenticationService
 
 
-class AuthUseCase:
+class AuthenticationUseCase:
     """Use cases for authentication and authorization."""
     
     def __init__(
@@ -7926,10 +7926,10 @@ class SessionUseCase:
 
         return secrets.token_urlsafe(32)
 from .user_use_cases import UserUseCase
-from .auth_use_cases import AuthUseCase
+from .auth_use_cases import AuthenticationUseCase
 from .session_use_cases import SessionUseCase
 
-__all__ = ["UserUseCase", "AuthUseCase", "SessionUseCase"]
+__all__ = ["UserUseCase", "AuthenticationUseCase", "SessionUseCase"]
 from datetime import datetime, timezone
 from typing import List, Optional
 from uuid import UUID
@@ -10158,7 +10158,7 @@ class SessionStatsDto(BaseModel):
 from user.application import (
     UserCreateDTO, UserUpdateDTO, UserResponseDTO, UserListResponseDTO,
     AuthLoginDTO, AuthResponseDTO, SessionCreateDTO, SessionResponseDTO,
-    UserUseCase, AuthUseCase, SessionUseCase
+    UserUseCase, AuthenticationUseCase, SessionUseCase
 )
 
 from organization.application import (
@@ -10192,7 +10192,7 @@ __all__ = [
     # User context
     "UserCreateDTO", "UserUpdateDTO", "UserResponseDTO", "UserListResponseDTO",
     "AuthLoginDTO", "AuthResponseDTO", "SessionCreateDTO", "SessionResponseDTO",
-    "UserUseCase", "AuthUseCase", "SessionUseCase",
+    "UserUseCase", "AuthenticationUseCase", "SessionUseCase",
     
     # Organization context
     "OrganizationCreateDTO", "OrganizationUpdateDTO", "OrganizationResponseDTO",

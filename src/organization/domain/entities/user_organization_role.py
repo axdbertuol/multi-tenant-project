@@ -4,6 +4,7 @@ from typing import Optional
 from pydantic import BaseModel
 from enum import Enum
 
+
 # TODO: Remove this enum - kept for backwards compatibility during migration
 # Services should be updated to use role_id foreign keys instead
 class OrganizationRole(str, Enum):
@@ -16,10 +17,11 @@ class OrganizationRole(str, Enum):
 class UserOrganizationRole(BaseModel):
     """
     Domain entity representing a user's role assignment within an organization.
-    
+
     This entity uses foreign key references to authorization.Role entities,
     providing flexibility for dynamic role management.
     """
+
     id: UUID
     user_id: UUID
     organization_id: UUID
@@ -40,11 +42,11 @@ class UserOrganizationRole(BaseModel):
         organization_id: UUID,
         role_id: UUID,
         assigned_by: UUID,
-        expires_at: Optional[datetime] = None
+        expires_at: Optional[datetime] = None,
     ) -> "UserOrganizationRole":
         """
         Create a new user organization role assignment.
-        
+
         Args:
             user_id: UUID of the user being assigned the role
             organization_id: UUID of the organization
@@ -62,22 +64,26 @@ class UserOrganizationRole(BaseModel):
             expires_at=expires_at,
             is_active=True,
             revoked_at=None,
-            revoked_by=None
+            revoked_by=None,
         )
 
-    def change_role(self, new_role_id: UUID, changed_by: UUID) -> "UserOrganizationRole":
+    def change_role(
+        self, new_role_id: UUID, changed_by: UUID
+    ) -> "UserOrganizationRole":
         """
         Change user role in organization.
-        
+
         Args:
             new_role_id: UUID of the new role (foreign key to authorization.Role)
             changed_by: UUID of the user making the change
         """
-        return self.model_copy(update={
-            "role_id": new_role_id,
-            "assigned_by": changed_by,
-            "assigned_at": datetime.now(timezone.utc)
-        })
+        return self.model_copy(
+            update={
+                "role_id": new_role_id,
+                "assigned_by": changed_by,
+                "assigned_at": datetime.now(timezone.utc),
+            }
+        )
 
     def deactivate(self) -> "UserOrganizationRole":
         """Deactivate user role in organization."""
@@ -86,22 +92,22 @@ class UserOrganizationRole(BaseModel):
     def activate(self) -> "UserOrganizationRole":
         """Activate user role in organization."""
         return self.model_copy(update={"is_active": True})
-    
+
     def revoke(self, revoked_by: UUID) -> "UserOrganizationRole":
         """Revoke user role in organization."""
-        return self.model_copy(update={
-            "is_active": False,
-            "revoked_at": datetime.now(timezone.utc),
-            "revoked_by": revoked_by
-        })
-    
+        return self.model_copy(
+            update={
+                "is_active": False,
+                "revoked_at": datetime.now(timezone.utc),
+                "revoked_by": revoked_by,
+            }
+        )
+
     def reactivate(self) -> "UserOrganizationRole":
         """Reactivate a revoked user role."""
-        return self.model_copy(update={
-            "is_active": True,
-            "revoked_at": None,
-            "revoked_by": None
-        })
+        return self.model_copy(
+            update={"is_active": True, "revoked_at": None, "revoked_by": None}
+        )
 
     def is_expired(self) -> bool:
         """Check if role assignment has expired."""
@@ -112,8 +118,8 @@ class UserOrganizationRole(BaseModel):
     def is_valid(self) -> bool:
         """
         Check if role assignment is valid (active and not expired).
-        
-        Note: Role-specific permissions should be checked through the 
+
+        Note: Role-specific permissions should be checked through the
         authorization domain services using the role_id.
         """
         return self.is_active and not self.is_expired()

@@ -31,8 +31,12 @@ class OrganizationUseCase:
     """Use cases for organization management."""
 
     def __init__(self, uow: UnitOfWork):
-        self._organization_repository: OrganizationRepository = uow.get_repository("organization")
-        self._role_repository: UserOrganizationRoleRepository = uow.get_repository("user_organization_role")
+        self._organization_repository: OrganizationRepository = uow.get_repository(
+            "organization"
+        )
+        self._role_repository: UserOrganizationRoleRepository = uow.get_repository(
+            "user_organization_role"
+        )
         self._organization_domain_service = OrganizationDomainService(uow)
         self._membership_service = MembershipService(uow)
         self._uow = uow
@@ -44,8 +48,10 @@ class OrganizationUseCase:
         with self._uow:
             # Check if organization name is available
             org_name = OrganizationName(value=dto.name)
-            is_available = self._organization_domain_service.is_organization_name_available(
-                org_name
+            is_available = (
+                self._organization_domain_service.is_organization_name_available(
+                    org_name
+                )
             )
 
             if not is_available:
@@ -173,7 +179,9 @@ class OrganizationUseCase:
                     )
                 )
                 if not is_available:
-                    raise ValueError(f"Organization name '{dto.name}' is already in use")
+                    raise ValueError(
+                        f"Organization name '{dto.name}' is already in use"
+                    )
 
                 updated_org = updated_org.update_name(dto.name)
 
@@ -256,7 +264,9 @@ class OrganizationUseCase:
 
             if dto.custom_settings is not None:
                 for key, value in dto.custom_settings.items():
-                    updated_settings = updated_settings.update_custom_setting(key, value)
+                    updated_settings = updated_settings.update_custom_setting(
+                        key, value
+                    )
 
             # Update organization with new settings
             updated_org = organization.update_settings(updated_settings)
@@ -284,7 +294,9 @@ class OrganizationUseCase:
 
             # Check if user is owner
             if not organization.is_owner(deactivated_by):
-                raise ValueError("Only organization owner can deactivate the organization")
+                raise ValueError(
+                    "Only organization owner can deactivate the organization"
+                )
 
             # Check if organization can be safely deactivated
             (

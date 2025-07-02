@@ -5,5 +5,5 @@ from .sqlalchemy_subscription_repository import SqlAlchemySubscriptionRepository
 __all__ = [
     "SqlAlchemyPlanRepository",
     "SqlAlchemyPlanResourceRepository",
-    "SqlAlchemySubscriptionRepository"
+    "SqlAlchemySubscriptionRepository",
 ]

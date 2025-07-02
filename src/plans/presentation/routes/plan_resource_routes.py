@@ -18,8 +18,10 @@ from ...application.use_cases.plan_resource_use_cases import PlanResourceUseCase
 router = APIRouter(prefix="/plan-resources", tags=["Plan Resources"])
 
 
-@router.post("/", response_model=PlanResourceResponseDTO, status_code=status.HTTP_201_CREATED)
-async def create_plan_resource(
+@router.post(
+    "/", response_model=PlanResourceResponseDTO, status_code=status.HTTP_201_CREATED
+)
+def create_plan_resource(
     dto: PlanResourceCreateDTO,
     use_case: PlanResourceUseCase = Depends(get_plan_resource_use_case),
 ):
@@ -31,7 +33,7 @@ async def create_plan_resource(
 
 
 @router.get("/{resource_id}", response_model=PlanResourceResponseDTO)
-async def get_plan_resource_by_id(
+def get_plan_resource_by_id(
     resource_id: UUID,
     use_case: PlanResourceUseCase = Depends(get_plan_resource_use_case),
 ):
@@ -49,7 +51,7 @@ async def get_plan_resource_by_id(
 
 
 @router.get("/", response_model=PlanResourceListResponseDTO)
-async def list_plan_resources(
+def list_plan_resources(
     plan_id: Optional[UUID] = Query(None, description="Filter by plan ID"),
     resource_type: Optional[str] = Query(None, description="Filter by resource type"),
     is_enabled: Optional[bool] = Query(None, description="Filter by enabled status"),
@@ -64,14 +66,14 @@ async def list_plan_resources(
             resource_type=resource_type,
             is_enabled=is_enabled,
             page=page,
-            page_size=page_size
+            page_size=page_size,
         )
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
 
 @router.get("/plan/{plan_id}")
-async def get_plan_resources(
+def get_plan_resources(
     plan_id: UUID,
     use_case: PlanResourceUseCase = Depends(get_plan_resource_use_case),
 ):
@@ -83,7 +85,7 @@ async def get_plan_resources(
 
 
 @router.put("/{resource_id}", response_model=PlanResourceResponseDTO)
-async def update_plan_resource(
+def update_plan_resource(
     resource_id: UUID,
     dto: PlanResourceUpdateDTO,
     use_case: PlanResourceUseCase = Depends(get_plan_resource_use_case),
@@ -102,7 +104,7 @@ async def update_plan_resource(
 
 
 @router.post("/{resource_id}/enable", response_model=PlanResourceResponseDTO)
-async def enable_plan_resource(
+def enable_plan_resource(
     resource_id: UUID,
     use_case: PlanResourceUseCase = Depends(get_plan_resource_use_case),
 ):
@@ -120,7 +122,7 @@ async def enable_plan_resource(
 
 
 @router.post("/{resource_id}/disable", response_model=PlanResourceResponseDTO)
-async def disable_plan_resource(
+def disable_plan_resource(
     resource_id: UUID,
     use_case: PlanResourceUseCase = Depends(get_plan_resource_use_case),
 ):
@@ -138,7 +140,7 @@ async def disable_plan_resource(
 
 
 @router.post("/test", response_model=PlanResourceTestResponseDTO)
-async def test_resource_configuration(
+def test_resource_configuration(
     dto: PlanResourceTestDTO,
     use_case: PlanResourceUseCase = Depends(get_plan_resource_use_case),
 ):
@@ -150,7 +152,7 @@ async def test_resource_configuration(
 
 
 @router.post("/usage", status_code=status.HTTP_201_CREATED)
-async def record_resource_usage(
+def record_resource_usage(
     dto: PlanResourceUsageDTO,
     use_case: PlanResourceUseCase = Depends(get_plan_resource_use_case),
 ):
@@ -168,7 +170,7 @@ async def record_resource_usage(
 
 
 @router.get("/{resource_id}/usage", response_model=PlanResourceUsageResponseDTO)
-async def get_resource_usage(
+def get_resource_usage(
     resource_id: UUID,
     start_date: str = Query(..., description="Start date (YYYY-MM-DD)"),
     end_date: str = Query(..., description="End date (YYYY-MM-DD)"),
@@ -177,9 +179,10 @@ async def get_resource_usage(
     """Get usage statistics for a plan resource."""
     try:
         from datetime import datetime
+
         start_dt = datetime.strptime(start_date, "%Y-%m-%d")
         end_dt = datetime.strptime(end_date, "%Y-%m-%d")
-        
+
         return use_case.get_resource_usage(resource_id, start_dt, end_dt)
     except ValueError as e:
         if "time data" in str(e):
@@ -191,7 +194,7 @@ async def get_resource_usage(
 
 
 @router.post("/{resource_id}/duplicate", response_model=PlanResourceResponseDTO)
-async def duplicate_resource(
+def duplicate_resource(
     resource_id: UUID,
     target_plan_id: UUID = Query(..., description="Target plan ID"),
     use_case: PlanResourceUseCase = Depends(get_plan_resource_use_case),
@@ -210,7 +213,7 @@ async def duplicate_resource(
 
 
 @router.delete("/{resource_id}")
-async def delete_plan_resource(
+def delete_plan_resource(
     resource_id: UUID,
     use_case: PlanResourceUseCase = Depends(get_plan_resource_use_case),
 ):
@@ -228,7 +231,7 @@ async def delete_plan_resource(
 
 
 @router.get("/types/{resource_type}/defaults")
-async def get_resource_type_defaults(
+def get_resource_type_defaults(
     resource_type: str,
     use_case: PlanResourceUseCase = Depends(get_plan_resource_use_case),
 ):
@@ -236,7 +239,7 @@ async def get_resource_type_defaults(
     try:
         from ...domain.entities.plan_resource import PlanResourceType
         from ...domain.services.plan_resource_service import PlanResourceService
-        
+
         # Validate resource type
         try:
             resource_type_enum = PlanResourceType(resource_type)
@@ -245,11 +248,11 @@ async def get_resource_type_defaults(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=f"Invalid resource type: {resource_type}",
             )
-        
+
         service = PlanResourceService()
         defaults = service.get_default_configuration(resource_type_enum)
         schema = service.get_configuration_schema(resource_type_enum)
-        
+
         return {
             "resource_type": resource_type,
             "default_configuration": defaults,
@@ -260,7 +263,7 @@ async def get_resource_type_defaults(
 
 
 @router.get("/types/{resource_type}/schema")
-async def get_resource_type_schema(
+def get_resource_type_schema(
     resource_type: str,
     use_case: PlanResourceUseCase = Depends(get_plan_resource_use_case),
 ):
@@ -268,7 +271,7 @@ async def get_resource_type_schema(
     try:
         from ...domain.entities.plan_resource import PlanResourceType
         from ...domain.services.plan_resource_service import PlanResourceService
-        
+
         # Validate resource type
         try:
             resource_type_enum = PlanResourceType(resource_type)
@@ -277,10 +280,10 @@ async def get_resource_type_schema(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=f"Invalid resource type: {resource_type}",
             )
-        
+
         service = PlanResourceService()
         schema = service.get_configuration_schema(resource_type_enum)
-        
+
         return {
             "resource_type": resource_type,
             "configuration_schema": schema,

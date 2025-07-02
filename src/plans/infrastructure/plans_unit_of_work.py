@@ -20,8 +20,12 @@ class PlansUnitOfWork(SQLAlchemyUnitOfWork):
         if "plan" in repositories:
             self._repositories.update({"plan": SqlAlchemyPlanRepository(session)})
         if "plan_resource" in repositories:
-            self._repositories.update({"plan_resource": SqlAlchemyPlanResourceRepository(session)})
+            self._repositories.update(
+                {"plan_resource": SqlAlchemyPlanResourceRepository(session)}
+            )
         if "subscription" in repositories:
-            self._repositories.update({"subscription": SqlAlchemySubscriptionRepository(session)})
+            self._repositories.update(
+                {"subscription": SqlAlchemySubscriptionRepository(session)}
+            )
 
         super().__init__(session)
