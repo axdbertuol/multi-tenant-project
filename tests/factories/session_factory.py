@@ -2,7 +2,7 @@ import factory
 from datetime import datetime, timedelta
 from uuid import uuid4
 from faker import Faker
-from src.domain.entities.user_session import UserSession, SessionStatus
+from src.iam.domain.entities.user_session import UserSession, SessionStatus
 
 fake = Faker()
 

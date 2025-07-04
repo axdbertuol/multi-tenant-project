@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from typing import Optional
 from uuid import UUID
 
-from ..dependencies import get_user_use_case
+from ...presentation.dependencies import get_user_use_case
 from ...application.dtos.user_dto import (
     UserCreateDTO,
     UserUpdateDTO,
@@ -12,7 +12,7 @@ from ...application.dtos.user_dto import (
 )
 from ...application.use_cases.user_use_cases import UserUseCase
 
-router = APIRouter(prefix="/users", tags=["Usuários"])
+router = APIRouter(tags=["Usuários"])
 
 
 @router.post("/", response_model=UserResponseDTO, status_code=status.HTTP_201_CREATED)

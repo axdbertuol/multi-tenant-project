@@ -14,10 +14,39 @@ from ..application.use_cases.membership_use_cases import MembershipUseCase
 from ..infrastructure.iam_unit_of_work import IAMUnitOfWork
 
 
+def get_iam_org_uow(db: Session = Depends(get_db)) -> IAMUnitOfWork:
+    """Obtém uma instância de IAMUnitOfWork com todos os repositórios do contexto IAM."""
+    return IAMUnitOfWork(
+        db,
+        [
+            "user_organization_role",
+            "organization",
+        ],  # Only load basic repositories for now
+    )
+
+
 def get_iam_uow(db: Session = Depends(get_db)) -> IAMUnitOfWork:
     """Obtém uma instância de IAMUnitOfWork com todos os repositórios do contexto IAM."""
     return IAMUnitOfWork(
-        db, ["user", "user_session", "organization", "user_organization_role", "role", "permission", "policy", "resource"]
+        db,
+        ["user", "user_session"],  # Only load basic repositories for now
+    )
+
+
+def get_full_iam_uow(db: Session = Depends(get_db)) -> IAMUnitOfWork:
+    """Obtém uma instância de IAMUnitOfWork com todos os repositórios do contexto IAM."""
+    return IAMUnitOfWork(
+        db,
+        [
+            "user",
+            "user_session",
+            "organization",
+            "user_organization_role",
+            "role",
+            "permission",
+            "policy",
+            "resource",
+        ],
     )
 
 
@@ -62,11 +91,15 @@ def get_policy_use_case(uow: IAMUnitOfWork = Depends(get_iam_uow)) -> PolicyUseC
     return PolicyUseCase(uow)
 
 
-def get_organization_use_case(uow: IAMUnitOfWork = Depends(get_iam_uow)) -> OrganizationUseCase:
+def get_organization_use_case(
+    uow: IAMUnitOfWork = Depends(get_iam_org_uow),
+) -> OrganizationUseCase:
     """Obtém OrganizationUseCase com a dependência UnitOfWork apropriada."""
     return OrganizationUseCase(uow)
 
 
-def get_membership_use_case(uow: IAMUnitOfWork = Depends(get_iam_uow)) -> MembershipUseCase:
+def get_membership_use_case(
+    uow: IAMUnitOfWork = Depends(get_full_iam_uow),
+) -> MembershipUseCase:
     """Obtém MembershipUseCase com a dependência UnitOfWork apropriada."""
     return MembershipUseCase(uow)

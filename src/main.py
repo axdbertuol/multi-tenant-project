@@ -24,7 +24,7 @@ def create_app() -> FastAPI:
     )
 
     @app.middleware("http")
-    def log_requests(request: Request, call_next):
+    async def log_requests(request: Request, call_next):
         start_time = time.time()
 
         # Logar requisições suspeitas para endpoints de IA
@@ -36,7 +36,7 @@ def create_app() -> FastAPI:
                 f"User-Agent: {request.headers.get('user-agent', 'unknown')}"
             )
 
-        response = call_next(request)
+        response = await call_next(request)
         process_time = time.time() - start_time
 
         # Logar requisições problemáticas e redirecionamentos

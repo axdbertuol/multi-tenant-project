@@ -18,7 +18,7 @@ from ...application.dtos.role_dto import (
 )
 from ...application.dtos.permission_dto import PermissionResponseDTO
 
-router = APIRouter(prefix="/roles", tags=["Roles"])
+router = APIRouter(tags=["Roles"])
 
 
 @router.post("/", response_model=RoleResponseDTO, status_code=status.HTTP_201_CREATED)

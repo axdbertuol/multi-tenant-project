@@ -3,7 +3,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from typing import Optional
 
-from ..dependencies import get_auth_use_case
+from ...presentation.dependencies import get_auth_use_case
 from ...application.dtos.auth_dto import (
     LoginDTO,
     AuthResponseDTO,
@@ -13,7 +13,7 @@ from ...application.dtos.auth_dto import (
 )
 from ...application.use_cases.authentication_use_cases import AuthenticationUseCase
 
-router = APIRouter(prefix="/auth", tags=["Authentication"])
+router = APIRouter(tags=["Authentication"])
 
 
 def get_client_info(request: Request) -> tuple[Optional[str], Optional[str]]:

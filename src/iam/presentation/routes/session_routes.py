@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status, Query
 from typing import List
 from uuid import UUID
 
-from ..dependencies import get_session_use_case
+from ...presentation.dependencies import get_session_use_case
 from ...application.dtos.session_dto import (
     SessionCreateDTO,
     SessionResponseDTO,
@@ -10,7 +10,7 @@ from ...application.dtos.session_dto import (
 )
 from ...application.use_cases.session_use_cases import SessionUseCase
 
-router = APIRouter(prefix="/sessions", tags=["Sessões"])
+router = APIRouter(tags=["Sessões"])
 
 
 def get_auth_token(request: Request) -> str:

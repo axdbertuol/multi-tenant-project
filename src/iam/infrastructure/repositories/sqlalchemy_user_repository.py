@@ -1,8 +1,7 @@
 from datetime import datetime, timezone
-import select
 from typing import List, Optional
 from uuid import UUID
-from sqlalchemy import delete, update
+from sqlalchemy import delete, update, select
 from sqlalchemy.orm import Session
 from ...domain.entities.user import User
 from ...domain.repositories.user_repository import UserRepository
@@ -40,7 +39,7 @@ class SqlAlchemyUserRepository(UserRepository):
                 id=user.id,
                 email=str(user.email.value),
                 name=user.name,
-                password_hash=user.password.hash,
+                password_hash=user.password.hashed_value,
                 is_active=user.is_active,
                 is_verified=user.is_verified,
                 last_login_at=user.last_login_at,
@@ -155,7 +154,7 @@ class SqlAlchemyUserRepository(UserRepository):
         """Converte o modelo SQLAlchemy para a entidade de domínio."""
         return User(
             id=user_model.id,
-            email=Email(user_model.email),
+            email=Email(value=user_model.email),
             name=user_model.name,
             password=Password.from_hash(user_model.password_hash),
             is_active=user_model.is_active,

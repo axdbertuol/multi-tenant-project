@@ -31,14 +31,16 @@ class OrganizationUseCase:
     """Use cases for organization management."""
 
     def __init__(self, uow: UnitOfWork):
-        self._organization_repository: OrganizationRepository = uow.get_repository(
-            "organization"
+        uor_rep = uow.get_repository("user_organization_role")
+        o_rep = uow.get_repository("organization")
+
+        self._organization_repository: OrganizationRepository = o_rep
+        self._role_repository: UserOrganizationRoleRepository = uor_rep
+        self._organization_domain_service = OrganizationDomainService(
+            o_rep,
+            uor_rep,
         )
-        self._role_repository: UserOrganizationRoleRepository = uow.get_repository(
-            "user_organization_role"
-        )
-        self._organization_domain_service = OrganizationDomainService(uow)
-        self._membership_service = MembershipService(uow)
+        self._membership_service = MembershipService(uor_rep, o_rep)
         self._uow = uow
 
     def create_organization(

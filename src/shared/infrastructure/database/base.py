@@ -1,10 +1,10 @@
 from sqlalchemy import Column, DateTime
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.sql import func
-from sqlalchemy.ext.declarative import declarative_base
 import uuid
 
-from shared.infrastructure.database.connection import Base
+# Import the Base to be used by models - must import the actual Base instance
+from src.shared.infrastructure.database.connection import Base
 
 
 class BaseModel(Base):

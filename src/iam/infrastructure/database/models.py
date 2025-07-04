@@ -15,7 +15,8 @@ from sqlalchemy.dialects.postgresql import UUID, JSON
 from sqlalchemy.sql import func
 import enum
 
-from shared.infrastructure.database.base import BaseModel as SQLBaseModel, Base
+from src.shared.infrastructure.database.base import BaseModel as SQLBaseModel
+from src.shared.infrastructure.database.connection import Base
 
 
 # Enums

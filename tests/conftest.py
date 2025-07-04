@@ -38,7 +38,6 @@ def db_session() -> Generator:
         conn.commit()
     import src.iam.infrastructure.database.models
     import src.plans.infrastructure.database.models
-    import src.organization.infrastructure.database.models
 
     Base.metadata.create_all(bind=test_engine)
     session = TestSessionLocal()
@@ -51,10 +50,21 @@ def db_session() -> Generator:
         Base.metadata.drop_all(bind=test_engine)
 
 
-# @pytest.fixture(scope="function")
-# def unit_of_work(db_session) -> SQLAlchemyUnitOfWork:
-#     """Create a Unit of Work instance for testing."""
-#     return SQLAlchemyUnitOfWork(db_session)
+@pytest.fixture(scope="function")
+def unit_of_work(db_session):
+    """Create a Unit of Work instance for testing."""
+    from src.iam.infrastructure.iam_unit_of_work import IAMUnitOfWork
+    
+    # Create unit of work with all available repositories
+    repositories = ["user", "user_session", "organization", "user_organization_role", "role", "permission", "policy", "resource"]
+    uow = IAMUnitOfWork(db_session, repositories)
+    
+    # Add convenient properties for test compatibility
+    uow.users = uow.get_repository("user")
+    uow.organizations = uow.get_repository("organization")
+    uow.user_sessions = uow.get_repository("user_session")
+    
+    return uow
 
 
 @pytest.fixture(scope="function")

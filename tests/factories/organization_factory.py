@@ -2,7 +2,7 @@ import factory
 from datetime import datetime
 from uuid import uuid4
 from faker import Faker
-from src.domain.entities.organization import Organization
+from src.iam.domain.entities.organization import Organization
 
 fake = Faker()
 

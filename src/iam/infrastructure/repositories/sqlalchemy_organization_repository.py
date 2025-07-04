@@ -187,6 +187,41 @@ class SqlAlchemyOrganizationRepository(OrganizationRepository):
         )
         return len(result.scalars().all())
 
+    # Abstract method implementations (aliases for existing methods)
+    def get_by_id(self, organization_id: UUID) -> Optional[Organization]:
+        """Get organization by ID (interface method)."""
+        return self.find_by_id(organization_id)
+
+    def get_by_name(self, name: OrganizationName) -> Optional[Organization]:
+        """Get organization by name (interface method)."""
+        return self.find_by_name(name)
+
+    def get_by_owner_id(self, owner_id: UUID) -> List[Organization]:
+        """Get organizations owned by a user (interface method)."""
+        return self.find_by_owner(owner_id)
+
+    def list_active_organizations(
+        self, limit: int = 100, offset: int = 0
+    ) -> List[Organization]:
+        """List active organizations with pagination (interface method)."""
+        organizations, _ = self.find_paginated(
+            offset=offset, limit=limit, is_active=True
+        )
+        return organizations
+
+    def count_active_organizations(self) -> int:
+        """Count total active organizations (interface method)."""
+        result = self.session.execute(
+            select(OrganizationModel).where(OrganizationModel.is_active)
+        )
+        return len(result.scalars().all())
+
+    def get_user_organizations(self, user_id: UUID) -> List[Organization]:
+        """Get organizations where user is a member (interface method)."""
+        # For now, this returns organizations owned by the user
+        # In a full implementation, this would join with user_organization_role table
+        return self.find_by_owner(user_id)
+
     def _to_domain_entity(self, org_model: OrganizationModel) -> Organization:
         """Convert SQLAlchemy model to domain entity."""
         return Organization(

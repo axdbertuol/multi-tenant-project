@@ -2,9 +2,9 @@ import factory
 from datetime import datetime
 from uuid import uuid4
 from faker import Faker
-from src.domain.entities.user import User
-from src.domain.value_objects.email import Email
-from src.domain.value_objects.password import Password
+from src.iam.domain.entities.user import User
+from src.iam.domain.value_objects.email import Email
+from src.iam.domain.value_objects.password import Password
 
 fake = Faker()
 
@@ -18,7 +18,7 @@ class UserFactory(factory.Factory):
     id = factory.LazyFunction(uuid4)
     email = factory.LazyAttribute(lambda obj: Email(value=fake.email()))
     name = factory.LazyAttribute(lambda obj: fake.name())
-    password = factory.LazyAttribute(lambda obj: Password.create("password123"))
+    password = factory.LazyAttribute(lambda obj: Password.create("Password123!"))
     created_at = factory.LazyFunction(lambda: datetime.utcnow())
     updated_at = None
     is_active = True
@@ -28,7 +28,7 @@ class UserFactory(factory.Factory):
         """Create a user using the domain factory method."""
         email = kwargs.get("email", fake.email())
         name = kwargs.get("name", fake.name())
-        password = kwargs.get("password", "password123")
+        password = kwargs.get("password", "Password123!")
 
         return User.create(email=email, name=name, password=password)
 
@@ -61,7 +61,7 @@ class PasswordFactory(factory.Factory):
         model = Password
 
     @classmethod
-    def create_password(cls, plain_password="password123"):
+    def create_password(cls, plain_password="Password123!"):
         """Create a password from plain text."""
         return Password.create(plain_password)
 

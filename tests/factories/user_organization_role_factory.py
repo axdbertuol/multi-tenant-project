@@ -1,5 +1,5 @@
 from uuid import uuid4
-from src.domain.entities.user_organization_role import UserOrganizationRole
+from src.iam.domain.entities.user_organization_role import UserOrganizationRole
 
 
 class UserOrganizationRoleFactory:

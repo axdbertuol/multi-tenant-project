@@ -15,7 +15,7 @@ from sqlalchemy.dialects.postgresql import UUID, JSON
 from sqlalchemy.sql import func
 import enum
 
-from shared.infrastructure.database.base import BaseModel
+from src.shared.infrastructure.database.base import BaseModel
 
 
 class PlanTypeEnum(str, enum.Enum):

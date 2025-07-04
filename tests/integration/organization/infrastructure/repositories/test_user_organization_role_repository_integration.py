@@ -3,13 +3,13 @@ from uuid import uuid4
 from sqlalchemy.orm import Session
 from datetime import datetime
 
-from src.infrastructure.database.models import (
+from src.iam.infrastructure.database.models import (
     UserOrganizationRoleModel,
     UserModel,
     OrganizationModel,
     RoleModel,
 )
-from src.domain.entities.user_organization_role import UserOrganizationRole
+from src.iam.domain.entities.user_organization_role import UserOrganizationRole
 from tests.factories.user_organization_role_factory import UserOrganizationRoleFactory
 from tests.factories.user_factory import UserFactory
 from tests.factories.organization_factory import OrganizationFactory
@@ -21,7 +21,7 @@ class TestUserOrganizationRoleRepositoryIntegration:
 
     @pytest.fixture
     def db_session(self):
-        from src.infrastructure.database.dependencies import get_db
+        from src.shared.infrastructure.database.connection import get_db
 
         session = next(get_db())
         yield session

@@ -31,13 +31,8 @@ iam_spec = importlib.util.spec_from_file_location(
 iam_models = importlib.util.module_from_spec(iam_spec)
 iam_spec.loader.exec_module(iam_models)
 
-# Import organization models
-org_spec = importlib.util.spec_from_file_location(
-    "org_models",
-    os.path.join(os.path.dirname(os.path.dirname(__file__)), "src", "organization", "infrastructure", "database", "models.py")
-)
-org_models = importlib.util.module_from_spec(org_spec)
-org_spec.loader.exec_module(org_models)
+# Organization models are now included in IAM models
+# No separate organization models file needed
 
 # Import plans models
 plans_spec = importlib.util.spec_from_file_location(
@@ -84,21 +79,19 @@ def run_migrations_online() -> None:
         prefix="sqlalchemy.",
         poolclass=pool.NullPool,
     )
-    current_schema = context.get_x_argument(as_dictionary=True).get("schema")
+    
     with connectable.connect() as connection:
         # Create schema if it doesn't exist
         if target_metadata.schema:
             connection.execute(
                 text(f"CREATE SCHEMA IF NOT EXISTS {target_metadata.schema}")
             )
-            connection.execute(text('set search_path to "%s"' % current_schema))
             connection.commit()
-        connection.dialect.default_schema_name = current_schema
 
         context.configure(
             connection=connection,
             target_metadata=target_metadata,
-            # version_table_schema=target_metadata.schema,
+            version_table_schema=target_metadata.schema,
         )
 
         with context.begin_transaction():

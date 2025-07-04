@@ -1,8 +1,8 @@
 import pytest
 from datetime import datetime, timedelta
 from uuid import uuid4
-from src.user.domain.entities.user import User
-from src.user.domain.entities.user_session import UserSession
+from src.iam.domain.entities.user import User
+from src.iam.domain.entities.user_session import UserSession
 from tests.factories.user_factory import UserFactory
 from tests.factories.session_factory import UserSessionFactory
 

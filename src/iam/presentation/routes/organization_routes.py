@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, Query
 from typing import Optional, List
 from uuid import UUID
 
-from ..dependencies import get_organization_use_case, get_membership_use_case
+from ...presentation.dependencies import get_organization_use_case, get_membership_use_case
 from ...application.dtos.organization_dto import (
     OrganizationCreateDTO,
     OrganizationUpdateDTO,
@@ -19,7 +19,7 @@ from ...application.dtos.membership_dto import (
 from ...application.use_cases.organization_use_cases import OrganizationUseCase
 from ...application.use_cases.membership_use_cases import MembershipUseCase
 
-router = APIRouter(prefix="/organizations", tags=["Organizations"])
+router = APIRouter(tags=["Organizations"])
 
 
 @router.post("/", response_model=OrganizationResponseDTO, status_code=status.HTTP_201_CREATED)

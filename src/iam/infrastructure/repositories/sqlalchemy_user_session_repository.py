@@ -81,7 +81,7 @@ class SqlAlchemyUserSessionRepository(UserSessionRepository):
             return self._to_domain_entity(session_model)
         return None
 
-    def get_active_by_user(self, user_id: UUID) -> List[UserSession]:
+    def get_active_by_user_id(self, user_id: UUID) -> List[UserSession]:
         """Encontra todas as sessões ativas para um usuário."""
         result = self.session.execute(
             select(UserSessionModel).where(
@@ -149,19 +149,32 @@ class SqlAlchemyUserSessionRepository(UserSessionRepository):
         )
         return result.rowcount > 0
 
+    def revoke_all_user_sessions(self, user_id: UUID) -> int:
+        """Revoga todas as sessões de um usuário."""
+        query = update(UserSessionModel).where(
+            UserSessionModel.user_id == user_id,
+            UserSessionModel.status == SessionStatusEnum.ACTIVE,
+        ).values(
+            status=SessionStatusEnum.REVOKED,
+            logout_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc),
+        )
+
+        result = self.session.execute(query)
+        return result.rowcount
+
     def revoke_user_sessions(
         self, user_id: UUID, exclude_session_id: Optional[UUID] = None
     ) -> int:
         """Revoga todas as sessões de um usuário, opcionalmente excluindo uma sessão."""
+        if exclude_session_id is None:
+            return self.revoke_all_user_sessions(user_id)
+        
         query = update(UserSessionModel).where(
             UserSessionModel.user_id == user_id,
             UserSessionModel.status == SessionStatusEnum.ACTIVE,
-        )
-
-        if exclude_session_id:
-            query = query.where(UserSessionModel.id != exclude_session_id)
-
-        query = query.values(
+            UserSessionModel.id != exclude_session_id
+        ).values(
             status=SessionStatusEnum.REVOKED,
             logout_at=datetime.now(timezone.utc),
             updated_at=datetime.now(timezone.utc),

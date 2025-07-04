@@ -5,11 +5,11 @@ from typing import Optional, List
 from uuid import UUID
 from pydantic import BaseModel
 
-from ..dependencies import get_organization_use_case
+from ...presentation.dependencies import get_organization_use_case
 from ...application.use_cases.organization_use_cases import OrganizationUseCase
 from ...application.use_cases.simple_onboarding_use_case import SimpleOnboardingUseCase
 
-router = APIRouter(prefix="/onboarding", tags=["User Onboarding"])
+router = APIRouter(tags=["User Onboarding"])
 
 
 class OnboardingRequestDTO(BaseModel):
