@@ -11,6 +11,8 @@ from .repositories.sqlalchemy_permission_repository import (
 )
 from .repositories.sqlalchemy_policy_repository import SqlAlchemyPolicyRepository
 from .repositories.sqlalchemy_resource_repository import SqlAlchemyResourceRepository
+from .repositories.sqlalchemy_organization_repository import SqlAlchemyOrganizationRepository
+from .repositories.sqlalchemy_user_organization_role_repository import SqlAlchemyUserOrganizationRoleRepository
 
 from sqlalchemy.orm import Session
 
@@ -27,6 +29,14 @@ class IAMUnitOfWork(SQLAlchemyUnitOfWork):
         if "user_session" in repositories:
             self._repositories.update(
                 {"user_session": SqlAlchemyUserSessionRepository(session)}
+            )
+
+        # Organization-related repositories
+        if "organization" in repositories:
+            self._repositories.update({"organization": SqlAlchemyOrganizationRepository(session)})
+        if "user_organization_role" in repositories:
+            self._repositories.update(
+                {"user_organization_role": SqlAlchemyUserOrganizationRoleRepository(session)}
             )
 
         # Authorization-related repositories

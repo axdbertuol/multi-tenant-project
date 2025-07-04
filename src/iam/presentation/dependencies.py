@@ -9,13 +9,15 @@ from ..application.use_cases.authorization_use_cases import AuthorizationUseCase
 from ..application.use_cases.role_use_cases import RoleUseCase
 from ..application.use_cases.permission_use_cases import PermissionUseCase
 from ..application.use_cases.policy_use_cases import PolicyUseCase
+from ..application.use_cases.organization_use_cases import OrganizationUseCase
+from ..application.use_cases.membership_use_cases import MembershipUseCase
 from ..infrastructure.iam_unit_of_work import IAMUnitOfWork
 
 
 def get_iam_uow(db: Session = Depends(get_db)) -> IAMUnitOfWork:
     """Obtém uma instância de IAMUnitOfWork com todos os repositórios do contexto IAM."""
     return IAMUnitOfWork(
-        db, ["user", "user_session", "role", "permission", "policy", "resource"]
+        db, ["user", "user_session", "organization", "user_organization_role", "role", "permission", "policy", "resource"]
     )
 
 
@@ -58,3 +60,13 @@ def get_permission_use_case(
 def get_policy_use_case(uow: IAMUnitOfWork = Depends(get_iam_uow)) -> PolicyUseCase:
     """Obtém PolicyUseCase com a dependência UnitOfWork apropriada."""
     return PolicyUseCase(uow)
+
+
+def get_organization_use_case(uow: IAMUnitOfWork = Depends(get_iam_uow)) -> OrganizationUseCase:
+    """Obtém OrganizationUseCase com a dependência UnitOfWork apropriada."""
+    return OrganizationUseCase(uow)
+
+
+def get_membership_use_case(uow: IAMUnitOfWork = Depends(get_iam_uow)) -> MembershipUseCase:
+    """Obtém MembershipUseCase com a dependência UnitOfWork apropriada."""
+    return MembershipUseCase(uow)

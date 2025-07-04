@@ -5,8 +5,11 @@ from typing import Dict, List, Optional
 from uuid import UUID, uuid4
 
 from ...domain.entities.resource import Resource
+from ...domain.entities.organization import Organization
 from ...domain.services.resource_application_service import ApplicationResourceService
 from ...domain.services.jwt_service import JWTService
+from ..dtos.organization_dto import OrganizationCreateDTO
+from .organization_use_cases import OrganizationUseCase
 
 
 class SimpleOnboardingUseCase:
@@ -17,25 +20,24 @@ class SimpleOnboardingUseCase:
     the need for complex application-specific entities and logic.
     """
     
-    def __init__(self):
+    def __init__(self, organization_use_case: OrganizationUseCase):
         self.app_service = ApplicationResourceService()
         self.jwt_service = JWTService()
+        self.organization_use_case = organization_use_case
     
-    def complete_organization_setup(
+    def complete_user_onboarding(
         self,
         user_id: UUID,
-        organization_id: UUID,
         organization_name: str,
         plan_type: str = "basic",
         custom_apps: Optional[List[str]] = None
     ) -> Dict:
         """
-        Complete organization setup with resource-based applications.
+        Complete full user onboarding: create organization + setup resource-based applications.
         
         Args:
-            user_id: User who owns the organization
-            organization_id: Organization ID (already created)
-            organization_name: Organization name
+            user_id: User who will own the organization
+            organization_name: Name for the new organization
             plan_type: Subscription plan type
             custom_apps: Optional list of specific app types to create
             
@@ -43,7 +45,16 @@ class SimpleOnboardingUseCase:
             Dictionary with setup results
         """
         try:
-            # Create default application resources based on plan
+            # Step 1: Create organization (tenant)
+            org_dto = OrganizationCreateDTO(
+                name=organization_name,
+                owner_id=user_id,
+                description=f"Organization for {organization_name}"
+            )
+            organization = self.organization_use_case.create_organization(org_dto)
+            organization_id = organization.id
+            
+            # Step 2: Create default application resources based on plan
             if custom_apps:
                 app_resources = []
                 for app_type in custom_apps:
@@ -60,7 +71,7 @@ class SimpleOnboardingUseCase:
                     plan_type=plan_type
                 )
             
-            # Generate JWT token with resource permissions
+            # Step 3: Generate JWT token with resource permissions
             access_token = self._generate_access_token(
                 user_id=user_id,
                 organization_id=organization_id,
@@ -70,8 +81,11 @@ class SimpleOnboardingUseCase:
             # Build response
             return {
                 "success": True,
-                "organization_id": str(organization_id),
-                "organization_name": organization_name,
+                "organization": {
+                    "id": str(organization_id),
+                    "name": organization_name,
+                    "created_at": organization.created_at.isoformat()
+                },
                 "plan_type": plan_type,
                 "applications": [
                     {
