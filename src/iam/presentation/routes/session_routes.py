@@ -176,15 +176,4 @@ def cleanup_expired_sessions(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
 
-@router.get("/validate/{token}")
-def validate_session_access(
-    token: str,
-    permissions: List[str] = Query(None, description="Required permissions"),
-    use_case: SessionUseCase = Depends(get_session_use_case),
-):
-    """Valida a sessão e permissões opcionais."""
-    try:
-        valid = use_case.validate_session_access(token, permissions)
-        return {"valid": valid, "token": token}
-    except ValueError as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+# Session validation is now handled by /auth/validate endpoint
