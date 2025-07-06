@@ -25,8 +25,11 @@ class PlanTypeEnum(str, enum.Enum):
 
 
 class PlanResourceTypeEnum(str, enum.Enum):
-    CHAT_WHATSAPP = "chat_whatsapp"
-    CHAT_IFRAME = "chat_iframe"
+    WHATSAPP_APP = "whatsapp_app"
+    WEB_CHAT_APP = "web_chat_app"
+    MANAGEMENT_APP = "management_app"
+    API_ACCESS = "api_access"
+    CUSTOM = "custom"
 
 
 class SubscriptionStatusEnum(str, enum.Enum):

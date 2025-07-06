@@ -69,23 +69,22 @@ class Plan(BaseModel):
         """Get default resources configuration based on plan type."""
         if plan_type == PlanType.BASIC:
             return {
-                "chat_iframe": {
+                "web_chat_app": {
                     "enabled": True,
                     "api_keys": {"iframe_api_key": "basic-iframe-key"},
                     "limits": {"concurrent_sessions": 25, "domains_allowed": 3},
                     "enabled_features": ["basic_chat", "emoji_support"],
                 },
-                "chat_whatsapp": {
+                "management_app": {
                     "enabled": True,
-                    "api_keys": {"whatsapp_api_key": "basic-whatsapp-key"},
-                    "limits": {"messages_per_day": 1000},
-                    "enabled_features": ["auto_reply", "business_hours"],
+                    "limits": {"max_users": 10, "max_organizations": 1, "storage_gb": 5},
+                    "enabled_features": ["dashboard", "user_management"],
                 },
             }
 
         elif plan_type == PlanType.PREMIUM:
             return {
-                "chat_iframe": {
+                "web_chat_app": {
                     "enabled": True,
                     "api_keys": {"iframe_api_key": "premium-iframe-key"},
                     "limits": {"concurrent_sessions": 100, "domains_allowed": 10},
@@ -96,22 +95,22 @@ class Plan(BaseModel):
                         "file_upload",
                     ],
                 },
-                "chat_whatsapp": {
+                "management_app": {
                     "enabled": True,
-                    "api_keys": {"whatsapp_api_key": "premium-whatsapp-key"},
-                    "limits": {"messages_per_day": 5000},
-                    "enabled_features": [
-                        "auto_reply",
-                        "business_hours",
-                        "template_messages",
-                        "media_messages",
-                    ],
+                    "limits": {"max_users": 25, "max_organizations": 3, "storage_gb": 25},
+                    "enabled_features": ["dashboard", "user_management", "dashboard_customization", "reporting"],
+                },
+                "api_access": {
+                    "enabled": True,
+                    "api_keys": {"api_key": "premium-api-key"},
+                    "limits": {"requests_per_minute": 100, "requests_per_day": 10000, "concurrent_connections": 5},
+                    "enabled_features": ["rest_api", "authentication"],
                 },
             }
 
         elif plan_type == PlanType.ENTERPRISE:
             return {
-                "chat_iframe": {
+                "web_chat_app": {
                     "enabled": True,
                     "api_keys": {"iframe_api_key": "enterprise-iframe-key"},
                     "limits": {
@@ -127,7 +126,7 @@ class Plan(BaseModel):
                         "white_label",
                     ],
                 },
-                "chat_whatsapp": {
+                "whatsapp_app": {
                     "enabled": True,
                     "api_keys": {"whatsapp_api_key": "enterprise-whatsapp-key"},
                     "limits": {"messages_per_day": -1},  # Unlimited
@@ -139,6 +138,17 @@ class Plan(BaseModel):
                         "bulk_messaging",
                         "analytics",
                     ],
+                },
+                "management_app": {
+                    "enabled": True,
+                    "limits": {"max_users": -1, "max_organizations": -1, "storage_gb": -1},  # Unlimited
+                    "enabled_features": ["dashboard", "user_management", "dashboard_customization", "reporting", "analytics"],
+                },
+                "api_access": {
+                    "enabled": True,
+                    "api_keys": {"api_key": "enterprise-api-key"},
+                    "limits": {"requests_per_minute": -1, "requests_per_day": -1, "concurrent_connections": -1},  # Unlimited
+                    "enabled_features": ["rest_api", "authentication", "webhooks", "bulk_operations"],
                 },
             }
 
@@ -247,11 +257,17 @@ class Plan(BaseModel):
     def can_support_organizations(self, org_count: int) -> bool:
         return org_count <= self.max_organizations
 
-    def has_chat_whatsapp(self) -> bool:
-        return self.has_resource("chat_whatsapp")
+    def has_whatsapp_app(self) -> bool:
+        return self.has_resource("whatsapp_app")
 
-    def has_chat_iframe(self) -> bool:
-        return self.has_resource("chat_iframe")
+    def has_web_chat_app(self) -> bool:
+        return self.has_resource("web_chat_app")
+
+    def has_management_app(self) -> bool:
+        return self.has_resource("management_app")
+
+    def has_api_access(self) -> bool:
+        return self.has_resource("api_access")
 
     def is_available_for_signup(self) -> bool:
         return self.status == PlanStatus.ACTIVE and self.is_public and self.is_active
@@ -272,10 +288,19 @@ class Plan(BaseModel):
 
         # Validate required API keys
         api_keys = resource.get("api_keys", {})
-        if resource_type == "chat_whatsapp" and not api_keys.get("whatsapp_api_key"):
+        if resource_type == "whatsapp_app" and not api_keys.get("whatsapp_api_key"):
             errors.append("WhatsApp API key is required")
 
-        if resource_type == "chat_iframe" and not api_keys.get("iframe_api_key"):
+        if resource_type == "web_chat_app" and not api_keys.get("iframe_api_key"):
             errors.append("Iframe API key is required")
+
+        if resource_type == "api_access" and not api_keys.get("api_key"):
+            errors.append("API key is required")
+
+        # Validate limits for management app
+        if resource_type == "management_app":
+            limits = resource.get("limits", {})
+            if not limits.get("max_users"):
+                errors.append("Max users limit is required for management app")
 
         return len(errors) == 0, errors

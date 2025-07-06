@@ -6,8 +6,10 @@ from enum import Enum
 
 
 class PlanResourceType(str, Enum):
-    CHAT_WHATSAPP = "chat_whatsapp"
-    CHAT_IFRAME = "chat_iframe"
+    WHATSAPP_APP = "whatsapp_app"
+    WEB_CHAT_APP = "web_chat_app"
+    MANAGEMENT_APP = "management_app"
+    API_ACCESS = "api_access"
     CUSTOM = "custom"
 
 
@@ -64,7 +66,7 @@ class PlanResource(BaseModel):
         ).model_copy(update={"is_active": is_enabled})
 
     @classmethod
-    def create_whatsapp_resource(
+    def create_whatsapp_app_resource(
         cls,
         plan_id: UUID,
         api_key: str,
@@ -86,12 +88,12 @@ class PlanResource(BaseModel):
 
         return cls.create(
             plan_id=plan_id,
-            resource_type=PlanResourceType.CHAT_WHATSAPP,
+            resource_type=PlanResourceType.WHATSAPP_APP,
             configuration=configuration,
         )
 
     @classmethod
-    def create_iframe_resource(
+    def create_web_chat_app_resource(
         cls,
         plan_id: UUID,
         api_key: str,
@@ -117,7 +119,72 @@ class PlanResource(BaseModel):
 
         return cls.create(
             plan_id=plan_id,
-            resource_type=PlanResourceType.CHAT_IFRAME,
+            resource_type=PlanResourceType.WEB_CHAT_APP,
+            configuration=configuration,
+        )
+
+    @classmethod
+    def create_management_app_resource(
+        cls,
+        plan_id: UUID,
+        max_users: int = 10,
+        max_organizations: int = 1,
+        dashboard_features: bool = True,
+        user_management: bool = True,
+        analytics: bool = False,
+    ) -> "PlanResource":
+        """Create management app resource with standard configuration."""
+        configuration = {
+            "limits": {
+                "max_users": max_users,
+                "max_organizations": max_organizations,
+                "storage_gb": 5,
+            },
+            "enabled_features": ["dashboard", "user_management"],
+        }
+
+        if dashboard_features:
+            configuration["enabled_features"].extend(["dashboard_customization", "reporting"])
+
+        if analytics:
+            configuration["enabled_features"].append("analytics")
+
+        return cls.create(
+            plan_id=plan_id,
+            resource_type=PlanResourceType.MANAGEMENT_APP,
+            configuration=configuration,
+        )
+
+    @classmethod
+    def create_api_access_resource(
+        cls,
+        plan_id: UUID,
+        api_key: str,
+        requests_per_minute: int = 100,
+        requests_per_day: int = 10000,
+        webhook_support: bool = False,
+        bulk_operations: bool = False,
+    ) -> "PlanResource":
+        """Create API access resource with standard configuration."""
+        configuration = {
+            "api_keys": {"api_key": api_key},
+            "limits": {
+                "requests_per_minute": requests_per_minute,
+                "requests_per_day": requests_per_day,
+                "concurrent_connections": 5,
+            },
+            "enabled_features": ["rest_api", "authentication"],
+        }
+
+        if webhook_support:
+            configuration["enabled_features"].append("webhooks")
+
+        if bulk_operations:
+            configuration["enabled_features"].append("bulk_operations")
+
+        return cls.create(
+            plan_id=plan_id,
+            resource_type=PlanResourceType.API_ACCESS,
             configuration=configuration,
         )
 
@@ -230,19 +297,31 @@ class PlanResource(BaseModel):
         errors = []
 
         # Validate based on resource type
-        if self.resource_type == PlanResourceType.CHAT_WHATSAPP:
+        if self.resource_type == PlanResourceType.WHATSAPP_APP:
             if not self.get_api_key("whatsapp_api_key"):
                 errors.append("WhatsApp API key is required")
 
             if not self.get_limit("messages_per_day"):
                 errors.append("Messages per day limit is required")
 
-        elif self.resource_type == PlanResourceType.CHAT_IFRAME:
+        elif self.resource_type == PlanResourceType.WEB_CHAT_APP:
             if not self.get_api_key("iframe_api_key"):
                 errors.append("Iframe API key is required")
 
             if not self.get_limit("concurrent_sessions"):
                 errors.append("Concurrent sessions limit is required")
+
+        elif self.resource_type == PlanResourceType.MANAGEMENT_APP:
+            # Management app typically doesn't need API keys
+            if not self.get_limit("max_users"):
+                errors.append("Max users limit is required")
+
+        elif self.resource_type == PlanResourceType.API_ACCESS:
+            if not self.get_api_key("api_key"):
+                errors.append("API key is required")
+
+            if not self.get_limit("requests_per_minute"):
+                errors.append("Requests per minute limit is required")
 
         return len(errors) == 0, errors
 

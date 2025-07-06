@@ -13,10 +13,14 @@ class PlanResourceService:
         self, resource_type: PlanResourceType, configuration: Dict[str, Any]
     ) -> Dict[str, Any]:
         """Validate and normalize resource configuration based on type."""
-        if resource_type == PlanResourceType.CHAT_WHATSAPP:
+        if resource_type == PlanResourceType.WHATSAPP_APP:
             return self._validate_whatsapp_configuration(configuration)
-        elif resource_type == PlanResourceType.CHAT_IFRAME:
+        elif resource_type == PlanResourceType.WEB_CHAT_APP:
             return self._validate_iframe_configuration(configuration)
+        elif resource_type == PlanResourceType.MANAGEMENT_APP:
+            return self._validate_management_app_configuration(configuration)
+        elif resource_type == PlanResourceType.API_ACCESS:
+            return self._validate_api_access_configuration(configuration)
         elif resource_type == PlanResourceType.CUSTOM:
             return self._validate_custom_configuration(configuration)
         else:
@@ -31,10 +35,14 @@ class PlanResourceService:
         """Test a resource configuration and return test results."""
         test_parameters = test_parameters or {}
 
-        if resource_type == PlanResourceType.CHAT_WHATSAPP:
+        if resource_type == PlanResourceType.WHATSAPP_APP:
             return self._test_whatsapp_configuration(configuration, test_parameters)
-        elif resource_type == PlanResourceType.CHAT_IFRAME:
+        elif resource_type == PlanResourceType.WEB_CHAT_APP:
             return self._test_iframe_configuration(configuration, test_parameters)
+        elif resource_type == PlanResourceType.MANAGEMENT_APP:
+            return self._test_management_app_configuration(configuration, test_parameters)
+        elif resource_type == PlanResourceType.API_ACCESS:
+            return self._test_api_access_configuration(configuration, test_parameters)
         elif resource_type == PlanResourceType.CUSTOM:
             return self._test_custom_configuration(configuration, test_parameters)
         else:
@@ -326,6 +334,136 @@ class PlanResourceService:
 
         return results
 
+    def _validate_management_app_configuration(self, config: Dict[str, Any]) -> Dict[str, Any]:
+        """Validate management app resource configuration."""
+        validated_config = {}
+
+        # Required fields
+        if "max_users" not in config:
+            raise ValueError("max_users is required for management app")
+        validated_config["max_users"] = int(config["max_users"])
+
+        if "max_organizations" not in config:
+            raise ValueError("max_organizations is required for management app")
+        validated_config["max_organizations"] = int(config["max_organizations"])
+
+        # Optional fields with defaults
+        validated_config["storage_gb"] = int(config.get("storage_gb", 5))
+        validated_config["dashboard_enabled"] = bool(config.get("dashboard_enabled", True))
+        validated_config["user_management_enabled"] = bool(config.get("user_management_enabled", True))
+        validated_config["analytics_enabled"] = bool(config.get("analytics_enabled", False))
+
+        # Feature configuration
+        if "enabled_features" in config:
+            validated_config["enabled_features"] = config["enabled_features"]
+        else:
+            validated_config["enabled_features"] = ["dashboard", "user_management"]
+
+        return validated_config
+
+    def _validate_api_access_configuration(self, config: Dict[str, Any]) -> Dict[str, Any]:
+        """Validate API access resource configuration."""
+        validated_config = {}
+
+        # Required fields
+        if "api_key" not in config or not config["api_key"]:
+            raise ValueError("API key is required for API access")
+        validated_config["api_key"] = str(config["api_key"]).strip()
+
+        # Rate limiting
+        validated_config["requests_per_minute"] = int(config.get("requests_per_minute", 100))
+        validated_config["requests_per_day"] = int(config.get("requests_per_day", 10000))
+        validated_config["concurrent_connections"] = int(config.get("concurrent_connections", 5))
+
+        # Optional features
+        validated_config["webhook_support"] = bool(config.get("webhook_support", False))
+        validated_config["bulk_operations"] = bool(config.get("bulk_operations", False))
+
+        # Feature configuration
+        if "enabled_features" in config:
+            validated_config["enabled_features"] = config["enabled_features"]
+        else:
+            validated_config["enabled_features"] = ["rest_api", "authentication"]
+
+        return validated_config
+
+    def _test_management_app_configuration(
+        self, config: Dict[str, Any], test_params: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """Test management app configuration."""
+        results = {
+            "success": True,
+            "tests_performed": [],
+            "configuration_valid": False,
+            "limits_valid": False,
+        }
+
+        try:
+            # Test 1: Configuration validation
+            results["tests_performed"].append("configuration_validation")
+            max_users = config.get("max_users", 0)
+            max_organizations = config.get("max_organizations", 0)
+
+            if max_users > 0 and max_organizations > 0:
+                results["configuration_valid"] = True
+                results["limits_valid"] = True
+            else:
+                results["success"] = False
+                results["error"] = "Invalid user or organization limits"
+
+            # Test 2: Feature validation
+            results["tests_performed"].append("feature_validation")
+            enabled_features = config.get("enabled_features", [])
+            if isinstance(enabled_features, list) and len(enabled_features) > 0:
+                results["features_valid"] = True
+            else:
+                results["features_valid"] = False
+
+        except Exception as e:
+            results["success"] = False
+            results["error"] = str(e)
+
+        return results
+
+    def _test_api_access_configuration(
+        self, config: Dict[str, Any], test_params: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """Test API access configuration."""
+        results = {
+            "success": True,
+            "tests_performed": [],
+            "api_key_valid": False,
+            "rate_limits_valid": False,
+        }
+
+        try:
+            # Test 1: API key validation
+            results["tests_performed"].append("api_key_validation")
+            api_key = config.get("api_key")
+
+            if api_key and len(api_key) >= 16:  # Basic length check
+                results["api_key_valid"] = True
+            else:
+                results["success"] = False
+                results["error"] = "API key appears to be invalid"
+
+            # Test 2: Rate limit validation
+            results["tests_performed"].append("rate_limit_validation")
+            rpm = config.get("requests_per_minute", 0)
+            rpd = config.get("requests_per_day", 0)
+
+            if rpm > 0 and rpd > 0:
+                results["rate_limits_valid"] = True
+            else:
+                results["success"] = False
+                results["error"] = "Invalid rate limit configuration"
+
+        except Exception as e:
+            results["success"] = False
+            results["error"] = str(e)
+
+        return results
+
     def _is_valid_url(self, url: str) -> bool:
         """Check if URL is valid."""
         try:
@@ -360,7 +498,7 @@ class PlanResourceService:
         self, resource_type: PlanResourceType
     ) -> Dict[str, Any]:
         """Get default configuration for a resource type."""
-        if resource_type == PlanResourceType.CHAT_WHATSAPP:
+        if resource_type == PlanResourceType.WHATSAPP_APP:
             return {
                 "messages_per_day": 1000,
                 "auto_reply": True,
@@ -370,7 +508,7 @@ class PlanResourceService:
                 "welcome_message": "Welcome! How can I help you today?",
                 "default_response": "Thank you for your message. We'll get back to you soon.",
             }
-        elif resource_type == PlanResourceType.CHAT_IFRAME:
+        elif resource_type == PlanResourceType.WEB_CHAT_APP:
             return {
                 "theme": "light",
                 "primary_color": "#007bff",
@@ -382,6 +520,25 @@ class PlanResourceService:
                 "enable_file_upload": True,
                 "enable_emoji": True,
                 "welcome_message": "Hello! How can we assist you?",
+            }
+        elif resource_type == PlanResourceType.MANAGEMENT_APP:
+            return {
+                "max_users": 10,
+                "max_organizations": 1,
+                "storage_gb": 5,
+                "dashboard_enabled": True,
+                "user_management_enabled": True,
+                "analytics_enabled": False,
+                "enabled_features": ["dashboard", "user_management"],
+            }
+        elif resource_type == PlanResourceType.API_ACCESS:
+            return {
+                "requests_per_minute": 100,
+                "requests_per_day": 10000,
+                "concurrent_connections": 5,
+                "webhook_support": False,
+                "bulk_operations": False,
+                "enabled_features": ["rest_api", "authentication"],
             }
         elif resource_type == PlanResourceType.CUSTOM:
             return {
@@ -395,7 +552,7 @@ class PlanResourceService:
         self, resource_type: PlanResourceType
     ) -> Dict[str, Any]:
         """Get configuration schema for a resource type."""
-        if resource_type == PlanResourceType.CHAT_WHATSAPP:
+        if resource_type == PlanResourceType.WHATSAPP_APP:
             return {
                 "type": "object",
                 "required": ["api_key", "phone_number"],
@@ -426,7 +583,7 @@ class PlanResourceService:
                     "default_response": {"type": "string", "maxLength": 500},
                 },
             }
-        elif resource_type == PlanResourceType.CHAT_IFRAME:
+        elif resource_type == PlanResourceType.WEB_CHAT_APP:
             return {
                 "type": "object",
                 "required": ["widget_id"],
@@ -456,6 +613,67 @@ class PlanResourceService:
                     "company_name": {"type": "string", "maxLength": 100},
                     "agent_name": {"type": "string", "maxLength": 50},
                     "welcome_message": {"type": "string", "maxLength": 500},
+                },
+            }
+        elif resource_type == PlanResourceType.MANAGEMENT_APP:
+            return {
+                "type": "object",
+                "required": ["max_users", "max_organizations"],
+                "properties": {
+                    "max_users": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "description": "Maximum number of users",
+                    },
+                    "max_organizations": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "description": "Maximum number of organizations",
+                    },
+                    "storage_gb": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "description": "Storage limit in GB",
+                    },
+                    "dashboard_enabled": {"type": "boolean"},
+                    "user_management_enabled": {"type": "boolean"},
+                    "analytics_enabled": {"type": "boolean"},
+                    "enabled_features": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                    },
+                },
+            }
+        elif resource_type == PlanResourceType.API_ACCESS:
+            return {
+                "type": "object",
+                "required": ["api_key"],
+                "properties": {
+                    "api_key": {
+                        "type": "string",
+                        "description": "API access key",
+                    },
+                    "requests_per_minute": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "description": "Rate limit per minute",
+                    },
+                    "requests_per_day": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "description": "Rate limit per day",
+                    },
+                    "concurrent_connections": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "description": "Max concurrent connections",
+                    },
+                    "webhook_support": {"type": "boolean"},
+                    "bulk_operations": {"type": "boolean"},
+                    "enabled_features": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                    },
                 },
             }
         elif resource_type == PlanResourceType.CUSTOM:

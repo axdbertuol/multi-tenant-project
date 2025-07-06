@@ -19,7 +19,7 @@ class PlanResourceCreateDTO(BaseModel):
     def validate_configuration(cls, v: Dict[str, Any], info) -> Dict[str, Any]:
         resource_type = info.data.get("resource_type")
 
-        if resource_type == PlanResourceType.CHAT_WHATSAPP:
+        if resource_type == PlanResourceType.WHATSAPP_APP:
             required_fields = ["api_key", "webhook_url", "phone_number"]
             for field in required_fields:
                 if field not in v:
@@ -27,12 +27,28 @@ class PlanResourceCreateDTO(BaseModel):
                         f"WhatsApp configuration missing required field: {field}"
                     )
 
-        elif resource_type == PlanResourceType.CHAT_IFRAME:
+        elif resource_type == PlanResourceType.WEB_CHAT_APP:
             required_fields = ["iframe_url", "allowed_domains"]
             for field in required_fields:
                 if field not in v:
                     raise ValueError(
-                        f"Iframe configuration missing required field: {field}"
+                        f"Web chat app configuration missing required field: {field}"
+                    )
+
+        elif resource_type == PlanResourceType.MANAGEMENT_APP:
+            required_fields = ["max_users", "max_organizations"]
+            for field in required_fields:
+                if field not in v:
+                    raise ValueError(
+                        f"Management app configuration missing required field: {field}"
+                    )
+
+        elif resource_type == PlanResourceType.API_ACCESS:
+            required_fields = ["api_key", "rate_limit"]
+            for field in required_fields:
+                if field not in v:
+                    raise ValueError(
+                        f"API access configuration missing required field: {field}"
                     )
 
         return v

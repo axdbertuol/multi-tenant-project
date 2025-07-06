@@ -75,10 +75,12 @@ class PlanAuthorizationService:
 
         # Determine required API key based on resource type
         required_key = None
-        if resource_type == "chat_whatsapp":
+        if resource_type == "whatsapp_app":
             required_key = "whatsapp_api_key"
-        elif resource_type == "chat_iframe":
+        elif resource_type == "web_chat_app":
             required_key = "iframe_api_key"
+        elif resource_type == "api_access":
+            required_key = "api_key"
 
         if not required_key:
             return True, "No API key required", None

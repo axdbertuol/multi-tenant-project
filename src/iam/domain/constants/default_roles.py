@@ -25,7 +25,8 @@ class DefaultRoleConfigurations:
                 "role:*",
                 "permission:*",
                 "resource:*",
-                "application:*"
+                "application:*",
+                "document:*"
             ],
             "is_system_role": True,
             "can_be_deleted": False,
@@ -39,7 +40,15 @@ class DefaultRoleConfigurations:
                 "role:*",
                 "permission:read",
                 "resource:*",
-                "application:*"
+                "application:*",
+                "document:read",
+                "document:create",
+                "document:update",
+                "document:delete",
+                "document:share",
+                "document:manage",
+                "document:ai_query",
+                "document:train"
             ],
             "is_system_role": True,
             "can_be_deleted": False,
@@ -53,7 +62,13 @@ class DefaultRoleConfigurations:
                 "resource:read",
                 "resource:use",
                 "application:read",
-                "application:use"
+                "application:use",
+                "document:read",
+                "document:create",
+                "document:update",
+                "document:share",
+                "document:download",
+                "document:ai_query"
             ],
             "is_system_role": True,
             "can_be_deleted": False,
@@ -65,7 +80,9 @@ class DefaultRoleConfigurations:
                 "user:read",
                 "role:read",
                 "resource:read",
-                "application:read"
+                "application:read",
+                "document:read",
+                "document:download"
             ],
             "is_system_role": True,
             "can_be_deleted": False,

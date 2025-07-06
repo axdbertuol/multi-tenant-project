@@ -19,7 +19,8 @@ class PolicyCondition(BaseModel):
 
     def evaluate(self, context: Dict[str, Any]) -> bool:
         """Evaluate condition against context."""
-        context_value = context.get(self.attribute)
+        # Support nested attribute access with dot notation
+        context_value = self._get_nested_value(context, self.attribute)
 
         if context_value is None:
             return False
@@ -42,8 +43,48 @@ class PolicyCondition(BaseModel):
             return context_value not in self.value
         elif self.operator == "contains":
             return self.value in context_value
+        # Document-specific operators
+        elif self.operator == "intersects":
+            return self._intersects(context_value, self.value)
+        elif self.operator == "not_intersects":
+            return not self._intersects(context_value, self.value)
+        elif self.operator == "has_all":
+            return self._has_all(context_value, self.value)
+        elif self.operator == "has_any":
+            return self._has_any(context_value, self.value)
 
         return False
+
+    def _get_nested_value(self, context: Dict[str, Any], attribute: str) -> Any:
+        """Get value from nested context using dot notation."""
+        keys = attribute.split('.')
+        value = context
+        
+        for key in keys:
+            if isinstance(value, dict) and key in value:
+                value = value[key]
+            else:
+                return None
+        
+        return value
+
+    def _intersects(self, list1: Any, list2: Any) -> bool:
+        """Check if two lists have common elements."""
+        if not isinstance(list1, (list, tuple)) or not isinstance(list2, (list, tuple)):
+            return False
+        return bool(set(list1) & set(list2))
+
+    def _has_all(self, container: Any, required_items: Any) -> bool:
+        """Check if container has all required items."""
+        if not isinstance(container, (list, tuple)) or not isinstance(required_items, (list, tuple)):
+            return False
+        return set(required_items).issubset(set(container))
+
+    def _has_any(self, container: Any, items: Any) -> bool:
+        """Check if container has any of the specified items."""
+        if not isinstance(container, (list, tuple)) or not isinstance(items, (list, tuple)):
+            return False
+        return bool(set(container) & set(items))
 
 
 class Policy(BaseModel):

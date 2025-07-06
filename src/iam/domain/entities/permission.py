@@ -15,6 +15,12 @@ class PermissionAction(str, Enum):
     DELETE = "delete"
     EXECUTE = "execute"
     MANAGE = "manage"
+    # Document-specific actions
+    SHARE = "share"          # Share document with others
+    DOWNLOAD = "download"    # Download document file
+    AI_QUERY = "ai_query"    # Allow AI to reference in responses
+    AI_CITE = "ai_cite"      # Allow AI to cite this document
+    TRAIN = "train"          # Include in AI training
 
 
 class Permission(BaseModel):
