@@ -10,6 +10,7 @@ class PlanResourceType(str, Enum):
     WEB_CHAT_APP = "web_chat_app"
     MANAGEMENT_APP = "management_app"
     API_ACCESS = "api_access"
+    DOCUMENT_STORAGE = "document_storage"
     CUSTOM = "custom"
 
 
@@ -188,6 +189,82 @@ class PlanResource(BaseModel):
             configuration=configuration,
         )
 
+    @classmethod
+    def create_document_storage_resource(
+        cls,
+        plan_id: UUID,
+        max_documents: int = 100,
+        max_storage_gb: int = 5,
+        ai_training_enabled: bool = True,
+        ai_query_enabled: bool = True,
+        document_sharing: bool = True,
+        advanced_permissions: bool = False,
+        supported_formats: list[str] = None,
+    ) -> "PlanResource":
+        """Create document storage resource with standard configuration."""
+        if supported_formats is None:
+            supported_formats = ["pdf", "txt", "docx", "md"]
+        
+        configuration = {
+            "limits": {
+                "max_documents": max_documents,
+                "max_storage_gb": max_storage_gb,
+                "max_file_size_mb": 50,
+                "max_documents_per_upload": 10,
+            },
+            "enabled_features": [
+                "document_upload",
+                "document_download",
+                "document_preview",
+                "basic_search",
+            ],
+            "document_settings": {
+                "supported_formats": supported_formats,
+                "auto_indexing": True,
+                "version_control": False,
+                "retention_days": None,  # No automatic deletion
+            },
+            "ai_features": {
+                "ai_training_enabled": ai_training_enabled,
+                "ai_query_enabled": ai_query_enabled,
+                "auto_chunking": True,
+                "semantic_search": ai_query_enabled,
+            },
+            "permission_features": {
+                "document_sharing": document_sharing,
+                "role_based_access": True,
+                "user_based_access": advanced_permissions,
+                "confidentiality_levels": advanced_permissions,
+                "time_based_access": advanced_permissions,
+            },
+        }
+
+        # Add advanced features based on parameters
+        if document_sharing:
+            configuration["enabled_features"].extend([
+                "document_sharing",
+                "share_links",
+            ])
+
+        if advanced_permissions:
+            configuration["enabled_features"].extend([
+                "advanced_permissions",
+                "audit_logging",
+                "permission_templates",
+            ])
+
+        if ai_training_enabled or ai_query_enabled:
+            configuration["enabled_features"].extend([
+                "ai_integration",
+                "vector_storage",
+            ])
+
+        return cls.create(
+            plan_id=plan_id,
+            resource_type=PlanResourceType.DOCUMENT_STORAGE,
+            configuration=configuration,
+        )
+
     def update_configuration(self, new_configuration: Dict[str, Any]) -> "PlanResource":
         """Update resource configuration."""
         merged_config = self.configuration.copy()
@@ -292,6 +369,113 @@ class PlanResource(BaseModel):
         """Check if specific feature is enabled."""
         return feature in self.get_enabled_features()
 
+    # Document storage specific methods
+    def get_document_setting(self, setting_name: str) -> Any:
+        """Get specific document setting from configuration."""
+        doc_settings = self.configuration.get("document_settings", {})
+        return doc_settings.get(setting_name)
+
+    def get_ai_feature_setting(self, setting_name: str) -> Any:
+        """Get specific AI feature setting from configuration."""
+        ai_features = self.configuration.get("ai_features", {})
+        return ai_features.get(setting_name)
+
+    def get_permission_feature_setting(self, setting_name: str) -> Any:
+        """Get specific permission feature setting from configuration."""
+        permission_features = self.configuration.get("permission_features", {})
+        return permission_features.get(setting_name)
+
+    def is_ai_training_enabled(self) -> bool:
+        """Check if AI training is enabled for documents."""
+        return self.get_ai_feature_setting("ai_training_enabled") is True
+
+    def is_ai_query_enabled(self) -> bool:
+        """Check if AI query is enabled for documents."""
+        return self.get_ai_feature_setting("ai_query_enabled") is True
+
+    def is_document_sharing_enabled(self) -> bool:
+        """Check if document sharing is enabled."""
+        return self.get_permission_feature_setting("document_sharing") is True
+
+    def supports_advanced_permissions(self) -> bool:
+        """Check if advanced permissions are supported."""
+        return self.get_permission_feature_setting("user_based_access") is True
+
+    def get_supported_document_formats(self) -> list[str]:
+        """Get list of supported document formats."""
+        return self.get_document_setting("supported_formats") or []
+
+    def supports_document_format(self, format_name: str) -> bool:
+        """Check if specific document format is supported."""
+        return format_name.lower() in [fmt.lower() for fmt in self.get_supported_document_formats()]
+
+    def get_max_documents(self) -> int:
+        """Get maximum number of documents allowed."""
+        return self.get_limit("max_documents") or 0
+
+    def get_max_storage_gb(self) -> int:
+        """Get maximum storage in GB."""
+        return self.get_limit("max_storage_gb") or 0
+
+    def get_max_file_size_mb(self) -> int:
+        """Get maximum file size in MB."""
+        return self.get_limit("max_file_size_mb") or 50
+
+    def update_document_limits(
+        self,
+        max_documents: Optional[int] = None,
+        max_storage_gb: Optional[int] = None,
+        max_file_size_mb: Optional[int] = None
+    ) -> "PlanResource":
+        """Update document storage limits."""
+        new_config = self.configuration.copy()
+        if "limits" not in new_config:
+            new_config["limits"] = {}
+
+        if max_documents is not None:
+            new_config["limits"]["max_documents"] = max_documents
+        if max_storage_gb is not None:
+            new_config["limits"]["max_storage_gb"] = max_storage_gb
+        if max_file_size_mb is not None:
+            new_config["limits"]["max_file_size_mb"] = max_file_size_mb
+
+        return self.model_copy(
+            update={
+                "configuration": new_config,
+                "updated_at": datetime.now(timezone.utc),
+            }
+        )
+
+    def enable_ai_feature(self, feature_name: str, enabled: bool = True) -> "PlanResource":
+        """Enable or disable specific AI feature."""
+        new_config = self.configuration.copy()
+        if "ai_features" not in new_config:
+            new_config["ai_features"] = {}
+
+        new_config["ai_features"][feature_name] = enabled
+
+        return self.model_copy(
+            update={
+                "configuration": new_config,
+                "updated_at": datetime.now(timezone.utc),
+            }
+        )
+
+    def enable_permission_feature(self, feature_name: str, enabled: bool = True) -> "PlanResource":
+        """Enable or disable specific permission feature."""
+        new_config = self.configuration.copy()
+        if "permission_features" not in new_config:
+            new_config["permission_features"] = {}
+
+        new_config["permission_features"][feature_name] = enabled
+
+        return self.model_copy(
+            update={
+                "configuration": new_config,
+                "updated_at": datetime.now(timezone.utc),
+            }
+        )
+
     def is_valid_configuration(self) -> tuple[bool, list[str]]:
         """Validate resource configuration."""
         errors = []
@@ -322,6 +506,18 @@ class PlanResource(BaseModel):
 
             if not self.get_limit("requests_per_minute"):
                 errors.append("Requests per minute limit is required")
+
+        elif self.resource_type == PlanResourceType.DOCUMENT_STORAGE:
+            if not self.get_limit("max_documents"):
+                errors.append("Max documents limit is required")
+
+            if not self.get_limit("max_storage_gb"):
+                errors.append("Max storage limit is required")
+
+            # Validate document settings
+            doc_settings = self.configuration.get("document_settings", {})
+            if not doc_settings.get("supported_formats"):
+                errors.append("Supported document formats must be specified")
 
         return len(errors) == 0, errors
 

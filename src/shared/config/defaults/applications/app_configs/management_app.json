@@ -1,0 +1,32 @@
+{
+  "dashboard_config": {
+    "default_widgets": [
+      "user_count",
+      "active_conversations",
+      "document_count",
+      "recent_activity"
+    ],
+    "refresh_interval_seconds": 30,
+    "show_notifications": true
+  },
+  "analytics_config": {
+    "track_user_activity": true,
+    "track_conversation_metrics": true,
+    "track_document_usage": true,
+    "retention_days": 90,
+    "export_formats": [
+      "csv",
+      "pdf"
+    ]
+  },
+  "notification_config": {
+    "email_notifications": true,
+    "in_app_notifications": true,
+    "notification_frequency": "daily",
+    "notify_on": [
+      "new_user_registration",
+      "subscription_changes",
+      "system_alerts"
+    ]
+  }
+}

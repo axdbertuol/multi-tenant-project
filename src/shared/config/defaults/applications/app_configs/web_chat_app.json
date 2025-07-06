@@ -1,0 +1,74 @@
+{
+  "widget_config": {
+    "position": "bottom-right",
+    "theme": "modern",
+    "primary_color": "#007bff",
+    "secondary_color": "#6c757d",
+    "border_radius": "8px",
+    "shadow": true,
+    "animation": "slide-up"
+  },
+  "chat_config": {
+    "welcome_message": "Olá! Como posso ajudá-lo hoje?",
+    "auto_open": false,
+    "sound_notifications": true,
+    "typing_indicators": true,
+    "message_history": true,
+    "emoji_support": true,
+    "file_uploads": true,
+    "max_file_size_mb": 10
+  },
+  "business_hours": {
+    "enabled": false,
+    "timezone": "America/Sao_Paulo",
+    "monday": {
+      "start": "09:00",
+      "end": "18:00",
+      "enabled": true
+    },
+    "tuesday": {
+      "start": "09:00",
+      "end": "18:00",
+      "enabled": true
+    },
+    "wednesday": {
+      "start": "09:00",
+      "end": "18:00",
+      "enabled": true
+    },
+    "thursday": {
+      "start": "09:00",
+      "end": "18:00",
+      "enabled": true
+    },
+    "friday": {
+      "start": "09:00",
+      "end": "18:00",
+      "enabled": true
+    },
+    "saturday": {
+      "start": "09:00",
+      "end": "12:00",
+      "enabled": false
+    },
+    "sunday": {
+      "start": "09:00",
+      "end": "12:00",
+      "enabled": false
+    }
+  },
+  "security_config": {
+    "allowed_domains": [],
+    "require_name": false,
+    "require_email": false,
+    "enable_gdpr_compliance": true
+  },
+  "api_config": {
+    "webhook_url": "",
+    "webhook_events": [
+      "message_received",
+      "conversation_started"
+    ],
+    "rate_limit_per_minute": 60
+  }
+}

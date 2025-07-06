@@ -1,0 +1,72 @@
+{
+  "owner": {
+    "description": "Organization owner with full access",
+    "permissions": [
+      "organization:*",
+      "user:*",
+      "role:*",
+      "permission:*",
+      "resource:*",
+      "application:*",
+      "document:*"
+    ],
+    "is_system_role": true,
+    "can_be_deleted": false
+  },
+  "admin": {
+    "description": "Organization administrator with management access",
+    "permissions": [
+      "organization:read",
+      "organization:update",
+      "user:*",
+      "role:*",
+      "permission:read",
+      "resource:*",
+      "application:*",
+      "document:read",
+      "document:create",
+      "document:update",
+      "document:delete",
+      "document:share",
+      "document:manage",
+      "document:ai_query",
+      "document:train"
+    ],
+    "is_system_role": true,
+    "can_be_deleted": false
+  },
+  "member": {
+    "description": "Organization member with standard access",
+    "permissions": [
+      "organization:read",
+      "user:read",
+      "role:read",
+      "resource:read",
+      "resource:use",
+      "application:read",
+      "application:use",
+      "document:read",
+      "document:create",
+      "document:update",
+      "document:share",
+      "document:download",
+      "document:ai_query"
+    ],
+    "is_system_role": true,
+    "can_be_deleted": false
+  },
+  "viewer": {
+    "description": "Organization viewer with read-only access",
+    "permissions": [
+      "organization:read",
+      "user:read",
+      "role:read",
+      "resource:read",
+      "application:read",
+      "document:read",
+      "document:download"
+    ],
+    "is_system_role": true,
+    "can_be_deleted": false
+  }
+}

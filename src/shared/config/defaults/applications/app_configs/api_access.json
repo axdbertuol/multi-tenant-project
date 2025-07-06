@@ -1,0 +1,27 @@
+{
+  "api_config": {
+    "api_key_template": "generated_uuid",
+    "rate_limit_per_hour": 1000,
+    "allowed_endpoints": [
+      "/api/v1/conversations",
+      "/api/v1/messages",
+      "/api/v1/documents"
+    ],
+    "webhook_support": true,
+    "api_version": "v1"
+  },
+  "security_config": {
+    "require_https": true,
+    "ip_whitelist": [],
+    "enable_cors": true,
+    "cors_origins": [
+      "*"
+    ],
+    "enable_rate_limiting": true
+  },
+  "documentation_config": {
+    "swagger_enabled": true,
+    "api_docs_url_template": "/api/v1/docs/org/{organization_id}",
+    "include_examples": true
+  }
+}

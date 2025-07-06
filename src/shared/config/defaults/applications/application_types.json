@@ -1,0 +1,85 @@
+{
+  "web_chat_app": {
+    "name": "Web Chat Application",
+    "description": "Live chat widget for websites",
+    "icon": "chat-bubble",
+    "category": "customer_support",
+    "default_features": [
+      "live_chat",
+      "chat_history",
+      "basic_customization"
+    ],
+    "required_permissions": [
+      "conversation:read",
+      "conversation:create",
+      "message:send",
+      "message:receive"
+    ]
+  },
+  "management_app": {
+    "name": "Management Dashboard",
+    "description": "Organization and user management dashboard",
+    "icon": "dashboard",
+    "category": "administration",
+    "default_features": [
+      "user_management",
+      "organization_settings",
+      "basic_analytics"
+    ],
+    "required_permissions": [
+      "user:read",
+      "organization:read",
+      "organization:configure"
+    ]
+  },
+  "whatsapp_app": {
+    "name": "WhatsApp Integration",
+    "description": "WhatsApp Business API integration",
+    "icon": "whatsapp",
+    "category": "messaging",
+    "default_features": [
+      "whatsapp_messaging",
+      "template_management",
+      "contact_sync"
+    ],
+    "required_permissions": [
+      "whatsapp:send",
+      "whatsapp:receive",
+      "whatsapp:configure"
+    ]
+  },
+  "api_access": {
+    "name": "API Access",
+    "description": "Programmatic access to platform features",
+    "icon": "api",
+    "category": "integration",
+    "default_features": [
+      "rest_api",
+      "webhook_management"
+    ],
+    "required_permissions": [
+      "api:read",
+      "api:write",
+      "webhook:configure"
+    ]
+  },
+  "document_storage": {
+    "name": "Document Storage",
+    "description": "AI-powered document management and search",
+    "icon": "document",
+    "category": "content_management",
+    "default_features": [
+      "document_upload",
+      "document_download",
+      "basic_search",
+      "ai_query"
+    ],
+    "required_permissions": [
+      "document:read",
+      "document:create",
+      "document:update",
+      "document:delete",
+      "document:ai_query"
+    ]
+  }
+}

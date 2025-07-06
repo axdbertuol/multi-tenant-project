@@ -1,0 +1,51 @@
+{
+  "storage_config": {
+    "max_documents": 100,
+    "max_storage_gb": 5,
+    "allowed_file_types": [
+      "pdf",
+      "doc",
+      "docx",
+      "txt",
+      "md",
+      "ppt",
+      "pptx",
+      "xls",
+      "xlsx"
+    ],
+    "max_file_size_mb": 25,
+    "enable_versioning": false,
+    "auto_extract_text": true
+  },
+  "ai_config": {
+    "enable_ai_query": true,
+    "enable_ai_training": false,
+    "similarity_threshold": 0.75,
+    "max_query_results": 10,
+    "enable_citation": true,
+    "language": "pt-BR"
+  },
+  "access_config": {
+    "default_sharing": "private",
+    "allow_public_links": false,
+    "link_expiry_days": 7,
+    "require_authentication": true
+  },
+  "folder_structure": {
+    "create_default_folders": true,
+    "default_folders": [
+      {
+        "name": "Documentos Gerais",
+        "description": "Documentos gerais da organização"
+      },
+      {
+        "name": "Treinamento",
+        "description": "Materiais de treinamento"
+      },
+      {
+        "name": "Políticas",
+        "description": "Políticas e procedimentos"
+      }
+    ]
+  }
+}

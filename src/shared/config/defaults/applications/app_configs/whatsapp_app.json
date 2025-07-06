@@ -1,0 +1,60 @@
+{
+  "whatsapp_config": {
+    "phone_number": "",
+    "phone_number_id": "",
+    "business_account_id": "",
+    "access_token": "",
+    "webhook_verify_token": "",
+    "api_version": "v19.0"
+  },
+  "template_config": {
+    "welcome_template": "Olá! Bem-vindo à nossa empresa. Como posso ajudá-lo?",
+    "business_hours_template": "Obrigado pela sua mensagem. Nosso horário de atendimento é de segunda a sexta, das 9h às 18h.",
+    "offline_template": "No momento estamos offline. Responderemos assim que possível."
+  },
+  "business_hours": {
+    "enabled": true,
+    "timezone": "America/Sao_Paulo",
+    "monday": {
+      "start": "09:00",
+      "end": "18:00",
+      "enabled": true
+    },
+    "tuesday": {
+      "start": "09:00",
+      "end": "18:00",
+      "enabled": true
+    },
+    "wednesday": {
+      "start": "09:00",
+      "end": "18:00",
+      "enabled": true
+    },
+    "thursday": {
+      "start": "09:00",
+      "end": "18:00",
+      "enabled": true
+    },
+    "friday": {
+      "start": "09:00",
+      "end": "18:00",
+      "enabled": true
+    },
+    "saturday": {
+      "start": "09:00",
+      "end": "12:00",
+      "enabled": false
+    },
+    "sunday": {
+      "start": "09:00",
+      "end": "12:00",
+      "enabled": false
+    }
+  },
+  "auto_responder": {
+    "enabled": false,
+    "response_delay_seconds": 2,
+    "keywords": {},
+    "fallback_message": "Obrigado pela sua mensagem. Um de nossos atendentes responderá em breve."
+  }
+}

@@ -1,0 +1,31 @@
+{
+  "trial_config": {
+    "duration_days": 30,
+    "billing_cycle": "monthly",
+    "metadata": {
+      "is_trial": true,
+      "created_via": "onboarding"
+    }
+  },
+  "trial_limits": {
+    "max_users": 5,
+    "max_conversations_per_month": 1000,
+    "max_documents": 50,
+    "max_storage_gb": 2,
+    "max_api_calls_per_hour": 100
+  },
+  "trial_features": {
+    "enabled_features": [
+      "basic_chat",
+      "document_upload",
+      "basic_analytics",
+      "user_management"
+    ],
+    "disabled_features": [
+      "whatsapp_integration",
+      "advanced_analytics",
+      "api_access",
+      "white_label"
+    ]
+  }
+}

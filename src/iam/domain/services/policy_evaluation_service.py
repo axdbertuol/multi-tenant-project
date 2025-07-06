@@ -1,5 +1,5 @@
 from typing import Dict, Any, Optional
-from datetime import datetime
+from datetime import datetime, timezone
 
 from ..entities.policy import Policy, PolicyCondition
 from ..entities.authorization_context import AuthorizationContext

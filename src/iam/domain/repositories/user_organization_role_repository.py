@@ -65,3 +65,10 @@ class UserOrganizationRoleRepository(ABC):
     def cleanup_expired_roles(self) -> int:
         """Cleanup expired roles. Returns count of cleaned roles."""
         pass
+
+    @abstractmethod
+    def assign_role_to_user(
+        self, user_id: UUID, organization_id: UUID, role_id: UUID
+    ) -> None:
+        """Assign a role to a user in an organization."""
+        pass

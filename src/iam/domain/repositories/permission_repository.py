@@ -27,6 +27,11 @@ class PermissionRepository(ABC):
         pass
 
     @abstractmethod
+    def find_by_name(self, name: PermissionName) -> Optional[Permission]:
+        """Get permission by name."""
+        pass
+
+    @abstractmethod
     def find_by_resource_type(self, resource_type: str) -> List[Permission]:
         """Get all permissions for a resource type."""
         pass

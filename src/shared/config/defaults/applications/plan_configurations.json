@@ -1,0 +1,76 @@
+{
+  "plans": {
+    "basic": {
+      "applications": [
+        "web_chat_app",
+        "management_app",
+        "document_storage"
+      ],
+      "features": [
+        "live_chat",
+        "chat_history",
+        "basic_customization",
+        "user_management",
+        "organization_settings",
+        "basic_analytics",
+        "document_upload",
+        "document_download",
+        "basic_search"
+      ]
+    },
+    "premium": {
+      "applications": [
+        "web_chat_app",
+        "management_app",
+        "document_storage",
+        "api_access"
+      ],
+      "features": [
+        "live_chat",
+        "chat_history",
+        "advanced_customization",
+        "user_management",
+        "organization_settings",
+        "advanced_analytics",
+        "document_upload",
+        "document_download",
+        "basic_search",
+        "ai_query",
+        "document_sharing",
+        "rest_api",
+        "webhook_management"
+      ]
+    },
+    "enterprise": {
+      "applications": [
+        "web_chat_app",
+        "management_app",
+        "document_storage",
+        "whatsapp_app",
+        "api_access"
+      ],
+      "features": [
+        "live_chat",
+        "chat_history",
+        "advanced_customization",
+        "white_label",
+        "user_management",
+        "organization_settings",
+        "advanced_analytics",
+        "document_upload",
+        "document_download",
+        "basic_search",
+        "ai_query",
+        "document_sharing",
+        "advanced_permissions",
+        "ai_training",
+        "whatsapp_messaging",
+        "template_management",
+        "contact_sync",
+        "rest_api",
+        "webhook_management",
+        "advanced_integrations"
+      ]
+    }
+  }
+}
