@@ -10,7 +10,6 @@ from .repositories.sqlalchemy_permission_repository import (
     SqlAlchemyPermissionRepository,
 )
 from .repositories.sqlalchemy_policy_repository import SqlAlchemyPolicyRepository
-from .repositories.sqlalchemy_resource_repository import SqlAlchemyResourceRepository
 from .repositories.sqlalchemy_organization_repository import SqlAlchemyOrganizationRepository
 from .repositories.sqlalchemy_user_organization_role_repository import SqlAlchemyUserOrganizationRoleRepository
 
@@ -48,10 +47,6 @@ class IAMUnitOfWork(SQLAlchemyUnitOfWork):
             )
         if "policy" in repositories:
             self._repositories.update({"policy": SqlAlchemyPolicyRepository(session)})
-        if "resource" in repositories:
-            self._repositories.update(
-                {"resource": SqlAlchemyResourceRepository(session)}
-            )
 
         super().__init__(session)
 

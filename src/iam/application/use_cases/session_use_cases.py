@@ -40,7 +40,6 @@ class SessionUseCase:
         policy_evaluation_service = PolicyEvaluationService()
         abac_service = ABACService(
             policy_repository=uow.get_repository("policy"),
-            resource_repository=uow.get_repository("resource"),
             policy_evaluation_service=policy_evaluation_service,
         )
         self._authorization_service = AuthorizationService(rbac_service, abac_service)

@@ -4,7 +4,6 @@ from uuid import UUID
 from ..entities.authorization_context import AuthorizationContext
 from ..entities.policy import Policy
 from ..repositories.policy_repository import PolicyRepository
-from ..repositories.resource_repository import ResourceRepository
 from ..value_objects.authorization_decision import AuthorizationDecision, DecisionReason
 from .policy_evaluation_service import PolicyEvaluationService
 
@@ -15,11 +14,9 @@ class ABACService:
     def __init__(
         self,
         policy_repository: PolicyRepository,
-        resource_repository: ResourceRepository,
         policy_evaluation_service: PolicyEvaluationService,
     ):
         self._policy_repository = policy_repository
-        self._resource_repository = resource_repository
         self._policy_evaluation_service = policy_evaluation_service
 
     def evaluate_policies(self, context: AuthorizationContext) -> AuthorizationDecision:
@@ -101,36 +98,9 @@ class ABACService:
         self, context: AuthorizationContext
     ) -> AuthorizationContext:
         """Enrich authorization context with resource attributes."""
-        if not context.resource_id:
-            return context
-
-        # Get resource from repository
-        resource = self._resource_repository.get_by_resource_id(
-            context.resource_type, context.resource_id
-        )
-
-        if not resource:
-            return context
-
-        # Add resource attributes to context
-        enriched_context = context
-        for key, value in resource.attributes.items():
-            enriched_context = enriched_context.add_resource_attribute(key, value)
-
-        # Add common resource attributes
-        enriched_context = enriched_context.add_resource_attribute(
-            "owner_id", str(resource.owner_id)
-        )
-        enriched_context = enriched_context.add_resource_attribute(
-            "is_active", resource.is_active
-        )
-
-        if resource.organization_id:
-            enriched_context = enriched_context.add_resource_attribute(
-                "organization_id", str(resource.organization_id)
-            )
-
-        return enriched_context
+        # For now, return context as-is since resource attributes should be provided
+        # by the calling context instead of being fetched from a resource repository
+        return context
 
     def _combine_policy_results(
         self, policy_results: List[tuple[Policy, bool]]

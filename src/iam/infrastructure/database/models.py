@@ -15,8 +15,9 @@ from sqlalchemy.dialects.postgresql import UUID, JSON
 from sqlalchemy.sql import func
 import enum
 
-from src.shared.infrastructure.database.base import BaseModel as SQLBaseModel
+from src.shared.infrastructure.database.base import BaseModel
 from src.shared.infrastructure.database.connection import Base
+from src.shared.domain.enums import ResourceTypeEnum
 
 
 # Enums
@@ -99,7 +100,7 @@ user_role_assignment = Table(
 
 
 # Organization-related models
-class OrganizationModel(SQLBaseModel):
+class OrganizationModel(BaseModel):
     """SQLAlchemy model for Organization entity."""
 
     __tablename__ = "organizations"
@@ -115,7 +116,7 @@ class OrganizationModel(SQLBaseModel):
     max_members = Column(Integer, nullable=True)
 
 
-class UserOrganizationRoleModel(SQLBaseModel):
+class UserOrganizationRoleModel(BaseModel):
     """SQLAlchemy model for UserOrganizationRole entity."""
 
     __tablename__ = "user_organization_roles"
@@ -148,8 +149,8 @@ class UserOrganizationRoleModel(SQLBaseModel):
 
 
 # User-related models
-class UserModel(SQLBaseModel):
-    """Modelo SQLAlchemy para a entidade Usuário."""
+class UserModel(BaseModel):
+    """SQLAlchemy model for User entity."""
 
     __tablename__ = "users"
 
@@ -161,8 +162,8 @@ class UserModel(SQLBaseModel):
     last_login_at = Column(DateTime(timezone=True), nullable=True)
 
 
-class UserSessionModel(SQLBaseModel):
-    """Modelo SQLAlchemy para a entidade UserSession."""
+class UserSessionModel(BaseModel):
+    """SQLAlchemy model for UserSession entity."""
 
     __tablename__ = "user_sessions"
 
@@ -183,11 +184,11 @@ class UserSessionModel(SQLBaseModel):
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
     logout_at = Column(DateTime(timezone=True), nullable=True)
-    _metadata = Column(Text, nullable=True)  # JSON string for additional session data
+    session_data = Column(Text, nullable=True)  # JSON string for additional session data
 
 
 # Authorization-related models
-class RoleModel(SQLBaseModel):
+class RoleModel(BaseModel):
     """SQLAlchemy model for Role entity."""
 
     __tablename__ = "authorization_roles"
@@ -216,7 +217,7 @@ class RoleModel(SQLBaseModel):
     __table_args__ = (UniqueConstraint("name", "organization_id"),)
 
 
-class PermissionModel(SQLBaseModel):
+class PermissionModel(BaseModel):
     """SQLAlchemy model for Permission entity."""
 
     __tablename__ = "authorization_permissions"
@@ -232,7 +233,7 @@ class PermissionModel(SQLBaseModel):
     __table_args__ = (UniqueConstraint("name", "resource_type"),)
 
 
-class PolicyModel(SQLBaseModel):
+class PolicyModel(BaseModel):
     """SQLAlchemy model for Policy entity."""
 
     __tablename__ = "authorization_policies"
@@ -261,24 +262,27 @@ class PolicyModel(SQLBaseModel):
     )
 
 
-class ResourceModel(SQLBaseModel):
-    """SQLAlchemy model for Resource entity."""
+class AuthorizationSubjectModel(BaseModel):
+    """SQLAlchemy model for Authorization Subject - lightweight reference for permission checks."""
 
-    __tablename__ = "authorization_resources"
+    __tablename__ = "authorization_subjects"
 
-    resource_type = Column(String(50), nullable=False, index=True)
-    resource_id = Column(UUID(as_uuid=True), nullable=False, index=True)
-    owner_id = Column(
-        UUID(as_uuid=True), ForeignKey("contas.users.id"), nullable=False, index=True
-    )
+    subject_type = Column(String(50), nullable=False, index=True)  # 'application', 'document', etc.
+    subject_id = Column(UUID(as_uuid=True), nullable=False, index=True)  # References external resource
     organization_id = Column(
         UUID(as_uuid=True),
-        ForeignKey("contas.organizations.id"),
+        ForeignKey("organizations.id"),
         nullable=True,
         index=True,
     )
-    attributes = Column(JSON, nullable=False, default={})
+    owner_id = Column(
+        UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True
+    )
     is_active = Column(Boolean, default=True, nullable=False)
 
-    # Unique constraint for resource type and resource ID combination
-    __table_args__ = (UniqueConstraint("resource_type", "resource_id"),)
+    # Ensure unique subject per organization
+    __table_args__ = (
+        UniqueConstraint("subject_type", "subject_id", "organization_id", name="uq_auth_subject"),
+        Index("ix_auth_subject_lookup", "subject_type", "subject_id"),
+        Index("ix_auth_subject_org", "organization_id", "subject_type"),
+    )
