@@ -251,6 +251,61 @@ class Plan(BaseModel):
         resource = self.get_resource_config(resource_type)
         return resource.get("enabled_features", [])
 
+    def get_feature_config(self, feature_key: str, default: Any = None) -> Any:
+        """Get feature configuration from plan resources."""
+        for resource_type, resource_config in self.resources.items():
+            if resource_config.get("enabled", False):
+                features = resource_config.get("enabled_features", [])
+                if feature_key in features:
+                    return resource_config.get("feature_configs", {}).get(feature_key, True)
+        return default
+
+    def get_limit(self, limit_key: str, default: int = 0) -> int:
+        """Get limit value from plan resources."""
+        for resource_type, resource_config in self.resources.items():
+            if resource_config.get("enabled", False):
+                limits = resource_config.get("limits", {})
+                if limit_key in limits:
+                    return limits[limit_key]
+        return default
+
+    def has_feature(self, feature_key: str) -> bool:
+        """Check if plan has a specific feature enabled."""
+        return self.get_feature_config(feature_key) is not None
+
+    def is_feature_enabled(self, feature_key: str) -> bool:
+        """Check if a specific feature is enabled."""
+        feature_config = self.get_feature_config(feature_key, False)
+        return bool(feature_config)
+
+    def get_effective_limit(self, limit_key: str, override_value: Optional[int] = None) -> int:
+        """Get effective limit considering plan defaults and overrides."""
+        if override_value is not None:
+            return override_value
+        return self.get_limit(limit_key, 0)
+
+    @property
+    def features(self) -> Dict[str, Any]:
+        """Get all features from all enabled resources."""
+        all_features = {}
+        for resource_type, resource_config in self.resources.items():
+            if resource_config.get("enabled", False):
+                features = resource_config.get("enabled_features", [])
+                feature_configs = resource_config.get("feature_configs", {})
+                for feature in features:
+                    all_features[feature] = feature_configs.get(feature, True)
+        return all_features
+
+    @property
+    def limits(self) -> Dict[str, int]:
+        """Get all limits from all enabled resources."""
+        all_limits = {}
+        for resource_type, resource_config in self.resources.items():
+            if resource_config.get("enabled", False):
+                limits = resource_config.get("limits", {})
+                all_limits.update(limits)
+        return all_limits
+
     def can_support_users(self, user_count: int) -> bool:
         return user_count <= self.max_users
 
