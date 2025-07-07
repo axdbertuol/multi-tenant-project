@@ -271,12 +271,12 @@ class AuthorizationSubjectModel(BaseModel):
     subject_id = Column(UUID(as_uuid=True), nullable=False, index=True)  # References external resource
     organization_id = Column(
         UUID(as_uuid=True),
-        ForeignKey("organizations.id"),
+        ForeignKey("contas.organizations.id"),
         nullable=True,
         index=True,
     )
     owner_id = Column(
-        UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True
+        UUID(as_uuid=True), ForeignKey("contas.users.id"), nullable=False, index=True
     )
     is_active = Column(Boolean, default=True, nullable=False)
 

@@ -11,6 +11,7 @@ from ..application.use_cases.permission_use_cases import PermissionUseCase
 from ..application.use_cases.policy_use_cases import PolicyUseCase
 from ..application.use_cases.organization_use_cases import OrganizationUseCase
 from ..application.use_cases.membership_use_cases import MembershipUseCase
+from ..application.use_cases.authorization_subject_use_cases import AuthorizationSubjectUseCase
 from ..infrastructure.iam_unit_of_work import IAMUnitOfWork
 
 
@@ -45,7 +46,7 @@ def get_full_iam_uow(db: Session = Depends(get_db)) -> IAMUnitOfWork:
             "role",
             "permission",
             "policy",
-            "resource",
+            "authorization_subject",
         ],
     )
 
@@ -103,3 +104,10 @@ def get_membership_use_case(
 ) -> MembershipUseCase:
     """Obtém MembershipUseCase com a dependência UnitOfWork apropriada."""
     return MembershipUseCase(uow)
+
+
+def get_authorization_subject_use_case(
+    uow: IAMUnitOfWork = Depends(get_full_iam_uow),
+) -> AuthorizationSubjectUseCase:
+    """Obtém AuthorizationSubjectUseCase com a dependência UnitOfWork apropriada."""
+    return AuthorizationSubjectUseCase(uow)

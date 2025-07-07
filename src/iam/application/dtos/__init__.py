@@ -29,6 +29,21 @@ from .authorization_dto import (
     UserPermissionsResponseDTO,
     RoleAssignmentDTO,
 )
+from .authorization_subject_dto import (
+    AuthorizationSubjectCreateDTO,
+    AuthorizationSubjectUpdateDTO,
+    AuthorizationSubjectTransferOwnershipDTO,
+    AuthorizationSubjectMoveOrganizationDTO,
+    AuthorizationSubjectResponseDTO,
+    AuthorizationSubjectListResponseDTO,
+    BulkAuthorizationSubjectOperationDTO,
+    BulkTransferOwnershipDTO,
+    BulkMoveOrganizationDTO,
+    BulkOperationResponseDTO,
+    AuthorizationSubjectStatisticsDTO,
+    AuthorizationSubjectFilterDTO,
+    AuthorizationSubjectSearchDTO,
+)
 from .user_dto import UserCreateDTO, UserUpdateDTO, UserResponseDTO, UserListResponseDTO
 from .auth_dto import (
     LoginDTO,
