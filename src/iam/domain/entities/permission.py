@@ -23,12 +23,22 @@ class PermissionAction(str, Enum):
     TRAIN = "train"          # Include in AI training
 
 
+class PermissionContext(str, Enum):
+    """Contextos onde as permissões podem ser aplicadas."""
+    MANAGEMENT = "management"  # Plataforma de gerenciamento
+    CHAT = "chat"  # Sistema de chat
+    API = "api"  # API access
+    DOCUMENT = "document"  # Sistema de documentos
+    GLOBAL = "global"  # Permissões globais
+
+
 class Permission(BaseModel):
     id: UUID
     name: PermissionName
     description: str
     action: PermissionAction
     resource_type: str  # e.g., "user", "organization", "chat"
+    context: PermissionContext = PermissionContext.GLOBAL  # Contexto da permissão
     created_at: datetime
     updated_at: Optional[datetime] = None
     is_active: bool = True
@@ -43,6 +53,7 @@ class Permission(BaseModel):
         description: str,
         action: PermissionAction,
         resource_type: str,
+        context: PermissionContext = PermissionContext.GLOBAL,
         is_system_permission: bool = False,
     ) -> "Permission":
         return cls(
@@ -51,6 +62,7 @@ class Permission(BaseModel):
             description=description,
             action=action,
             resource_type=resource_type,
+            context=context,
             created_at=datetime.now(timezone.utc),
             is_active=True,
             is_system_permission=is_system_permission,
@@ -94,3 +106,38 @@ class Permission(BaseModel):
             and self.action == action
             and self.is_active
         )
+    
+    def is_management_permission(self) -> bool:
+        """Check if this is a management permission."""
+        return self.context == PermissionContext.MANAGEMENT
+    
+    def is_document_permission(self) -> bool:
+        """Check if this is a document permission."""
+        return self.context == PermissionContext.DOCUMENT
+    
+    def is_chat_permission(self) -> bool:
+        """Check if this is a chat permission."""
+        return self.context == PermissionContext.CHAT
+    
+    def is_api_permission(self) -> bool:
+        """Check if this is an API permission."""
+        return self.context == PermissionContext.API
+    
+    def is_global_permission(self) -> bool:
+        """Check if this is a global permission."""
+        return self.context == PermissionContext.GLOBAL
+    
+    def matches_context(self, context: PermissionContext) -> bool:
+        """Check if this permission matches the given context."""
+        return self.context == context or self.context == PermissionContext.GLOBAL
+    
+    def get_context_display_name(self) -> str:
+        """Get the display name for the permission context."""
+        context_names = {
+            PermissionContext.MANAGEMENT: "Gerenciamento",
+            PermissionContext.CHAT: "Chat",
+            PermissionContext.API: "API",
+            PermissionContext.DOCUMENT: "Documentos",
+            PermissionContext.GLOBAL: "Global",
+        }
+        return context_names.get(self.context, self.context.value)

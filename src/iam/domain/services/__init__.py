@@ -2,7 +2,10 @@ from .abac_service import ABACService
 from .authentication_service import AuthenticationService
 from .authorization_service import AuthorizationService
 from .authorization_subject_service import AuthorizationSubjectService
+from .document_access_service import DocumentAccessService
+from .document_area_service import DocumentAreaService
 from .jwt_service import JWTService
+from .management_function_service import ManagementFunctionService
 from .membership_service import MembershipService
 from .organization_domain_service import OrganizationDomainService
 from .organization_role_setup_service import OrganizationRoleSetupService
@@ -16,7 +19,10 @@ __all__ = [
     "AuthenticationService",
     "AuthorizationService",
     "AuthorizationSubjectService",
+    "DocumentAccessService",
+    "DocumentAreaService",
     "JWTService",
+    "ManagementFunctionService",
     "MembershipService",
     "OrganizationDomainService",
     "OrganizationRoleSetupService",

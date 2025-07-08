@@ -8,6 +8,9 @@ from .policy_use_cases import PolicyUseCase
 from .role_use_cases import RoleUseCase
 from .session_use_cases import SessionUseCase
 from .user_use_cases import UserUseCase
+from .management_function_use_cases import ManagementFunctionUseCase
+from .document_area_use_cases import DocumentAreaUseCase
+from .user_function_area_use_cases import UserFunctionAreaUseCase
 
 __all__ = [
     "AuthenticationUseCase",
@@ -20,4 +23,7 @@ __all__ = [
     "RoleUseCase",
     "SessionUseCase",
     "UserUseCase",
+    "ManagementFunctionUseCase",
+    "DocumentAreaUseCase",
+    "UserFunctionAreaUseCase",
 ]
