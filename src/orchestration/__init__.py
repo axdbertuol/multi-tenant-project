@@ -11,3 +11,8 @@ Responsibilities:
 - Handle cross-context business processes
 - Maintain consistency between bounded contexts
 """
+
+from .application import *
+from .domain import *
+from .infrastructure import *
+from .presentation import *
