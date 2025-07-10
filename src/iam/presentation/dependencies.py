@@ -12,6 +12,9 @@ from ..application.use_cases.policy_use_cases import PolicyUseCase
 from ..application.use_cases.organization_use_cases import OrganizationUseCase
 from ..application.use_cases.membership_use_cases import MembershipUseCase
 from ..application.use_cases.authorization_subject_use_cases import AuthorizationSubjectUseCase
+from ..application.use_cases.profile_use_cases import ProfileUseCase
+from ..application.use_cases.user_profile_use_cases import UserProfileUseCase
+from ..application.use_cases.profile_folder_permission_use_cases import ProfileFolderPermissionUseCase
 from ..infrastructure.iam_unit_of_work import IAMUnitOfWork
 
 
@@ -47,6 +50,20 @@ def get_full_iam_uow(db: Session = Depends(get_db)) -> IAMUnitOfWork:
             "permission",
             "policy",
             "authorization_subject",
+        ],
+    )
+
+
+def get_profile_uow(db: Session = Depends(get_db)) -> IAMUnitOfWork:
+    """Obtém uma instância de IAMUnitOfWork com repositórios para perfis."""
+    return IAMUnitOfWork(
+        db,
+        [
+            "user",
+            "organization",
+            "profile",
+            "user_profile", 
+            "profile_folder_permission",
         ],
     )
 
@@ -111,3 +128,42 @@ def get_authorization_subject_use_case(
 ) -> AuthorizationSubjectUseCase:
     """Obtém AuthorizationSubjectUseCase com a dependência UnitOfWork apropriada."""
     return AuthorizationSubjectUseCase(uow)
+
+
+def get_profile_use_case(
+    uow: IAMUnitOfWork = Depends(get_profile_uow),
+) -> ProfileUseCase:
+    """Obtém ProfileUseCase com a dependência UnitOfWork apropriada."""
+    return ProfileUseCase(
+        profile_repository=uow.get_repository("profile"),
+        user_profile_repository=uow.get_repository("user_profile"),
+        profile_folder_permission_repository=uow.get_repository("profile_folder_permission"),
+        user_repository=uow.get_repository("user"),
+        organization_repository=uow.get_repository("organization"),
+    )
+
+
+def get_user_profile_use_case(
+    uow: IAMUnitOfWork = Depends(get_profile_uow),
+) -> UserProfileUseCase:
+    """Obtém UserProfileUseCase com a dependência UnitOfWork apropriada."""
+    return UserProfileUseCase(
+        user_profile_repository=uow.get_repository("user_profile"),
+        profile_repository=uow.get_repository("profile"),
+        user_repository=uow.get_repository("user"),
+        organization_repository=uow.get_repository("organization"),
+        profile_folder_permission_repository=uow.get_repository("profile_folder_permission"),
+    )
+
+
+def get_profile_folder_permission_use_case(
+    uow: IAMUnitOfWork = Depends(get_profile_uow),
+) -> ProfileFolderPermissionUseCase:
+    """Obtém ProfileFolderPermissionUseCase com a dependência UnitOfWork apropriada."""
+    return ProfileFolderPermissionUseCase(
+        profile_folder_permission_repository=uow.get_repository("profile_folder_permission"),
+        profile_repository=uow.get_repository("profile"),
+        user_profile_repository=uow.get_repository("user_profile"),
+        user_repository=uow.get_repository("user"),
+        organization_repository=uow.get_repository("organization"),
+    )

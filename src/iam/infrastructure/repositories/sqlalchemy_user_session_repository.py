@@ -1,9 +1,8 @@
 from datetime import datetime, timezone
-import select
 from typing import List, Optional
 from uuid import UUID
 
-from sqlalchemy import delete, update
+from sqlalchemy import delete, update, select
 from sqlalchemy.orm import Session
 from ...domain.entities.user_session import UserSession
 from ...domain.repositories.user_session_repository import UserSessionRepository
@@ -31,7 +30,7 @@ class SqlAlchemyUserSessionRepository(UserSessionRepository):
             existing.user_agent = session_entity.user_agent
             existing.last_activity_at = session_entity.last_activity_at
             existing.logout_at = session_entity.logout_at
-            existing.metadata = session_entity.metadata
+            existing.extra_data = session_entity.extra_data
             existing.updated_at = datetime.now(timezone.utc)
 
             self.session.flush()
@@ -48,7 +47,7 @@ class SqlAlchemyUserSessionRepository(UserSessionRepository):
                 user_agent=session_entity.user_agent,
                 last_activity_at=session_entity.last_activity_at,
                 logout_at=session_entity.logout_at,
-                metadata=session_entity.metadata,
+                extra_data=session_entity.extra_data,
                 created_at=session_entity.created_at,
                 updated_at=session_entity.updated_at,
             )
@@ -220,7 +219,7 @@ class SqlAlchemyUserSessionRepository(UserSessionRepository):
             user_agent=session_model.user_agent,
             last_activity_at=session_model.last_activity_at,
             logout_at=session_model.logout_at,
-            metadata=session_model.metadata,
+            extra_data=session_model.extra_data,
             created_at=session_model.created_at,
             updated_at=session_model.updated_at,
         )

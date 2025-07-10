@@ -459,11 +459,13 @@ class DocumentAreaUseCase:
                     user_id=assignment.user_id,
                     organization_id=assignment.organization_id,
                     area_id=assignment.area_id,
-                    assigned_by=assignment.assigned_by,
-                    assigned_at=assignment.assigned_at,
+                    access_level=assignment.access_level.value,
+                    granted_by=assignment.granted_by,
+                    granted_at=assignment.granted_at,
                     expires_at=assignment.expires_at,
                     is_active=assignment.is_active,
-                    metadata=assignment.metadata,
+                    notes=assignment.notes,
+                    extra_data=assignment.extra_data,
                 )
             )
 

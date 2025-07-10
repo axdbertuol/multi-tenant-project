@@ -58,11 +58,11 @@ class OrganizationRoleSetupService:
 
                 # Create role
                 role = Role.create(
-                    name=RoleName(role_name),
+                    name=role_name,
                     description=role_config["description"],
                     organization_id=organization_id,
+                    created_by=owner_user_id,
                     is_system_role=role_config.get("is_system_role", False),
-                    can_be_deleted=role_config.get("can_be_deleted", True),
                 )
 
                 saved_role = self._role_repository.save(role)
@@ -71,8 +71,8 @@ class OrganizationRoleSetupService:
                 # Create and assign permissions to role
                 self._setup_role_permissions(saved_role, role_config["permissions"])
 
-                # If this is the owner role, assign it to the creator
-                if role_name == DefaultOrganizationRoles.OWNER.value:
+                # If this is the administrador role, assign it to the creator
+                if role_name == DefaultOrganizationRoles.ADMINISTRADOR.value:
                     self._assign_role_to_user(
                         owner_user_id, organization_id, saved_role.id
                     )
@@ -135,21 +135,21 @@ class OrganizationRoleSetupService:
         return self._role_repository.get_organization_roles(organization_id)
 
     def assign_default_member_role(self, user_id: UUID, organization_id: UUID) -> bool:
-        """Assign default member role to a user."""
+        """Assign default analista role to a user."""
         try:
-            # Find member role for the organization
+            # Find analista role for the organization
             roles = self._role_repository.get_organization_roles(organization_id)
             member_role = None
 
             for role in roles:
-                if role.name.value == DefaultOrganizationRoles.MEMBER.value:
+                if role.name.value == DefaultOrganizationRoles.ANALISTA.value:
                     member_role = role
                     break
 
             if not member_role:
                 return False
 
-            # Assign member role to user
+            # Assign analista role to user
             self._assign_role_to_user(user_id, organization_id, member_role.id)
             return True
 

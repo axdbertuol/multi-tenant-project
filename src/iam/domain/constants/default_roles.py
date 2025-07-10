@@ -3,21 +3,21 @@
 from enum import Enum
 from typing import Dict, List
 
-from ....shared.infrastructure.config import get_configuration_loader
+from shared.infrastructure.config import get_configuration_loader
 
 
 class DefaultOrganizationRoles(Enum):
     """Default roles created for new organizations."""
-    
-    OWNER = "owner"
-    ADMIN = "admin"
-    MEMBER = "member"
-    VIEWER = "viewer"
+
+    ADMINISTRADOR = "administrador"
+    GERENCIADOR = "gerenciador"
+    ESPECIALISTA = "especialista"
+    ANALISTA = "analista"
 
 
 class DefaultRoleConfigurations:
     """Default configurations for organization roles."""
-    
+
     _config_loader = None
     _cached_configs = None
 
@@ -43,8 +43,8 @@ class DefaultRoleConfigurations:
         except Exception:
             # Fallback to hardcoded configurations
             return {
-                DefaultOrganizationRoles.OWNER.value: {
-                    "description": "Organization owner with full access",
+                DefaultOrganizationRoles.ADMINISTRADOR.value: {
+                    "description": "Administrador com permissão para usar tudo",
                     "permissions": [
                         "organization:*",
                         "user:*",
@@ -52,35 +52,40 @@ class DefaultRoleConfigurations:
                         "permission:*",
                         "resource:*",
                         "application:*",
-                        "document:*"
+                        "document:*",
+                        "folder:*",
+                        "rag:*",
+                        "ai:*",
+                        "settings:*",
                     ],
                     "is_system_role": True,
                     "can_be_deleted": False,
+                    "hierarchy_level": 1,
                 },
-                DefaultOrganizationRoles.ADMIN.value: {
-                    "description": "Organization administrator with management access",
+                DefaultOrganizationRoles.GERENCIADOR.value: {
+                    "description": "Gerenciador com permissões de administração",
                     "permissions": [
                         "organization:read",
                         "organization:update",
                         "user:*",
-                        "role:*",
+                        "role:read",
                         "permission:read",
                         "resource:*",
                         "application:*",
-                        "document:read",
-                        "document:create",
-                        "document:update",
-                        "document:delete",
-                        "document:share",
-                        "document:manage",
-                        "document:ai_query",
-                        "document:train"
+                        "document:*",
+                        "folder:*",
+                        "rag:*",
+                        "ai:*",
+                        "settings:read",
+                        "settings:update",
                     ],
                     "is_system_role": True,
                     "can_be_deleted": False,
+                    "hierarchy_level": 2,
+                    "parent_role": "administrador",
                 },
-                DefaultOrganizationRoles.MEMBER.value: {
-                    "description": "Organization member with standard access",
+                DefaultOrganizationRoles.ESPECIALISTA.value: {
+                    "description": "Especialista com permissões de edição",
                     "permissions": [
                         "organization:read",
                         "user:read",
@@ -90,17 +95,19 @@ class DefaultRoleConfigurations:
                         "application:read",
                         "application:use",
                         "document:read",
-                        "document:create",
                         "document:update",
                         "document:share",
                         "document:download",
-                        "document:ai_query"
+                        "rag:query_by_profile",
+                        "ai:query_by_profile",
                     ],
                     "is_system_role": True,
                     "can_be_deleted": False,
+                    "hierarchy_level": 3,
+                    "parent_role": "gerenciador",
                 },
-                DefaultOrganizationRoles.VIEWER.value: {
-                    "description": "Organization viewer with read-only access",
+                DefaultOrganizationRoles.ANALISTA.value: {
+                    "description": "Analista com permissões de leitura",
                     "permissions": [
                         "organization:read",
                         "user:read",
@@ -108,10 +115,14 @@ class DefaultRoleConfigurations:
                         "resource:read",
                         "application:read",
                         "document:read",
-                        "document:download"
+                        "document:download",
+                        "rag:query_by_profile",
+                        "ai:query_by_profile",
                     ],
                     "is_system_role": True,
                     "can_be_deleted": False,
+                    "hierarchy_level": 4,
+                    "parent_role": "especialista",
                 },
             }
 
@@ -119,18 +130,18 @@ class DefaultRoleConfigurations:
     def get_role_configs(cls) -> Dict[str, Dict[str, any]]:
         """Get all role configurations."""
         return cls._get_role_configs()
-    
+
     @classmethod
     def get_role_config(cls, role_name: str) -> Dict[str, any]:
         """Get configuration for a specific role."""
         return cls.get_role_configs().get(role_name, {})
-    
+
     @classmethod
     def get_default_permissions(cls, role_name: str) -> List[str]:
         """Get default permissions for a role."""
         config = cls.get_role_config(role_name)
         return config.get("permissions", [])
-    
+
     @classmethod
     def get_all_default_roles(cls) -> List[str]:
         """Get all default role names."""

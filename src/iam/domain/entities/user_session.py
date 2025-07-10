@@ -22,7 +22,7 @@ class UserSession(BaseModel):
     login_at: datetime
     logout_at: Optional[datetime] = None
     expires_at: datetime
-    metadata: dict[str, Any] | None = None
+    extra_data: dict[str, Any] | None = None
     ip_address: Optional[str] = None
     user_agent: Optional[str] = None
     created_at: datetime
@@ -36,7 +36,7 @@ class UserSession(BaseModel):
         user_id: UUID,
         session_token: str,
         expires_at: datetime,
-        metadata: dict[str, Any] | None = None,
+        extra_data: dict[str, Any] | None = None,
         ip_address: Optional[str] = None,
         user_agent: Optional[str] = None,
     ) -> "UserSession":
@@ -48,7 +48,7 @@ class UserSession(BaseModel):
             session_token=session_token,
             status=SessionStatus.ACTIVE,
             login_at=now,
-            metadata=metadata,
+            extra_data=extra_data,
             expires_at=expires_at,
             ip_address=ip_address,
             user_agent=user_agent,

@@ -13,6 +13,9 @@ from .repositories.sqlalchemy_policy_repository import SqlAlchemyPolicyRepositor
 from .repositories.sqlalchemy_organization_repository import SqlAlchemyOrganizationRepository
 from .repositories.sqlalchemy_user_organization_role_repository import SqlAlchemyUserOrganizationRoleRepository
 from .repositories.sqlalchemy_authorization_subject_repository import SqlAlchemyAuthorizationSubjectRepository
+from .repositories.sqlalchemy_profile_repository import SqlAlchemyProfileRepository
+from .repositories.sqlalchemy_user_profile_repository import SqlAlchemyUserProfileRepository
+from .repositories.sqlalchemy_profile_folder_permission_repository import SqlAlchemyProfileFolderPermissionRepository
 
 from sqlalchemy.orm import Session
 
@@ -51,6 +54,16 @@ class IAMUnitOfWork(SQLAlchemyUnitOfWork):
         if "authorization_subject" in repositories:
             self._repositories.update(
                 {"authorization_subject": SqlAlchemyAuthorizationSubjectRepository(session)}
+            )
+
+        # Profile-related repositories
+        if "profile" in repositories:
+            self._repositories.update({"profile": SqlAlchemyProfileRepository(session)})
+        if "user_profile" in repositories:
+            self._repositories.update({"user_profile": SqlAlchemyUserProfileRepository(session)})
+        if "profile_folder_permission" in repositories:
+            self._repositories.update(
+                {"profile_folder_permission": SqlAlchemyProfileFolderPermissionRepository(session)}
             )
 
         super().__init__(session)

@@ -1,10 +1,12 @@
-from typing import List, Optional, Dict, Any, Tuple
+from typing import List, Optional, Set, Dict, Any, Tuple
 from uuid import UUID
 from datetime import datetime
 
 from ..entities.document_area import DocumentArea
 from ..entities.document_folder import DocumentFolder
 from ..entities.user_document_access import UserDocumentAccess
+from ..value_objects.access_level import AccessLevel
+from ..value_objects.folder_path import FolderPath
 from ..repositories.document_area_repository import DocumentAreaRepository
 from ..repositories.document_folder_repository import DocumentFolderRepository
 from ..repositories.user_document_access_repository import UserDocumentAccessRepository
@@ -13,12 +15,12 @@ from ...application.contracts.iam_contract import IAMContract
 
 class DocumentAccessService:
     """
-    Serviço de domínio para controle de acesso a documentos.
+    Domain Service para controle de acesso a documentos.
     
-    Determina se usuários podem acessar documentos/pastas específicos
-    baseado em suas áreas e implementa lógica de herança hierárquica.
+    Centraliza as regras de negócio para verificação de permissões
+    e controle de acesso hierárquico a documentos e pastas.
     """
-    
+
     def __init__(
         self,
         document_area_repository: DocumentAreaRepository,
@@ -26,203 +28,348 @@ class DocumentAccessService:
         user_document_access_repository: UserDocumentAccessRepository,
         iam_contract: IAMContract,
     ):
-        self.document_area_repository = document_area_repository
-        self.document_folder_repository = document_folder_repository
-        self.user_document_access_repository = user_document_access_repository
-        self.iam_contract = iam_contract
-    
-    def can_user_access_document(
-        self,
-        user_id: UUID,
-        organization_id: UUID,
-        document_path: str,
-        action: str = "read",
-    ) -> Tuple[bool, str]:
-        """
-        Verifica se um usuário pode acessar um documento.
-        
-        Args:
-            user_id: ID do usuário
-            organization_id: ID da organização
-            document_path: Caminho do documento
-            action: Ação a ser realizada (read, write, delete, etc.)
-            
-        Returns:
-            Tuple com (pode_acessar, motivo)
-        """
-        # Verificar se usuário está ativo na organização via IAM
-        if not self.iam_contract.verify_user_active(user_id, organization_id):
-            return False, "User is not active in organization"
-        
-        # Verificar se usuário tem acesso a documentos via função de gerenciamento
-        if not self.iam_contract.verify_management_permission(
-            user_id, organization_id, f"document:{action}"
-        ):
-            return False, f"User lacks management permission for document:{action}"
-        
-        # Verificar se usuário tem acesso a área de documentos
-        user_access = self.user_document_access_repository.get_by_user_and_organization(
-            user_id, organization_id
-        )
-        
-        if not user_access or not user_access.is_valid():
-            return False, "User has no valid document area access"
-        
-        # Verificar se área está ativa
-        area = self.document_area_repository.get_by_id(user_access.area_id)
-        if not area or not area.is_active:
-            return False, "Document area is inactive"
-        
-        # Verificar acesso baseado em área
-        area_access = self._check_area_access(user_id, organization_id, document_path)
-        if not area_access[0]:
-            return area_access
-        
-        return True, "Access granted"
-    
+        self._document_area_repository = document_area_repository
+        self._document_folder_repository = document_folder_repository
+        self._user_document_access_repository = user_document_access_repository
+        self._iam_contract = iam_contract
+
     def can_user_access_folder(
         self,
         user_id: UUID,
-        organization_id: UUID,
         folder_path: str,
-        action: str = "read",
+        organization_id: UUID,
+        required_action: str = "read"
     ) -> Tuple[bool, str]:
         """
-        Verifica se um usuário pode acessar uma pasta.
+        Verifica se um usuário pode acessar uma pasta específica para uma ação.
         
         Args:
             user_id: ID do usuário
-            organization_id: ID da organização
             folder_path: Caminho da pasta
-            action: Ação a ser realizada
-            
+            organization_id: ID da organização
+            required_action: Ação requerida (read, write, delete, etc.)
+        
         Returns:
-            Tuple com (pode_acessar, motivo)
+            Tupla (pode_acessar, motivo)
         """
-        # Verificar se usuário está ativo na organização
-        if not self.iam_contract.verify_user_active(user_id, organization_id):
+        # Verificar se usuário está ativo na organização via IAM
+        if not self._iam_contract.verify_user_active(user_id, organization_id):
             return False, "User is not active in organization"
+
+        # Obter acessos ativos do usuário
+        user_accesses = self._user_document_access_repository.get_active_by_user(user_id)
         
-        # Verificar se usuário tem acesso a documentos via função de gerenciamento
-        if not self.iam_contract.verify_management_permission(
-            user_id, organization_id, f"document:{action}"
-        ):
-            return False, f"User lacks management permission for document:{action}"
+        # Filtrar por organização
+        org_accesses = [access for access in user_accesses if access.organization_id == organization_id]
         
-        # Verificar se usuário tem acesso a área de documentos
-        user_access = self.user_document_access_repository.get_by_user_and_organization(
-            user_id, organization_id
-        )
+        if not org_accesses:
+            return False, "User has no document access in organization"
+
+        # Obter áreas do usuário
+        user_area_ids = [access.area_id for access in org_accesses]
+        user_areas = []
         
-        if not user_access or not user_access.is_valid():
-            return False, "User has no valid document area access"
-        
-        # Obter área do usuário
-        user_area = self.document_area_repository.get_by_id(user_access.area_id)
-        if not user_area or not user_area.is_active:
-            return False, "User area is inactive"
-        
-        # Obter todas as áreas da organização para calcular hierarquia
-        all_areas = self.document_area_repository.get_by_organization(organization_id)
-        
-        # Obter áreas acessíveis pelo usuário
-        accessible_areas = self._get_user_accessible_areas(user_area, all_areas)
-        
-        # Verificar se alguma área acessível permite acesso à pasta
-        for area in accessible_areas:
+        for area_id in user_area_ids:
+            area = self._document_area_repository.get_by_id(area_id)
+            if area and area.is_active:
+                user_areas.append(area)
+
+        if not user_areas:
+            return False, "User has no active areas"
+
+        # Verificar se alguma área permite acesso à pasta
+        for area in user_areas:
             if area.can_access_folder(folder_path):
-                return True, f"Access granted via area: {area.name}"
-        
-        return False, "No accessible area grants access to this folder"
-    
-    def get_user_accessible_documents(
+                # Verificar se o nível de acesso permite a ação
+                user_access = next(
+                    (access for access in org_accesses if access.area_id == area.id),
+                    None
+                )
+                
+                if user_access and user_access.access_level.can_perform_action(required_action):
+                    return True, f"Access granted via area '{area.name}'"
+
+        return False, f"No area grants '{required_action}' access to folder"
+
+    def get_user_accessible_folders(
         self,
         user_id: UUID,
-        organization_id: UUID,
-        folder_path: Optional[str] = None,
+        organization_id: UUID
     ) -> List[str]:
         """
-        Obtém todos os documentos acessíveis por um usuário.
+        Retorna lista de caminhos de pastas que o usuário pode acessar.
         
         Args:
             user_id: ID do usuário
             organization_id: ID da organização
-            folder_path: Pasta específica para filtrar (opcional)
-            
-        Returns:
-            Lista de caminhos de documentos acessíveis
-        """
-        # Verificar se usuário está ativo na organização
-        if not self.iam_contract.verify_user_active(user_id, organization_id):
-            return []
-        
-        # Verificar se usuário tem acesso a documentos
-        user_access = self.user_document_access_repository.get_by_user_and_organization(
-            user_id, organization_id
-        )
-        
-        if not user_access or not user_access.is_valid():
-            return []
-        
-        # Obter área do usuário
-        user_area = self.document_area_repository.get_by_id(user_access.area_id)
-        if not user_area or not user_area.is_active:
-            return []
-        
-        # Obter todas as áreas da organização
-        all_areas = self.document_area_repository.get_by_organization(organization_id)
-        
-        # Obter áreas acessíveis
-        accessible_areas = self._get_user_accessible_areas(user_area, all_areas)
-        
-        # Obter caminhos de pastas acessíveis
-        accessible_paths = []
-        for area in accessible_areas:
-            accessible_paths.extend(area.get_accessible_paths(all_areas))
-        
-        # Filtrar por pasta específica se fornecida
-        if folder_path:
-            accessible_paths = [
-                path for path in accessible_paths
-                if path.startswith(folder_path)
-            ]
-        
-        return accessible_paths
-    
-    def get_accessible_folders(self, area_id: UUID) -> List[str]:
-        """
-        Obtém todas as pastas acessíveis por uma área.
-        
-        Args:
-            area_id: ID da área
             
         Returns:
             Lista de caminhos de pastas acessíveis
         """
-        area = self.document_area_repository.get_by_id(area_id)
-        if not area or not area.is_active:
+        # Verificar se usuário está ativo
+        if not self._iam_contract.verify_user_active(user_id, organization_id):
             return []
+
+        # Obter acessos ativos do usuário
+        user_accesses = self._user_document_access_repository.get_active_by_user(user_id)
         
-        # Obter todas as áreas da organização
-        all_areas = self.document_area_repository.get_by_organization(area.organization_id)
+        # Filtrar por organização
+        org_accesses = [access for access in user_accesses if access.organization_id == organization_id]
         
-        # Obter áreas acessíveis
-        accessible_areas = self._get_user_accessible_areas(area, all_areas)
+        if not org_accesses:
+            return []
+
+        accessible_paths = set()
+
+        # Para cada área que o usuário tem acesso
+        for access in org_accesses:
+            area = self._document_area_repository.get_by_id(access.area_id)
+            if area and area.is_active:
+                # Obter todas as áreas da hierarquia
+                hierarchy = self._document_area_repository.get_hierarchy_for_area(area.id)
+                
+                # Adicionar caminhos acessíveis
+                area_paths = area.get_accessible_paths(hierarchy)
+                accessible_paths.update(area_paths)
+
+        return sorted(list(accessible_paths))
+
+    def get_user_areas_with_access_levels(
+        self,
+        user_id: UUID,
+        organization_id: UUID
+    ) -> List[Tuple[DocumentArea, AccessLevel]]:
+        """
+        Retorna áreas que o usuário tem acesso junto com seus níveis.
         
-        # Obter caminhos acessíveis
-        accessible_paths = []
-        for accessible_area in accessible_areas:
-            accessible_paths.extend(accessible_area.get_accessible_paths(all_areas))
+        Args:
+            user_id: ID do usuário
+            organization_id: ID da organização
+            
+        Returns:
+            Lista de tuplas (área, nível_de_acesso)
+        """
+        # Verificar se usuário está ativo
+        if not self._iam_contract.verify_user_active(user_id, organization_id):
+            return []
+
+        # Obter acessos ativos do usuário
+        user_accesses = self._user_document_access_repository.get_active_by_user(user_id)
         
-        return accessible_paths
-    
+        # Filtrar por organização
+        org_accesses = [access for access in user_accesses if access.organization_id == organization_id]
+        
+        result = []
+        
+        for access in org_accesses:
+            area = self._document_area_repository.get_by_id(access.area_id)
+            if area and area.is_active:
+                result.append((area, access.access_level))
+
+        return result
+
+    def get_highest_access_level_for_folder(
+        self,
+        user_id: UUID,
+        folder_path: str,
+        organization_id: UUID
+    ) -> Optional[AccessLevel]:
+        """
+        Retorna o maior nível de acesso do usuário para uma pasta específica.
+        
+        Args:
+            user_id: ID do usuário
+            folder_path: Caminho da pasta
+            organization_id: ID da organização
+            
+        Returns:
+            Maior nível de acesso ou None se não tiver acesso
+        """
+        user_areas_with_levels = self.get_user_areas_with_access_levels(user_id, organization_id)
+        
+        highest_level = None
+        
+        for area, access_level in user_areas_with_levels:
+            if area.can_access_folder(folder_path):
+                if highest_level is None or access_level.is_higher_than(highest_level):
+                    highest_level = access_level
+
+        return highest_level
+
+    def validate_area_hierarchy_consistency(
+        self,
+        area: DocumentArea,
+        all_areas: List[DocumentArea]
+    ) -> Tuple[bool, List[str]]:
+        """
+        Valida a consistência da hierarquia de uma área.
+        
+        Args:
+            area: Área a ser validada
+            all_areas: Todas as áreas da organização
+            
+        Returns:
+            Tupla (is_valid, error_messages)
+        """
+        errors = []
+        
+        # Validar hierarquia básica
+        is_valid, message = area.validate_hierarchy(all_areas)
+        if not is_valid:
+            errors.append(message)
+
+        # Validar se não há conflitos de caminhos
+        for other_area in all_areas:
+            if other_area.id != area.id and other_area.organization_id == area.organization_id:
+                if other_area.folder_path == area.folder_path:
+                    errors.append(f"Folder path conflict with area '{other_area.name}'")
+
+        # Validar se área pai permite acesso ao caminho da área filha
+        if area.parent_area_id:
+            parent_area = next(
+                (a for a in all_areas if a.id == area.parent_area_id),
+                None
+            )
+            
+            if parent_area:
+                if not parent_area.can_access_folder(area.folder_path):
+                    errors.append("Parent area cannot access child area folder path")
+
+        return len(errors) == 0, errors
+
+    def can_user_create_folder_in_path(
+        self,
+        user_id: UUID,
+        parent_folder_path: str,
+        organization_id: UUID
+    ) -> Tuple[bool, str]:
+        """
+        Verifica se usuário pode criar uma pasta em um caminho específico.
+        
+        Args:
+            user_id: ID do usuário
+            parent_folder_path: Caminho da pasta pai
+            organization_id: ID da organização
+            
+        Returns:
+            Tupla (pode_criar, motivo)
+        """
+        return self.can_user_access_folder(
+            user_id=user_id,
+            folder_path=parent_folder_path,
+            organization_id=organization_id,
+            required_action="create"
+        )
+
+    def can_user_delete_folder(
+        self,
+        user_id: UUID,
+        folder_path: str,
+        organization_id: UUID
+    ) -> Tuple[bool, str]:
+        """
+        Verifica se usuário pode deletar uma pasta.
+        
+        Args:
+            user_id: ID do usuário
+            folder_path: Caminho da pasta
+            organization_id: ID da organização
+            
+        Returns:
+            Tupla (pode_deletar, motivo)
+        """
+        return self.can_user_access_folder(
+            user_id=user_id,
+            folder_path=folder_path,
+            organization_id=organization_id,
+            required_action="delete"
+        )
+
+    def get_effective_permissions_for_user(
+        self,
+        user_id: UUID,
+        organization_id: UUID
+    ) -> Dict[str, Set[str]]:
+        """
+        Retorna mapa de permissões efetivas do usuário.
+        
+        Args:
+            user_id: ID do usuário
+            organization_id: ID da organização
+            
+        Returns:
+            Dicionário {folder_path: {actions}}
+        """
+        permissions_map = {}
+        user_areas_with_levels = self.get_user_areas_with_access_levels(user_id, organization_id)
+        
+        for area, access_level in user_areas_with_levels:
+            # Obter hierarquia da área
+            hierarchy = self._document_area_repository.get_hierarchy_for_area(area.id)
+            accessible_paths = area.get_accessible_paths(hierarchy)
+            
+            allowed_actions = set(access_level.get_allowed_actions())
+            
+            for path in accessible_paths:
+                if path in permissions_map:
+                    # Mesclar com permissões existentes (maior nível ganha)
+                    permissions_map[path].update(allowed_actions)
+                else:
+                    permissions_map[path] = allowed_actions.copy()
+
+        return permissions_map
+
+    def validate_folder_creation_request(
+        self,
+        user_id: UUID,
+        organization_id: UUID,
+        parent_folder_path: str,
+        new_folder_name: str
+    ) -> Tuple[bool, str, Optional[str]]:
+        """
+        Valida uma solicitação de criação de pasta.
+        
+        Args:
+            user_id: ID do usuário
+            organization_id: ID da organização
+            parent_folder_path: Caminho da pasta pai
+            new_folder_name: Nome da nova pasta
+            
+        Returns:
+            Tupla (pode_criar, motivo, caminho_completo)
+        """
+        try:
+            # Validar se pode criar na pasta pai
+            can_create, reason = self.can_user_create_folder_in_path(
+                user_id, parent_folder_path, organization_id
+            )
+            
+            if not can_create:
+                return False, reason, None
+
+            # Validar nome da pasta
+            try:
+                parent_path = FolderPath(path=parent_folder_path)
+                full_path = parent_path.join(new_folder_name)
+            except ValueError as e:
+                return False, f"Invalid folder name or path: {e}", None
+
+            # Verificar se pasta já existe
+            if self._document_folder_repository.exists_by_path(full_path.path, organization_id):
+                return False, "Folder already exists", None
+
+            return True, "Folder creation allowed", full_path.path
+
+        except Exception as e:
+            return False, f"Validation error: {e}", None
+
     def get_folder_access_summary(
         self,
         folder_path: str,
-        organization_id: UUID,
+        organization_id: UUID
     ) -> Dict[str, Any]:
         """
-        Obtém um resumo de acesso para uma pasta.
+        Retorna resumo de acesso para uma pasta.
         
         Args:
             folder_path: Caminho da pasta
@@ -233,24 +380,24 @@ class DocumentAccessService:
         """
         # Obter áreas que podem acessar a pasta
         accessible_areas = []
-        all_areas = self.document_area_repository.get_by_organization(organization_id)
+        all_areas = self._document_area_repository.get_active_by_organization(organization_id)
         
         for area in all_areas:
-            if area.is_active and area.can_access_folder(folder_path):
+            if area.can_access_folder(folder_path):
                 accessible_areas.append(area)
-        
+
         # Obter usuários que podem acessar
         accessible_users = []
         for area in accessible_areas:
-            users_in_area = self.user_document_access_repository.get_by_area(area.id)
-            active_users = [u for u in users_in_area if u.is_valid()]
-            accessible_users.extend(active_users)
-        
-        # Remover duplicatas
+            users_in_area = self._user_document_access_repository.get_active_by_area(area.id)
+            accessible_users.extend(users_in_area)
+
+        # Remover duplicatas de usuários
         unique_users = {}
-        for user in accessible_users:
-            unique_users[user.user_id] = user
-        
+        for user_access in accessible_users:
+            if user_access.user_id not in unique_users:
+                unique_users[user_access.user_id] = user_access
+
         return {
             "folder_path": folder_path,
             "organization_id": str(organization_id),
@@ -267,59 +414,96 @@ class DocumentAccessService:
             "areas_with_access": len(accessible_areas),
             "access_percentage": (len(accessible_areas) / len(all_areas) * 100) if all_areas else 0,
         }
-    
-    def validate_document_access_request(
+
+    def cleanup_expired_access(self) -> int:
+        """
+        Limpa acessos expirados do sistema.
+        
+        Returns:
+            Número de acessos limpos
+        """
+        return self._user_document_access_repository.cleanup_expired_access()
+
+    def get_access_statistics_for_organization(
+        self,
+        organization_id: UUID
+    ) -> Dict[str, Any]:
+        """
+        Retorna estatísticas de acesso para uma organização.
+        
+        Args:
+            organization_id: ID da organização
+            
+        Returns:
+            Dicionário com estatísticas
+        """
+        total_access = self._user_document_access_repository.count_by_organization(organization_id)
+        active_access_records = self._user_document_access_repository.get_active_by_organization(organization_id)
+        expired_access = self._user_document_access_repository.get_expired(organization_id)
+        expiring_soon = self._user_document_access_repository.get_expiring_soon(organization_id)
+
+        total_areas = self._document_area_repository.count_by_organization(organization_id)
+        active_areas = self._document_area_repository.count_active_by_organization(organization_id)
+
+        total_folders = self._document_folder_repository.count_by_organization(organization_id)
+
+        # Agrupar por nível de acesso
+        access_by_level = {}
+        for access in active_access_records:
+            level = access.access_level.value
+            access_by_level[level] = access_by_level.get(level, 0) + 1
+
+        return {
+            "total_access_records": total_access,
+            "active_access_records": len(active_access_records),
+            "expired_access_records": len(expired_access),
+            "expiring_soon_access_records": len(expiring_soon),
+            "total_areas": total_areas,
+            "active_areas": active_areas,
+            "total_folders": total_folders,
+            "access_by_level": access_by_level,
+            "unique_users_with_access": len(set(access.user_id for access in active_access_records)),
+        }
+
+    def validate_user_document_access(
         self,
         user_id: UUID,
         organization_id: UUID,
         document_path: str,
-        action: str,
-        context: Optional[Dict[str, Any]] = None,
+        action: str
     ) -> Dict[str, Any]:
         """
-        Valida uma solicitação de acesso a documento com detalhes.
+        Valida acesso de usuário a documento com detalhes completos.
         
         Args:
             user_id: ID do usuário
             organization_id: ID da organização
             document_path: Caminho do documento
-            action: Ação solicitada
-            context: Contexto adicional
+            action: Ação requerida
             
         Returns:
-            Dicionário com resultado da validação
+            Dicionário com detalhes da validação
         """
-        context = context or {}
-        
-        # Verificar acesso básico
-        can_access, reason = self.can_user_access_document(
-            user_id, organization_id, document_path, action
+        can_access, reason = self.can_user_access_folder(
+            user_id, document_path, organization_id, action
         )
-        
-        # Obter detalhes da atribuição do usuário
-        user_access = self.user_document_access_repository.get_by_user_and_organization(
-            user_id, organization_id
-        )
-        
-        # Obter informações do IAM
-        user_info = self.iam_contract.get_user_info(user_id)
-        management_assignment = self.iam_contract.get_user_management_assignment(
-            user_id, organization_id
-        )
-        
-        access_details = {}
-        if user_access:
-            area = self.document_area_repository.get_by_id(user_access.area_id)
-            
-            access_details = {
-                "area_name": area.name if area else "Unknown",
-                "is_active": user_access.is_active,
-                "expires_at": user_access.expires_at.isoformat() if user_access.expires_at else None,
-                "user_name": user_info.name if user_info else "Unknown",
-                "user_email": user_info.email if user_info else "Unknown",
-                "management_function": management_assignment.function_name if management_assignment else "None",
-            }
-        
+
+        # Obter detalhes do usuário
+        user_accesses = self._user_document_access_repository.get_active_by_user(user_id)
+        org_accesses = [access for access in user_accesses if access.organization_id == organization_id]
+
+        # Obter áreas do usuário
+        user_areas = []
+        for access in org_accesses:
+            area = self._document_area_repository.get_by_id(access.area_id)
+            if area:
+                user_areas.append({
+                    "area_id": str(area.id),
+                    "area_name": area.name,
+                    "access_level": access.access_level.value,
+                    "can_access_path": area.can_access_folder(document_path)
+                })
+
         return {
             "user_id": str(user_id),
             "organization_id": str(organization_id),
@@ -327,130 +511,6 @@ class DocumentAccessService:
             "action": action,
             "can_access": can_access,
             "reason": reason,
-            "access_details": access_details,
-            "validated_at": datetime.utcnow().isoformat(),
-            "context": context,
+            "user_areas": user_areas,
+            "validated_at": datetime.now().isoformat(),
         }
-    
-    def _check_area_access(
-        self,
-        user_id: UUID,
-        organization_id: UUID,
-        document_path: str,
-    ) -> Tuple[bool, str]:
-        """
-        Verifica acesso baseado em área.
-        
-        Args:
-            user_id: ID do usuário
-            organization_id: ID da organização
-            document_path: Caminho do documento
-            
-        Returns:
-            Tuple com (pode_acessar, motivo)
-        """
-        # Obter acesso do usuário a documentos
-        user_access = self.user_document_access_repository.get_by_user_and_organization(
-            user_id, organization_id
-        )
-        
-        if not user_access:
-            return False, "User has no document area access"
-        
-        # Obter área do usuário
-        user_area = self.document_area_repository.get_by_id(user_access.area_id)
-        if not user_area:
-            return False, "User area not found"
-        
-        # Obter todas as áreas para calcular hierarquia
-        all_areas = self.document_area_repository.get_by_organization(organization_id)
-        
-        # Obter áreas acessíveis
-        accessible_areas = self._get_user_accessible_areas(user_area, all_areas)
-        
-        # Verificar se alguma área permite acesso
-        for area in accessible_areas:
-            if area.can_access_folder(document_path):
-                return True, f"Access granted via area: {area.name}"
-        
-        return False, "No accessible area grants access to this document"
-    
-    def _get_user_accessible_areas(
-        self,
-        user_area: DocumentArea,
-        all_areas: List[DocumentArea],
-    ) -> List[DocumentArea]:
-        """
-        Obtém todas as áreas acessíveis por um usuário.
-        
-        Args:
-            user_area: Área principal do usuário
-            all_areas: Todas as áreas da organização
-            
-        Returns:
-            Lista de áreas acessíveis
-        """
-        accessible_areas = [user_area]
-        
-        # Adicionar áreas pai (usuário pode acessar hierarquia para cima)
-        hierarchy_path = user_area.get_hierarchy_path(all_areas)
-        for area_id in hierarchy_path:
-            if area_id != user_area.id:
-                area = next((a for a in all_areas if a.id == area_id), None)
-                if area and area.is_active:
-                    accessible_areas.append(area)
-        
-        return accessible_areas
-    
-    def create_area_access_log(
-        self,
-        user_id: UUID,
-        organization_id: UUID,
-        resource_path: str,
-        action: str,
-        access_granted: bool,
-        reason: str,
-    ) -> Dict[str, Any]:
-        """
-        Cria um log de acesso a área.
-        
-        Args:
-            user_id: ID do usuário
-            organization_id: ID da organização
-            resource_path: Caminho do recurso
-            action: Ação realizada
-            access_granted: Se o acesso foi concedido
-            reason: Motivo da decisão
-            
-        Returns:
-            Dicionário com log de acesso
-        """
-        return {
-            "user_id": str(user_id),
-            "organization_id": str(organization_id),
-            "resource_path": resource_path,
-            "action": action,
-            "access_granted": access_granted,
-            "reason": reason,
-            "timestamp": datetime.utcnow().isoformat(),
-        }
-    
-    def can_access_folder(
-        self,
-        folder_path: str,
-        user_areas: List[DocumentArea],
-    ) -> bool:
-        """
-        Verifica se uma lista de áreas pode acessar uma pasta.
-        
-        Args:
-            folder_path: Caminho da pasta
-            user_areas: Áreas do usuário
-            
-        Returns:
-            True se pode acessar, False caso contrário
-        """
-        for area in user_areas:
-            if area.can_access_folder(folder_path):
-                return True
-        return False

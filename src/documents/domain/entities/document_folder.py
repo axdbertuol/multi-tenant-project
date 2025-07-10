@@ -25,7 +25,7 @@ class DocumentFolder(BaseModel):
     created_by: UUID
     is_active: bool = True
     is_virtual: bool = False  # Se é uma pasta virtual ou física
-    metadata: dict = Field(default_factory=dict)  # Metadados adicionais
+    extra_data: dict = Field(default_factory=dict)  # Dados extras adicionais
     
     model_config = {"frozen": True}
     
@@ -40,7 +40,7 @@ class DocumentFolder(BaseModel):
         parent_folder_id: Optional[UUID] = None,
         allowed_areas: Optional[List[UUID]] = None,
         is_virtual: bool = False,
-        metadata: Optional[dict] = None,
+        extra_data: Optional[dict] = None,
     ) -> "DocumentFolder":
         """Cria uma nova pasta de documentos."""
         # Validar formato do caminho
@@ -63,7 +63,7 @@ class DocumentFolder(BaseModel):
             created_by=created_by,
             is_active=True,
             is_virtual=is_virtual,
-            metadata=metadata or {},
+            extra_data=extra_data or {},
         )
     
     @staticmethod
@@ -194,12 +194,12 @@ class DocumentFolder(BaseModel):
             }
         )
     
-    def update_metadata(self, metadata: dict) -> "DocumentFolder":
-        """Atualiza os metadados da pasta."""
-        new_metadata = {**self.metadata, **metadata}
+    def update_extra_data(self, extra_data: dict) -> "DocumentFolder":
+        """Atualiza os dados extras da pasta."""
+        new_extra_data = {**self.extra_data, **extra_data}
         return self.model_copy(
             update={
-                "metadata": new_metadata,
+                "extra_data": new_extra_data,
                 "updated_at": datetime.now(timezone.utc),
             }
         )

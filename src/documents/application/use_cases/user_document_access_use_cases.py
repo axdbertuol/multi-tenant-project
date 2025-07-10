@@ -69,21 +69,23 @@ class UserDocumentAccessUseCase:
         ):
             raise ValueError("User lacks permission to assign areas")
 
-        # Check if user already has access in this organization
-        existing_access = self.user_document_access_repository.get_by_user_and_organization(
-            dto.user_id, dto.organization_id
+        # Check if user already has access to this area
+        existing_access = self.user_document_access_repository.get_by_user_and_area(
+            dto.user_id, dto.area_id
         )
         if existing_access and existing_access.is_active:
-            raise ValueError("User already has active document access in this organization")
+            raise ValueError("User already has active access to this area")
 
         # Create access entity
         access = UserDocumentAccess.create(
             user_id=dto.user_id,
-            organization_id=dto.organization_id,
             area_id=dto.area_id,
-            assigned_by=dto.assigned_by,
+            organization_id=dto.organization_id,
+            access_level=dto.access_level,
+            granted_by=dto.granted_by,
             expires_at=dto.expires_at,
-            metadata=dto.metadata,
+            notes=dto.notes,
+            extra_data=dto.extra_data,
         )
 
         # Save access
@@ -116,10 +118,20 @@ class UserDocumentAccessUseCase:
                 raise ValueError("Document area not found")
             if area.organization_id != access.organization_id:
                 raise ValueError("Area must belong to the same organization")
-            updated_access = updated_access.update_area(dto.area_id)
+            # Create new access with different area
+            updated_access = UserDocumentAccess.create(
+                user_id=access.user_id,
+                area_id=dto.area_id,
+                organization_id=access.organization_id,
+                access_level=access.access_level,
+                granted_by=access.granted_by,
+                expires_at=access.expires_at,
+                notes=access.notes,
+                extra_data=access.extra_data,
+            )
 
         if dto.expires_at is not None:
-            updated_access = updated_access.extend_expiration(dto.expires_at)
+            updated_access = updated_access.extend_access(dto.expires_at)
 
         if dto.is_active is not None:
             if dto.is_active:
@@ -127,8 +139,8 @@ class UserDocumentAccessUseCase:
             else:
                 updated_access = updated_access.deactivate()
 
-        if dto.metadata is not None:
-            updated_access = updated_access.update_metadata(dto.metadata)
+        if dto.extra_data is not None:
+            updated_access = updated_access.update_extra_data(dto.extra_data)
 
         # Save access
         saved_access = self.user_document_access_repository.save(updated_access)
@@ -152,25 +164,19 @@ class UserDocumentAccessUseCase:
             raise ValueError("User lacks permission to revoke document access")
 
         # Get current access
-        access = self.user_document_access_repository.get_by_user_and_organization(
-            dto.user_id, dto.organization_id
+        user_accesses = self.user_document_access_repository.get_active_by_user(dto.user_id)
+        access = next(
+            (a for a in user_accesses if a.organization_id == dto.organization_id),
+            None
         )
         
         if not access:
             return False
 
-        # Deactivate access
-        deactivated_access = access.deactivate()
-        
-        # Add revocation reason to metadata
-        if dto.reason:
-            metadata = deactivated_access.metadata.copy()
-            metadata["revocation_reason"] = dto.reason
-            metadata["revoked_at"] = datetime.now(timezone.utc).isoformat()
-            metadata["revoked_by"] = str(dto.revoked_by)
-            deactivated_access = deactivated_access.update_metadata(metadata)
+        # Revoke access
+        revoked_access = access.revoke(dto.revoked_by, dto.reason)
 
-        self.user_document_access_repository.save(deactivated_access)
+        self.user_document_access_repository.save(revoked_access)
         return True
 
     def extend_access(
@@ -188,18 +194,15 @@ class UserDocumentAccessUseCase:
             raise ValueError("User lacks permission to extend document access")
 
         # Update expiration
-        if dto.new_expires_at:
-            extended_access = access.extend_expiration(dto.new_expires_at)
-        else:
-            extended_access = access.remove_expiration()
+        extended_access = access.extend_access(dto.new_expires_at)
 
-        # Add extension reason to metadata
+        # Add extension reason to extra_data
         if dto.reason:
-            metadata = extended_access.metadata.copy()
-            metadata["extension_reason"] = dto.reason
-            metadata["extended_at"] = datetime.now(timezone.utc).isoformat()
-            metadata["extended_by"] = str(dto.extended_by)
-            extended_access = extended_access.update_metadata(metadata)
+            extra_data = extended_access.extra_data.copy()
+            extra_data["extension_reason"] = dto.reason
+            extra_data["extended_at"] = datetime.now(timezone.utc).isoformat()
+            extra_data["extended_by"] = str(dto.extended_by)
+            extended_access = extended_access.update_extra_data(extra_data)
 
         saved_access = self.user_document_access_repository.save(extended_access)
         return self._build_access_response(saved_access)
@@ -246,18 +249,37 @@ class UserDocumentAccessUseCase:
         transferred_accesses = []
         
         for user_id in dto.user_ids:
-            # Get current access
-            current_access = self.user_document_access_repository.get_by_user_and_organization(
-                user_id, source_area.organization_id
+            # Get current access for this specific area
+            current_access = self.user_document_access_repository.get_by_user_and_area(
+                user_id, dto.source_area_id
             )
             
-            if not current_access or current_access.area_id != dto.source_area_id:
+            if not current_access or not current_access.is_active:
                 continue
             
-            # Update to target area
+            # Create new access for target area and revoke old one
             try:
-                updated_access = current_access.update_area(dto.target_area_id)
-                saved_access = self.user_document_access_repository.save(updated_access)
+                # Create new access
+                new_access = UserDocumentAccess.create(
+                    user_id=user_id,
+                    area_id=dto.target_area_id,
+                    organization_id=source_area.organization_id,
+                    access_level=current_access.access_level,
+                    granted_by=dto.transferred_by,
+                    expires_at=current_access.expires_at,
+                    notes=f"Transferred from area {source_area.name}",
+                    extra_data=current_access.extra_data,
+                )
+                
+                # Revoke old access
+                revoked_access = current_access.revoke(
+                    dto.transferred_by,
+                    f"Transferred to area {target_area.name}"
+                )
+                
+                # Save both
+                self.user_document_access_repository.save(revoked_access)
+                saved_access = self.user_document_access_repository.save(new_access)
                 transferred_accesses.append(self._build_access_response(saved_access))
             except ValueError as e:
                 # Log error but continue
@@ -275,10 +297,8 @@ class UserDocumentAccessUseCase:
         # Apply filters
         if filters:
             if filters.user_id and filters.organization_id:
-                access = self.user_document_access_repository.get_by_user_and_organization(
-                    filters.user_id, filters.organization_id
-                )
-                accesses = [access] if access else []
+                user_accesses = self.user_document_access_repository.get_by_user(filters.user_id)
+                accesses = [a for a in user_accesses if a.organization_id == filters.organization_id]
             elif filters.user_id:
                 accesses = self.user_document_access_repository.get_by_user(filters.user_id)
             elif filters.organization_id:
@@ -299,8 +319,8 @@ class UserDocumentAccessUseCase:
                     accesses = [a for a in accesses if a.is_expired()]
                 else:
                     accesses = [a for a in accesses if not a.is_expired()]
-            if filters.assigned_by:
-                accesses = [a for a in accesses if a.assigned_by == filters.assigned_by]
+            if filters.granted_by:
+                accesses = [a for a in accesses if a.granted_by == filters.granted_by]
 
         # Apply pagination
         total = len(accesses)
@@ -362,9 +382,9 @@ class UserDocumentAccessUseCase:
                     continue
                 elif dto.action == "extend":
                     if dto.new_expires_at:
-                        updated_access = access.extend_expiration(dto.new_expires_at)
+                        updated_access = access.extend_access(dto.new_expires_at)
                     else:
-                        updated_access = access.remove_expiration()
+                        updated_access = access.extend_access(None)
                 else:
                     failure_count += 1
                     errors.append(f"Unknown action: {dto.action}")
@@ -419,7 +439,7 @@ class UserDocumentAccessUseCase:
                 accesses_by_user[user_email] += 1
 
         # Get recent accesses
-        recent_accesses = sorted(accesses, key=lambda x: x.assigned_at, reverse=True)[:10]
+        recent_accesses = sorted(accesses, key=lambda x: x.granted_at, reverse=True)[:10]
         recent_access_responses = []
         for access in recent_accesses:
             recent_access_responses.append(self._build_access_response(access))
@@ -448,16 +468,18 @@ class UserDocumentAccessUseCase:
             user_id=access.user_id,
             organization_id=access.organization_id,
             area_id=access.area_id,
-            assigned_by=access.assigned_by,
-            assigned_at=access.assigned_at,
+            access_level=access.access_level.value,
+            granted_by=access.granted_by,
+            granted_at=access.granted_at,
             expires_at=access.expires_at,
             is_active=access.is_active,
-            metadata=access.metadata,
+            notes=access.notes,
+            extra_data=access.extra_data,
             user_email=user_info.email if user_info else None,
             user_name=user_info.name if user_info else None,
             area_name=area.name if area else None,
             area_folder_path=area.folder_path if area else None,
-            assigned_by_name=assigned_by_info.name if assigned_by_info else None,
+            granted_by_name=assigned_by_info.name if assigned_by_info else None,
         )
 
     def _build_access_detail_response(
@@ -519,5 +541,5 @@ class UserDocumentAccessUseCase:
             assigned_by_user=assigned_by_dto,
             accessible_folders=accessible_folders,
             is_expired=access.is_expired(),
-            days_until_expiration=access.days_until_expiration(),
+            days_until_expiry=access.days_until_expiry(),
         )

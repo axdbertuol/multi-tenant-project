@@ -17,7 +17,6 @@ import enum
 
 from src.shared.infrastructure.database.base import BaseModel
 from src.shared.infrastructure.database.connection import Base
-from src.shared.domain.enums import ResourceTypeEnum
 
 
 # Enums
@@ -40,6 +39,12 @@ class PermissionActionEnum(str, enum.Enum):
 class PolicyEffectEnum(str, enum.Enum):
     ALLOW = "allow"
     DENY = "deny"
+
+
+class FolderPermissionLevelEnum(str, enum.Enum):
+    READ = "read"
+    EDIT = "edit"
+    FULL = "full"
 
 
 # Association tables
@@ -184,7 +189,9 @@ class UserSessionModel(BaseModel):
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
     logout_at = Column(DateTime(timezone=True), nullable=True)
-    session_data = Column(Text, nullable=True)  # JSON string for additional session data
+    session_data = Column(
+        Text, nullable=True
+    )  # JSON string for additional session data
 
 
 # Authorization-related models
@@ -267,8 +274,12 @@ class AuthorizationSubjectModel(BaseModel):
 
     __tablename__ = "authorization_subjects"
 
-    subject_type = Column(String(50), nullable=False, index=True)  # 'application', 'document', etc.
-    subject_id = Column(UUID(as_uuid=True), nullable=False, index=True)  # References external resource
+    subject_type = Column(
+        String(50), nullable=False, index=True
+    )  # 'application', 'document', etc.
+    subject_id = Column(
+        UUID(as_uuid=True), nullable=False, index=True
+    )  # References external resource
     organization_id = Column(
         UUID(as_uuid=True),
         ForeignKey("contas.organizations.id"),
@@ -282,7 +293,111 @@ class AuthorizationSubjectModel(BaseModel):
 
     # Ensure unique subject per organization
     __table_args__ = (
-        UniqueConstraint("subject_type", "subject_id", "organization_id", name="uq_auth_subject"),
+        UniqueConstraint(
+            "subject_type", "subject_id", "organization_id", name="uq_auth_subject"
+        ),
         Index("ix_auth_subject_lookup", "subject_type", "subject_id"),
         Index("ix_auth_subject_org", "organization_id", "subject_type"),
+    )
+
+
+# Profile System Models
+class ProfileModel(BaseModel):
+    """SQLAlchemy model for Profile entity."""
+
+    __tablename__ = "profiles"
+
+    name = Column(String(255), nullable=False, index=True)
+    description = Column(Text, nullable=False)
+    organization_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("contas.organizations.id"),
+        nullable=False,
+        index=True,
+    )
+    created_by = Column(
+        UUID(as_uuid=True), ForeignKey("contas.users.id"), nullable=False
+    )
+    is_active = Column(Boolean, default=True, nullable=False)
+    is_system_profile = Column(Boolean, default=False, nullable=False)
+    profile_metadata = Column(JSON, nullable=False, default={})
+
+    # Ensure unique profile names within organization
+    __table_args__ = (
+        UniqueConstraint("name", "organization_id", name="uq_profile_name_org"),
+        Index("ix_profile_active", "is_active", "organization_id"),
+        Index("ix_profile_system", "is_system_profile"),
+    )
+
+
+class UserProfileModel(BaseModel):
+    """SQLAlchemy model for UserProfile entity."""
+
+    __tablename__ = "user_profiles"
+
+    user_id = Column(
+        UUID(as_uuid=True), ForeignKey("contas.users.id"), nullable=False, index=True
+    )
+    profile_id = Column(
+        UUID(as_uuid=True), ForeignKey("contas.profiles.id"), nullable=False, index=True
+    )
+    organization_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("contas.organizations.id"),
+        nullable=False,
+        index=True,
+    )
+    assigned_by = Column(
+        UUID(as_uuid=True), ForeignKey("contas.users.id"), nullable=False
+    )
+    assigned_at = Column(DateTime(timezone=True), nullable=False)
+    expires_at = Column(DateTime(timezone=True), nullable=True)
+    is_active = Column(Boolean, default=True, nullable=False)
+    revoked_at = Column(DateTime(timezone=True), nullable=True)
+    revoked_by = Column(
+        UUID(as_uuid=True), ForeignKey("contas.users.id"), nullable=True
+    )
+    notes = Column(Text, nullable=True)
+    extra_data = Column(JSON, nullable=False, default={})
+
+    # Ensure unique active assignment per user-profile pair
+    __table_args__ = (
+        UniqueConstraint("user_id", "profile_id", name="uq_user_profile"),
+        Index("ix_user_profile_active", "is_active", "user_id", "organization_id"),
+        Index("ix_user_profile_expires", "expires_at"),
+        Index("ix_user_profile_assigned", "assigned_at"),
+    )
+
+
+class ProfileFolderPermissionModel(BaseModel):
+    """SQLAlchemy model for ProfileFolderPermission entity."""
+
+    __tablename__ = "profile_folder_permissions"
+
+    profile_id = Column(
+        UUID(as_uuid=True), ForeignKey("contas.profiles.id"), nullable=False, index=True
+    )
+    folder_path = Column(String(1000), nullable=False, index=True)
+    permission_level = Column(
+        Enum(FolderPermissionLevelEnum), nullable=False, index=True
+    )
+    organization_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("contas.organizations.id"),
+        nullable=False,
+        index=True,
+    )
+    created_by = Column(
+        UUID(as_uuid=True), ForeignKey("contas.users.id"), nullable=False
+    )
+    is_active = Column(Boolean, default=True, nullable=False)
+    notes = Column(Text, nullable=True)
+    extra_data = Column(JSON, nullable=False, default={})
+
+    # Ensure unique permission per profile-folder pair
+    __table_args__ = (
+        UniqueConstraint("profile_id", "folder_path", name="uq_profile_folder"),
+        Index("ix_profile_folder_active", "is_active", "profile_id"),
+        Index("ix_profile_folder_path", "folder_path", "organization_id"),
+        Index("ix_profile_folder_level", "permission_level", "organization_id"),
     )

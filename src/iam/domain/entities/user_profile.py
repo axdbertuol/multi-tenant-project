@@ -4,20 +4,18 @@ from typing import Optional
 from pydantic import BaseModel
 
 
-class UserFunctionArea(BaseModel):
+class UserProfile(BaseModel):
     """
-    Entidade de domínio para relacionamento entre Usuário, Função e Área.
+    Entidade de domínio para relacionamento Many-to-Many entre Usuários e Perfis.
     
-    Esta entidade substitui UserOrganizationRole para o novo modelo onde:
-    - Função controla permissões de gerenciamento
-    - Área controla acesso a documentos
+    Um usuário pode ter múltiplos perfis e um perfil pode ser atribuído a múltiplos usuários.
+    Esta entidade representa essa atribuição com controle de tempo e metadados.
     """
     
     id: UUID
     user_id: UUID
+    profile_id: UUID
     organization_id: UUID
-    function_id: UUID  # Função de gerenciamento
-    area_id: UUID  # Área de documentos
     assigned_by: UUID
     assigned_at: datetime
     expires_at: Optional[datetime] = None
@@ -25,6 +23,7 @@ class UserFunctionArea(BaseModel):
     revoked_at: Optional[datetime] = None
     revoked_by: Optional[UUID] = None
     notes: Optional[str] = None
+    extra_data: dict = {}
     
     model_config = {"frozen": True}
     
@@ -32,110 +31,78 @@ class UserFunctionArea(BaseModel):
     def create(
         cls,
         user_id: UUID,
+        profile_id: UUID,
         organization_id: UUID,
-        function_id: UUID,
-        area_id: UUID,
         assigned_by: UUID,
         expires_at: Optional[datetime] = None,
         notes: Optional[str] = None,
-    ) -> "UserFunctionArea":
+        extra_data: Optional[dict] = None,
+    ) -> "UserProfile":
         """
-        Cria uma nova atribuição de função e área para usuário.
+        Cria uma nova atribuição de perfil para usuário.
         
         Args:
-            user_id: UUID do usuário
-            organization_id: UUID da organização
-            function_id: UUID da função de gerenciamento
-            area_id: UUID da área de documentos
-            assigned_by: UUID do usuário que fez a atribuição
+            user_id: ID do usuário
+            profile_id: ID do perfil
+            organization_id: ID da organização
+            assigned_by: ID do usuário que fez a atribuição
             expires_at: Data de expiração opcional
-            notes: Notas opcionais sobre a atribuição
+            notes: Notas sobre a atribuição
+            extra_data: Metadados adicionais
         """
         return cls(
             id=uuid4(),
             user_id=user_id,
+            profile_id=profile_id,
             organization_id=organization_id,
-            function_id=function_id,
-            area_id=area_id,
             assigned_by=assigned_by,
             assigned_at=datetime.now(timezone.utc),
             expires_at=expires_at,
             is_active=True,
             notes=notes,
+            extra_data=extra_data or {},
         )
     
-    def change_function(self, new_function_id: UUID, changed_by: UUID) -> "UserFunctionArea":
+    def change_profile(self, new_profile_id: UUID, changed_by: UUID) -> "UserProfile":
         """
-        Muda a função do usuário.
+        Muda o perfil do usuário.
         
         Args:
-            new_function_id: UUID da nova função
-            changed_by: UUID do usuário que fez a mudança
+            new_profile_id: ID do novo perfil
+            changed_by: ID do usuário que fez a mudança
         """
         return self.model_copy(
             update={
-                "function_id": new_function_id,
+                "profile_id": new_profile_id,
                 "assigned_by": changed_by,
                 "assigned_at": datetime.now(timezone.utc),
+                "revoked_at": None,
+                "revoked_by": None,
             }
         )
     
-    def change_area(self, new_area_id: UUID, changed_by: UUID) -> "UserFunctionArea":
-        """
-        Muda a área do usuário.
-        
-        Args:
-            new_area_id: UUID da nova área
-            changed_by: UUID do usuário que fez a mudança
-        """
-        return self.model_copy(
-            update={
-                "area_id": new_area_id,
-                "assigned_by": changed_by,
-                "assigned_at": datetime.now(timezone.utc),
-            }
-        )
-    
-    def change_function_and_area(
-        self, 
-        new_function_id: UUID, 
-        new_area_id: UUID, 
-        changed_by: UUID
-    ) -> "UserFunctionArea":
-        """
-        Muda tanto a função quanto a área do usuário.
-        
-        Args:
-            new_function_id: UUID da nova função
-            new_area_id: UUID da nova área
-            changed_by: UUID do usuário que fez a mudança
-        """
-        return self.model_copy(
-            update={
-                "function_id": new_function_id,
-                "area_id": new_area_id,
-                "assigned_by": changed_by,
-                "assigned_at": datetime.now(timezone.utc),
-            }
-        )
-    
-    def set_expiration(self, expires_at: datetime) -> "UserFunctionArea":
+    def set_expiration(self, expires_at: datetime) -> "UserProfile":
         """Define data de expiração."""
         return self.model_copy(update={"expires_at": expires_at})
     
-    def remove_expiration(self) -> "UserFunctionArea":
+    def remove_expiration(self) -> "UserProfile":
         """Remove data de expiração."""
         return self.model_copy(update={"expires_at": None})
     
-    def update_notes(self, notes: str) -> "UserFunctionArea":
+    def update_notes(self, notes: str) -> "UserProfile":
         """Atualiza as notas da atribuição."""
         return self.model_copy(update={"notes": notes})
     
-    def deactivate(self) -> "UserFunctionArea":
+    def update_extra_data(self, extra_data: dict) -> "UserProfile":
+        """Atualiza os dados extras da atribuição."""
+        new_extra_data = {**self.extra_data, **extra_data}
+        return self.model_copy(update={"extra_data": new_extra_data})
+    
+    def deactivate(self) -> "UserProfile":
         """Desativa a atribuição."""
         return self.model_copy(update={"is_active": False})
     
-    def activate(self) -> "UserFunctionArea":
+    def activate(self) -> "UserProfile":
         """Ativa a atribuição."""
         return self.model_copy(
             update={
@@ -145,12 +112,12 @@ class UserFunctionArea(BaseModel):
             }
         )
     
-    def revoke(self, revoked_by: UUID, reason: Optional[str] = None) -> "UserFunctionArea":
+    def revoke(self, revoked_by: UUID, reason: Optional[str] = None) -> "UserProfile":
         """
         Revoga a atribuição.
         
         Args:
-            revoked_by: UUID do usuário que revogou
+            revoked_by: ID do usuário que revogou
             reason: Motivo da revogação
         """
         notes = self.notes or ""
@@ -166,12 +133,12 @@ class UserFunctionArea(BaseModel):
             }
         )
     
-    def reactivate(self, reactivated_by: UUID) -> "UserFunctionArea":
+    def reactivate(self, reactivated_by: UUID) -> "UserProfile":
         """
         Reativa uma atribuição revogada.
         
         Args:
-            reactivated_by: UUID do usuário que reativou
+            reactivated_by: ID do usuário que reativou
         """
         return self.model_copy(
             update={
@@ -182,6 +149,10 @@ class UserFunctionArea(BaseModel):
                 "assigned_at": datetime.now(timezone.utc),
             }
         )
+    
+    def extend_expiration(self, new_expires_at: datetime) -> "UserProfile":
+        """Estende a data de expiração."""
+        return self.model_copy(update={"expires_at": new_expires_at})
     
     def is_expired(self) -> bool:
         """Verifica se a atribuição expirou."""
@@ -232,7 +203,6 @@ class UserFunctionArea(BaseModel):
     def can_be_deleted(self) -> tuple[bool, str]:
         """Verifica se a atribuição pode ser deletada."""
         # Atribuições podem ser deletadas se não estiverem ativas
-        # ou se forem muito antigas
         if not self.is_active:
             return True, "Inactive assignment can be deleted"
         
@@ -251,14 +221,11 @@ class UserFunctionArea(BaseModel):
         if not self.user_id:
             errors.append("User ID is required")
         
+        if not self.profile_id:
+            errors.append("Profile ID is required")
+        
         if not self.organization_id:
             errors.append("Organization ID is required")
-        
-        if not self.function_id:
-            errors.append("Function ID is required")
-        
-        if not self.area_id:
-            errors.append("Area ID is required")
         
         if not self.assigned_by:
             errors.append("Assigned by is required")
@@ -294,3 +261,43 @@ class UserFunctionArea(BaseModel):
             return "expiring_soon"
         
         return "active"
+    
+    def has_extra_data_key(self, key: str) -> bool:
+        """Verifica se existe uma chave específica nos dados extras."""
+        return key in self.extra_data
+    
+    def get_extra_data_value(self, key: str, default=None):
+        """Obtém um valor específico dos dados extras."""
+        return self.extra_data.get(key, default)
+    
+    def is_permanent_assignment(self) -> bool:
+        """Verifica se é uma atribuição permanente (sem data de expiração)."""
+        return self.expires_at is None
+    
+    def is_temporary_assignment(self) -> bool:
+        """Verifica se é uma atribuição temporária (com data de expiração)."""
+        return self.expires_at is not None
+    
+    def get_assignment_type(self) -> str:
+        """Retorna o tipo de atribuição."""
+        if self.is_permanent_assignment():
+            return "permanent"
+        return "temporary"
+    
+    def to_summary_dict(self) -> dict:
+        """Converte a atribuição para um dicionário resumido."""
+        return {
+            "id": str(self.id),
+            "user_id": str(self.user_id),
+            "profile_id": str(self.profile_id),
+            "organization_id": str(self.organization_id),
+            "assigned_by": str(self.assigned_by),
+            "assigned_at": self.assigned_at.isoformat(),
+            "expires_at": self.expires_at.isoformat() if self.expires_at else None,
+            "is_active": self.is_active,
+            "status": self.get_status(),
+            "assignment_type": self.get_assignment_type(),
+            "days_until_expiry": self.days_until_expiry(),
+            "is_expired": self.is_expired(),
+            "is_expiring_soon": self.is_expiring_soon(),
+        }
