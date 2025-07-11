@@ -37,7 +37,7 @@ def get_iam_uow(db: Session = Depends(get_db)) -> IAMUnitOfWork:
     """Obtém uma instância de IAMUnitOfWork com todos os repositórios do contexto IAM."""
     return IAMUnitOfWork(
         db,
-        ["user", "user_session"],  # Only load basic repositories for now
+        ["user", "user_session", "role"],  # Only load basic repositories for now
     )
 
 

@@ -1,5 +1,5 @@
 import pytest
-from shared.infrastructure.database.connection import Base, get_db
+from shared.infrastructure.database.connection import get_db
 import io
 import os
 from typing import Generator
@@ -36,8 +36,8 @@ def db_session() -> Generator:
     with test_engine.connect() as conn:
         conn.execute(text("CREATE SCHEMA IF NOT EXISTS contas"))
         conn.commit()
-    import src.iam.infrastructure.database.models
-    import src.plans.infrastructure.database.models
+    from src.iam.infrastructure.database.models import Base
+    # import src.plans.infrastructure.database.models
 
     Base.metadata.create_all(bind=test_engine)
     session = TestSessionLocal()

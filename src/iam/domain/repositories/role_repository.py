@@ -128,16 +128,6 @@ class RoleRepository(ABC):
         pass
 
     @abstractmethod
-    def find_user_roles(
-        self, user_id: UUID, organization_id: Optional[UUID]
-    ) -> List[Role]:
-        pass
-
-    @abstractmethod
-    def find_by_id(self, role_id: UUID) -> Optional[Role]:
-        pass
-
-    @abstractmethod
     def assign_role_to_user(
         self,
         user_id: UUID,
@@ -149,19 +139,21 @@ class RoleRepository(ABC):
         pass
 
     @abstractmethod
-    def remove_role_from_user(
-        self, user_id: UUID, role_id: UUID
-    ) -> bool:
+    def remove_role_from_user(self, user_id: UUID, role_id: UUID) -> bool:
         """Remove a role from a user."""
         pass
 
     @abstractmethod
-    def get_user_roles_in_organization(self, user_id: UUID, organization_id: UUID) -> List[Role]:
+    def get_user_roles_in_organization(
+        self, user_id: UUID, organization_id: UUID
+    ) -> List[Role]:
         """Get roles assigned to a user that belong to a specific organization."""
         pass
 
     @abstractmethod
-    def get_users_with_role_in_organization(self, role_id: UUID, organization_id: UUID) -> List[UUID]:
+    def get_users_with_role_in_organization(
+        self, role_id: UUID, organization_id: UUID
+    ) -> List[UUID]:
         """Get all users that have a specific role and belong to a specific organization."""
         pass
 

@@ -27,7 +27,7 @@ class UserSession(BaseModel):
     user_agent: Optional[str] = None
     created_at: datetime
     updated_at: Optional[datetime] = None
-
+    last_activity_at: datetime = None
     model_config = {"arbitrary_types_allowed": True, "frozen": True}
 
     @classmethod
@@ -53,6 +53,7 @@ class UserSession(BaseModel):
             ip_address=ip_address,
             user_agent=user_agent,
             created_at=now,
+            last_activity_at=now,
         )
 
     def logout(self) -> "UserSession":

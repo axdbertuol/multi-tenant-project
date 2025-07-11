@@ -30,6 +30,7 @@ class SqlAlchemyUserSessionRepository(UserSessionRepository):
             existing.user_agent = session_entity.user_agent
             existing.last_activity_at = session_entity.last_activity_at
             existing.logout_at = session_entity.logout_at
+            existing.login_at = session_entity.login_at
             existing.extra_data = session_entity.extra_data
             existing.updated_at = datetime.now(timezone.utc)
 
@@ -150,13 +151,17 @@ class SqlAlchemyUserSessionRepository(UserSessionRepository):
 
     def revoke_all_user_sessions(self, user_id: UUID) -> int:
         """Revoga todas as sessões de um usuário."""
-        query = update(UserSessionModel).where(
-            UserSessionModel.user_id == user_id,
-            UserSessionModel.status == SessionStatusEnum.ACTIVE,
-        ).values(
-            status=SessionStatusEnum.REVOKED,
-            logout_at=datetime.now(timezone.utc),
-            updated_at=datetime.now(timezone.utc),
+        query = (
+            update(UserSessionModel)
+            .where(
+                UserSessionModel.user_id == user_id,
+                UserSessionModel.status == SessionStatusEnum.ACTIVE,
+            )
+            .values(
+                status=SessionStatusEnum.REVOKED,
+                logout_at=datetime.now(timezone.utc),
+                updated_at=datetime.now(timezone.utc),
+            )
         )
 
         result = self.session.execute(query)
@@ -168,15 +173,19 @@ class SqlAlchemyUserSessionRepository(UserSessionRepository):
         """Revoga todas as sessões de um usuário, opcionalmente excluindo uma sessão."""
         if exclude_session_id is None:
             return self.revoke_all_user_sessions(user_id)
-        
-        query = update(UserSessionModel).where(
-            UserSessionModel.user_id == user_id,
-            UserSessionModel.status == SessionStatusEnum.ACTIVE,
-            UserSessionModel.id != exclude_session_id
-        ).values(
-            status=SessionStatusEnum.REVOKED,
-            logout_at=datetime.now(timezone.utc),
-            updated_at=datetime.now(timezone.utc),
+
+        query = (
+            update(UserSessionModel)
+            .where(
+                UserSessionModel.user_id == user_id,
+                UserSessionModel.status == SessionStatusEnum.ACTIVE,
+                UserSessionModel.id != exclude_session_id,
+            )
+            .values(
+                status=SessionStatusEnum.REVOKED,
+                logout_at=datetime.now(timezone.utc),
+                updated_at=datetime.now(timezone.utc),
+            )
         )
 
         result = self.session.execute(query)
@@ -218,6 +227,7 @@ class SqlAlchemyUserSessionRepository(UserSessionRepository):
             ip_address=session_model.ip_address,
             user_agent=session_model.user_agent,
             last_activity_at=session_model.last_activity_at,
+            login_at=session_model.last_activity_at,
             logout_at=session_model.logout_at,
             extra_data=session_model.extra_data,
             created_at=session_model.created_at,

@@ -2,7 +2,7 @@ from datetime import datetime, timezone
 from typing import List, Optional
 from uuid import UUID
 from sqlalchemy.orm import Session
-from sqlalchemy import select, delete, and_, text
+from sqlalchemy import select, delete, and_, text, join
 from sqlalchemy.exc import IntegrityError
 
 from ...domain.entities.role import Role
@@ -116,7 +116,7 @@ class SqlAlchemyRoleRepository(RoleRepository):
         """Get roles assigned to a user."""
         query = (
             select(RoleModel)
-            .select_from(RoleModel.join(user_role_assignment))
+            .select_from(join(RoleModel, user_role_assignment, RoleModel.id == user_role_assignment.c.role_id))
             .where(
                 and_(
                     user_role_assignment.c.user_id == user_id,
@@ -250,7 +250,7 @@ class SqlAlchemyRoleRepository(RoleRepository):
         """Get all permissions for a role."""
         result = self.session.execute(
             select(PermissionModel)
-            .select_from(PermissionModel.join(role_permission_association))
+            .select_from(join(PermissionModel, role_permission_association, PermissionModel.id == role_permission_association.c.permission_id))
             .where(role_permission_association.c.role_id == role_id)
         )
         permission_models = result.scalars().all()
@@ -399,7 +399,7 @@ class SqlAlchemyRoleRepository(RoleRepository):
         # Get user's roles that belong to this organization
         query = (
             select(RoleModel)
-            .select_from(RoleModel.join(user_role_assignment))
+            .select_from(join(RoleModel, user_role_assignment, RoleModel.id == user_role_assignment.c.role_id))
             .where(
                 and_(
                     user_role_assignment.c.user_id == user_id,
@@ -420,7 +420,7 @@ class SqlAlchemyRoleRepository(RoleRepository):
         query = (
             select(UserModel.id)
             .select_from(
-                UserModel.join(user_role_assignment, UserModel.id == user_role_assignment.c.user_id)
+                join(UserModel, user_role_assignment, UserModel.id == user_role_assignment.c.user_id)
             )
             .where(
                 and_(

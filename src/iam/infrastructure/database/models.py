@@ -107,7 +107,10 @@ class OrganizationModel(BaseModel):
     name = Column(String(255), nullable=False, index=True)
     description = Column(Text, nullable=True)
     owner_id = Column(
-        UUID(as_uuid=True), ForeignKey("contas.users.id"), nullable=False, index=True
+        UUID(as_uuid=True),
+        ForeignKey("contas.users.id", name="fk_organization_owner"),
+        nullable=False,
+        index=True,
     )
     is_active = Column(Boolean, default=True, nullable=False)
     settings = Column(JSON, nullable=False, default={})  # Organization settings as JSON
@@ -126,7 +129,7 @@ class UserModel(BaseModel):
     password_hash = Column(String(255), nullable=False)
     organization_id = Column(
         UUID(as_uuid=True),
-        ForeignKey("contas.organizations.id"),
+        ForeignKey("contas.organizations.id", name="fk_user_organization"),
         nullable=True,
         index=True,
     )
@@ -156,10 +159,11 @@ class UserSessionModel(BaseModel):
     last_activity_at = Column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
+    login_at = Column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
     logout_at = Column(DateTime(timezone=True), nullable=True)
-    session_data = Column(
-        Text, nullable=True
-    )  # JSON string for additional session data
+    extra_data = Column(Text, nullable=True)  # JSON string for additional session data
 
 
 # Authorization-related models
