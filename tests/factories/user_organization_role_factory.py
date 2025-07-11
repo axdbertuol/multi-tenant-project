@@ -1,10 +1,10 @@
 from uuid import uuid4
-from src.iam.domain.entities.user_organization_role import UserOrganizationRole
+from src.iam.domain.entities.user import UserOrganizationRole
 
 
 class UserOrganizationRoleFactory:
     @staticmethod
-    def create_user_organization_role(
+    def create_user(
         user_id=None, organization_id=None, role_id=None, assigned_by=None
     ) -> UserOrganizationRole:
         return UserOrganizationRole.create(

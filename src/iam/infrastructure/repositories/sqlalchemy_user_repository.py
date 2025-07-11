@@ -26,6 +26,7 @@ class SqlAlchemyUserRepository(UserRepository):
             existing.email = str(user.email.value)
             existing.name = user.name
             existing.password_hash = user.password.hashed_value
+            existing.organization_id = user.organization_id
             existing.is_active = user.is_active
             existing.is_verified = user.is_verified
             existing.last_login_at = user.last_login_at
@@ -40,6 +41,7 @@ class SqlAlchemyUserRepository(UserRepository):
                 email=str(user.email.value),
                 name=user.name,
                 password_hash=user.password.hashed_value,
+                organization_id=user.organization_id,
                 is_active=user.is_active,
                 is_verified=user.is_verified,
                 last_login_at=user.last_login_at,
@@ -85,6 +87,8 @@ class SqlAlchemyUserRepository(UserRepository):
         email_filter: Optional[str] = None,
         name_filter: Optional[str] = None,
         is_active: Optional[bool] = None,
+        organization_id: Optional[UUID] = None,
+        has_organization: Optional[bool] = None,
     ) -> tuple[List[User], int]:
         """Encontra usuários com paginação e filtros."""
         query = select(UserModel)
@@ -102,6 +106,18 @@ class SqlAlchemyUserRepository(UserRepository):
         if is_active is not None:
             query = query.where(UserModel.is_active == is_active)
             count_query = count_query.where(UserModel.is_active == is_active)
+
+        if organization_id is not None:
+            query = query.where(UserModel.organization_id == organization_id)
+            count_query = count_query.where(UserModel.organization_id == organization_id)
+
+        if has_organization is not None:
+            if has_organization:
+                query = query.where(UserModel.organization_id.is_not(None))
+                count_query = count_query.where(UserModel.organization_id.is_not(None))
+            else:
+                query = query.where(UserModel.organization_id.is_(None))
+                count_query = count_query.where(UserModel.organization_id.is_(None))
 
         # Get total count
         total_result = self.session.execute(count_query)
@@ -150,6 +166,29 @@ class SqlAlchemyUserRepository(UserRepository):
         )
         return result.rowcount > 0
 
+    def get_users_by_organization(self, organization_id: UUID) -> List[User]:
+        """Encontra todos os usuários de uma organização."""
+        result = self.session.execute(
+            select(UserModel).where(UserModel.organization_id == organization_id)
+        )
+        user_models = result.scalars().all()
+        return [self._to_domain_entity(model) for model in user_models]
+
+    def count_users_by_organization(self, organization_id: UUID) -> int:
+        """Conta usuários de uma organização."""
+        result = self.session.execute(
+            select(UserModel).where(UserModel.organization_id == organization_id)
+        )
+        return len(result.scalars().all())
+
+    def get_users_without_organization(self) -> List[User]:
+        """Encontra todos os usuários sem organização."""
+        result = self.session.execute(
+            select(UserModel).where(UserModel.organization_id.is_(None))
+        )
+        user_models = result.scalars().all()
+        return [self._to_domain_entity(model) for model in user_models]
+
     def _to_domain_entity(self, user_model: UserModel) -> User:
         """Converte o modelo SQLAlchemy para a entidade de domínio."""
         return User(
@@ -157,6 +196,7 @@ class SqlAlchemyUserRepository(UserRepository):
             email=Email(value=user_model.email),
             name=user_model.name,
             password=Password.from_hash(user_model.password_hash),
+            organization_id=user_model.organization_id,
             is_active=user_model.is_active,
             is_verified=user_model.is_verified,
             last_login_at=user_model.last_login_at,

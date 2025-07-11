@@ -51,9 +51,7 @@ class PlanModel(BaseModel):
     price_monthly = Column(Numeric(10, 2), nullable=True)
     price_yearly = Column(Numeric(10, 2), nullable=True)
     is_active = Column(Boolean, default=True, nullable=False)
-    created_by = Column(
-        UUID(as_uuid=True), ForeignKey("users.id"), nullable=False
-    )
+    created_by = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
 
 
 class SubscriptionModel(BaseModel):
@@ -84,14 +82,10 @@ class SubscriptionModel(BaseModel):
     subscription_metadata = Column(
         JSON, nullable=False, default={}
     )  # Additional subscription data
-    created_by = Column(
-        UUID(as_uuid=True), ForeignKey("users.id"), nullable=False
-    )
+    created_by = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
 
     # Ensure one active subscription per organization
-    __table_args__ = (
-        Index("ix_active_subscription_per_org", "organization_id", postgresql_where="status = 'active'"),
-    )
+    __table_args__ = (Index("ix_active_subscription_per_org", "organization_id"),)
 
 
 class PlanResourceModel(BaseModel):
@@ -102,11 +96,11 @@ class PlanResourceModel(BaseModel):
     resource_type = Column(String(50), nullable=False, unique=True, index=True)
     name = Column(String(100), nullable=False)
     description = Column(Text, nullable=True)
-    category = Column(String(50), nullable=False, index=True)  # 'messaging', 'analytics', 'storage'
+    category = Column(
+        String(50), nullable=False, index=True
+    )  # 'messaging', 'analytics', 'storage'
     is_active = Column(Boolean, default=True, nullable=False)
-    created_by = Column(
-        UUID(as_uuid=True), ForeignKey("users.id"), nullable=False
-    )
+    created_by = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
 
 
 class PlanResourceFeatureModel(BaseModel):
@@ -138,7 +132,9 @@ class PlanResourceLimitModel(BaseModel):
     )
     limit_key = Column(String(100), nullable=False, index=True)
     limit_name = Column(String(200), nullable=False)
-    limit_type = Column(String(50), nullable=False)  # 'count', 'size', 'rate', 'duration'
+    limit_type = Column(
+        String(50), nullable=False
+    )  # 'count', 'size', 'rate', 'duration'
     default_value = Column(Integer, nullable=True)
     unit = Column(String(20), nullable=True)  # 'per_month', 'MB', 'requests_per_minute'
     description = Column(Text, nullable=True)
@@ -161,7 +157,9 @@ class PlanResourceAssociationModel(BaseModel):
         UUID(as_uuid=True), ForeignKey("plan_resources.id"), nullable=False, index=True
     )
     is_included = Column(Boolean, default=True, nullable=False)
-    additional_cost = Column(Numeric(10, 2), nullable=True)  # Extra cost for this resource
+    additional_cost = Column(
+        Numeric(10, 2), nullable=True
+    )  # Extra cost for this resource
 
     # Ensure unique resource per plan
     __table_args__ = (
@@ -175,23 +173,25 @@ class PlanResourceFeatureConfigModel(BaseModel):
     __tablename__ = "plan_resource_feature_configs"
 
     plan_resource_association_id = Column(
-        UUID(as_uuid=True), 
-        ForeignKey("plan_resource_associations.id"), 
-        nullable=False, 
-        index=True
+        UUID(as_uuid=True),
+        ForeignKey("plan_resource_associations.id"),
+        nullable=False,
+        index=True,
     )
     feature_id = Column(
-        UUID(as_uuid=True), 
-        ForeignKey("plan_resource_features.id"), 
-        nullable=False, 
-        index=True
+        UUID(as_uuid=True),
+        ForeignKey("plan_resource_features.id"),
+        nullable=False,
+        index=True,
     )
     is_enabled = Column(Boolean, default=True, nullable=False)
     custom_config = Column(JSON, nullable=False, default={})
 
     # Ensure unique feature config per plan-resource association
     __table_args__ = (
-        UniqueConstraint("plan_resource_association_id", "feature_id", name="uq_plan_feature_config"),
+        UniqueConstraint(
+            "plan_resource_association_id", "feature_id", name="uq_plan_feature_config"
+        ),
     )
 
 
@@ -201,23 +201,25 @@ class PlanResourceLimitConfigModel(BaseModel):
     __tablename__ = "plan_resource_limit_configs"
 
     plan_resource_association_id = Column(
-        UUID(as_uuid=True), 
-        ForeignKey("plan_resource_associations.id"), 
-        nullable=False, 
-        index=True
+        UUID(as_uuid=True),
+        ForeignKey("plan_resource_associations.id"),
+        nullable=False,
+        index=True,
     )
     limit_id = Column(
-        UUID(as_uuid=True), 
-        ForeignKey("plan_resource_limits.id"), 
-        nullable=False, 
-        index=True
+        UUID(as_uuid=True),
+        ForeignKey("plan_resource_limits.id"),
+        nullable=False,
+        index=True,
     )
     limit_value = Column(Integer, nullable=False)
     custom_config = Column(JSON, nullable=False, default={})
 
     # Ensure unique limit config per plan-resource association
     __table_args__ = (
-        UniqueConstraint("plan_resource_association_id", "limit_id", name="uq_plan_limit_config"),
+        UniqueConstraint(
+            "plan_resource_association_id", "limit_id", name="uq_plan_limit_config"
+        ),
     )
 
 
@@ -227,10 +229,7 @@ class ApplicationInstanceModel(BaseModel):
     __tablename__ = "application_instances"
 
     plan_resource_id = Column(
-        UUID(as_uuid=True), 
-        ForeignKey("plan_resources.id"), 
-        nullable=False, 
-        index=True
+        UUID(as_uuid=True), ForeignKey("plan_resources.id"), nullable=False, index=True
     )
     organization_id = Column(
         UUID(as_uuid=True),
@@ -239,9 +238,13 @@ class ApplicationInstanceModel(BaseModel):
         index=True,
     )
     instance_name = Column(String(200), nullable=False)
-    configuration = Column(JSON, nullable=False, default={})  # Application-specific configuration
+    configuration = Column(
+        JSON, nullable=False, default={}
+    )  # Application-specific configuration
     api_keys = Column(JSON, nullable=False, default={})  # Encrypted API keys
-    limits_override = Column(JSON, nullable=False, default={})  # Custom limits for this instance
+    limits_override = Column(
+        JSON, nullable=False, default={}
+    )  # Custom limits for this instance
     is_active = Column(Boolean, default=True, nullable=False)
     owner_id = Column(
         UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True
@@ -249,7 +252,9 @@ class ApplicationInstanceModel(BaseModel):
 
     # Ensure unique instance per organization-resource
     __table_args__ = (
-        UniqueConstraint("organization_id", "plan_resource_id", name="uq_org_application_instance"),
+        UniqueConstraint(
+            "organization_id", "plan_resource_id", name="uq_org_application_instance"
+        ),
         Index("ix_app_instance_lookup", "organization_id", "plan_resource_id"),
         Index("ix_app_instance_active", "is_active", "organization_id"),
     )

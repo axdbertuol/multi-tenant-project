@@ -2,12 +2,12 @@ import pytest
 from datetime import datetime
 from uuid import uuid4, UUID
 
-from organization.domain.entities.user_organization_role import UserOrganizationRole
+from organization.domain.entities.user import UserOrganizationRole
 from organization.domain.constants.default_roles import DefaultOrganizationRoles
 
 
 class TestUserOrganizationRole:
-    def test_create_user_organization_role(self):
+    def test_create_user(self):
         user_id = uuid4()
         organization_id = uuid4()
         assigned_by = uuid4()
@@ -30,7 +30,7 @@ class TestUserOrganizationRole:
         assert isinstance(user_org_role.id, type(uuid4()))
         assert isinstance(user_org_role.assigned_at, datetime)
 
-    def test_revoke_user_organization_role(self):
+    def test_revoke_user(self):
         user_id = uuid4()
         organization_id = uuid4()
         assigned_by = uuid4()
@@ -54,7 +54,7 @@ class TestUserOrganizationRole:
         assert revoked_role.organization_id == organization_id
         assert revoked_role.role_id == DefaultOrganizationRoles.ADMIN
 
-    def test_reactivate_user_organization_role(self):
+    def test_reactivate_user(self):
         user_id = uuid4()
         organization_id = uuid4()
         assigned_by = uuid4()
@@ -79,7 +79,7 @@ class TestUserOrganizationRole:
         assert reactivated_role.organization_id == organization_id
         assert reactivated_role.role_id == DefaultOrganizationRoles.ADMIN
 
-    def test_user_organization_role_immutability(self):
+    def test_user_immutability(self):
         user_id = uuid4()
         organization_id = uuid4()
         assigned_by = uuid4()

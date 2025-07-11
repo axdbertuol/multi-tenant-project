@@ -9,8 +9,8 @@ from src.iam.infrastructure.database.models import (
     OrganizationModel,
     RoleModel,
 )
-from src.iam.domain.entities.user_organization_role import UserOrganizationRole
-from tests.factories.user_organization_role_factory import UserOrganizationRoleFactory
+from src.iam.domain.entities.user import UserOrganizationRole
+from tests.factories.user_factory import UserOrganizationRoleFactory
 from tests.factories.user_factory import UserFactory
 from tests.factories.organization_factory import OrganizationFactory
 from tests.factories.role_factory import RoleFactory
@@ -71,15 +71,13 @@ class TestUserOrganizationRoleRepositoryIntegration:
 
         return {"user": user, "organization": organization, "role": role}
 
-    def test_create_user_organization_role_in_database(
-        self, db_session: Session, test_entities: dict
-    ):
+    def test_create_user_in_database(self, db_session: Session, test_entities: dict):
         """Test creating a user organization role and persisting to database"""
         user = test_entities["user"]
         organization = test_entities["organization"]
         role = test_entities["role"]
 
-        user_org_role = UserOrganizationRoleFactory.create_user_organization_role(
+        user_org_role = UserOrganizationRoleFactory.create_user(
             user_id=user.id,
             organization_id=organization.id,
             role_id=role.id,
@@ -140,14 +138,14 @@ class TestUserOrganizationRoleRepositoryIntegration:
         db_session.add(member_role_model)
 
         # Create role assignments
-        admin_assignment = UserOrganizationRoleFactory.create_user_organization_role(
+        admin_assignment = UserOrganizationRoleFactory.create_user(
             user_id=user.id,
             organization_id=organization.id,
             role_id=role.id,
             assigned_by=user.id,
         )
 
-        member_assignment = UserOrganizationRoleFactory.create_user_organization_role(
+        member_assignment = UserOrganizationRoleFactory.create_user(
             user_id=user.id,
             organization_id=organization.id,
             role_id=member_role.id,
@@ -201,7 +199,7 @@ class TestUserOrganizationRoleRepositoryIntegration:
         organization = test_entities["organization"]
         role = test_entities["role"]
 
-        user_org_role = UserOrganizationRoleFactory.create_user_organization_role(
+        user_org_role = UserOrganizationRoleFactory.create_user(
             user_id=user.id,
             organization_id=organization.id,
             role_id=role.id,
@@ -249,7 +247,7 @@ class TestUserOrganizationRoleRepositoryIntegration:
         organization = test_entities["organization"]
         role = test_entities["role"]
 
-        user_org_role = UserOrganizationRoleFactory.create_user_organization_role(
+        user_org_role = UserOrganizationRoleFactory.create_user(
             user_id=user.id,
             organization_id=organization.id,
             role_id=role.id,
@@ -311,14 +309,14 @@ class TestUserOrganizationRoleRepositoryIntegration:
         db_session.add(user2_model)
 
         # Assign same role to both users
-        assignment1 = UserOrganizationRoleFactory.create_user_organization_role(
+        assignment1 = UserOrganizationRoleFactory.create_user(
             user_id=user.id,
             organization_id=organization.id,
             role_id=role.id,
             assigned_by=user.id,
         )
 
-        assignment2 = UserOrganizationRoleFactory.create_user_organization_role(
+        assignment2 = UserOrganizationRoleFactory.create_user(
             user_id=user2.id,
             organization_id=organization.id,
             role_id=role.id,
@@ -372,7 +370,7 @@ class TestUserOrganizationRoleRepositoryIntegration:
         organization = test_entities["organization"]
         role = test_entities["role"]
 
-        user_org_role = UserOrganizationRoleFactory.create_user_organization_role(
+        user_org_role = UserOrganizationRoleFactory.create_user(
             user_id=user.id,
             organization_id=organization.id,
             role_id=role.id,

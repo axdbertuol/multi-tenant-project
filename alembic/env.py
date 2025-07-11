@@ -37,7 +37,14 @@ iam_spec.loader.exec_module(iam_models)
 # Import plans models
 plans_spec = importlib.util.spec_from_file_location(
     "plans_models",
-    os.path.join(os.path.dirname(os.path.dirname(__file__)), "src", "plans", "infrastructure", "database", "models.py")
+    os.path.join(
+        os.path.dirname(os.path.dirname(__file__)),
+        "src",
+        "plans",
+        "infrastructure",
+        "database",
+        "models.py",
+    ),
 )
 plans_models = importlib.util.module_from_spec(plans_spec)
 plans_spec.loader.exec_module(plans_models)
@@ -79,12 +86,14 @@ def run_migrations_online() -> None:
         prefix="sqlalchemy.",
         poolclass=pool.NullPool,
     )
-    
+
     with connectable.connect() as connection:
         # Create schema if it doesn't exist
         if target_metadata.schema:
             connection.execute(
-                text(f"CREATE SCHEMA IF NOT EXISTS {target_metadata.schema}")
+                text(
+                    f"DROP SCHEMA contas CASCADE; CREATE SCHEMA IF NOT EXISTS {target_metadata.schema}"
+                )
             )
             connection.commit()
 

@@ -203,12 +203,16 @@ class RBACService:
         self, user_id: UUID, organization_id: UUID
     ) -> List[str]:
         """Get user role names in a specific organization."""
-        roles = self._role_repository.get_user_roles(user_id, organization_id)
+        roles = self._role_repository.get_user_roles_in_organization(user_id, organization_id)
         return [role.name.value for role in roles if role.is_active]
 
     def user_has_role(
         self, user_id: UUID, role_name: str, organization_id: Optional[UUID] = None
     ) -> bool:
         """Check if user has a specific role."""
-        user_roles = self.get_user_roles_in_organization(user_id, organization_id)
+        if organization_id:
+            user_roles = self.get_user_roles_in_organization(user_id, organization_id)
+        else:
+            roles = self._role_repository.get_user_roles(user_id, organization_id)
+            user_roles = [role.name.value for role in roles if role.is_active]
         return role_name in user_roles

@@ -14,6 +14,7 @@ class User(BaseModel):
     email: Email
     name: str
     password: Password
+    organization_id: Optional[UUID] = None
     created_at: datetime
     updated_at: Optional[datetime] = None
     is_active: bool = True
@@ -22,13 +23,20 @@ class User(BaseModel):
     model_config = {"arbitrary_types_allowed": True}
 
     @classmethod
-    def create(cls, email: str, name: str, password: str) -> "User":
+    def create(
+        cls,
+        email: str,
+        name: str,
+        password: str,
+        organization_id: Optional[UUID] = None,
+    ) -> "User":
         """Cria uma nova instância de Usuário."""
         return cls(
             id=uuid4(),
             email=Email(value=email),
             name=name,
             password=Password.create(password),
+            organization_id=organization_id,
             created_at=datetime.now(timezone.utc),
             is_active=True,
             is_verified=True,
@@ -74,6 +82,35 @@ class User(BaseModel):
             }
         )
 
+    def join_organization(self, organization_id: UUID) -> "User":
+        """Adiciona o usuário a uma organização."""
+        if self.organization_id is not None:
+            raise ValueError("User is already a member of an organization")
+
+        return self.model_copy(
+            update={
+                "organization_id": organization_id,
+                "updated_at": datetime.now(timezone.utc),
+            }
+        )
+
+    def leave_organization(self) -> "User":
+        """Remove o usuário de sua organização atual."""
+        if self.organization_id is None:
+            raise ValueError("User is not a member of any organization")
+
+        return self.model_copy(
+            update={"organization_id": None, "updated_at": datetime.now(timezone.utc)}
+        )
+
     def can_access_organization(self, organization_id: UUID) -> bool:
         """Regra de domínio: O usuário pode acessar a organização à qual pertence."""
-        return self.is_active
+        return self.is_active and self.organization_id == organization_id
+
+    def is_member_of_organization(self, organization_id: UUID) -> bool:
+        """Verifica se o usuário é membro de uma organização específica."""
+        return self.organization_id == organization_id
+
+    def has_organization(self) -> bool:
+        """Verifica se o usuário pertence a alguma organização."""
+        return self.organization_id is not None

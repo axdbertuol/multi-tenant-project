@@ -8,7 +8,7 @@ from tests.factories.user_factory import UserFactory
 from tests.factories.organization_factory import OrganizationFactory
 from tests.factories.role_factory import RoleFactory
 from tests.factories.permission_factory import PermissionFactory
-from tests.factories.user_organization_role_factory import UserOrganizationRoleFactory
+from tests.factories.user_factory import UserOrganizationRoleFactory
 
 
 class TestRolesPermissionsEndpoints:
@@ -114,7 +114,7 @@ class TestRolesPermissionsEndpoints:
         )
 
         # Assign viewer role to viewer user
-        viewer_assignment = UserOrganizationRoleFactory.create_user_organization_role(
+        viewer_assignment = UserOrganizationRoleFactory.create_user(
             user_id=viewer_user.id,
             organization_id=organization.id,
             role_id=viewer_role.id,
@@ -196,7 +196,7 @@ class TestRolesPermissionsEndpoints:
             assigned_by=admin_user.id,
         )
 
-        org2_assignment = UserOrganizationRoleFactory.create_user_organization_role(
+        org2_assignment = UserOrganizationRoleFactory.create_user(
             user_id=member_user.id,
             organization_id=org2.id,
             role_id=viewer_role.id,
@@ -253,7 +253,7 @@ class TestRolesPermissionsEndpoints:
         member_role = test_data["roles"]["member"]
 
         # Create role assignment
-        assignment = UserOrganizationRoleFactory.create_user_organization_role(
+        assignment = UserOrganizationRoleFactory.create_user(
             user_id=member_user.id,
             organization_id=organization.id,
             role_id=member_role.id,

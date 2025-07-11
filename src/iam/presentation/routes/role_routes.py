@@ -27,7 +27,7 @@ def create_role(
     created_by: UUID = Query(..., description="User ID who is creating the role"),
     role_use_case: RoleUseCase = Depends(get_role_use_case),
 ):
-    """Create a new role with optional parent for inheritance."""
+    """Create a new role with optional parent for inheritance (simplified for 1:N User-Organization)."""
     try:
         return role_use_case.create_role(role_data, created_by)
     except ValueError as e:
@@ -288,6 +288,54 @@ def get_roles_by_organization(
     """Get all roles for an organization."""
     try:
         return role_use_case.get_roles_by_organization(organization_id)
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
+        )
+
+
+@router.post("/assign-to-user", response_model=dict)
+def assign_role_to_user(
+    user_id: UUID = Query(..., description="User ID"),
+    role_id: UUID = Query(..., description="Role ID"),
+    assigned_by: UUID = Query(..., description="User ID performing the assignment"),
+    role_use_case: RoleUseCase = Depends(get_role_use_case),
+):
+    """Assign a role to a user (simplified for 1:N User-Organization)."""
+    try:
+        success = role_use_case.assign_role_to_user(user_id, role_id, assigned_by)
+        if not success:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Role assignment failed",
+            )
+        return {"message": "Role assigned successfully"}
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
+        )
+
+
+@router.delete("/remove-from-user", response_model=dict)
+def remove_role_from_user(
+    user_id: UUID = Query(..., description="User ID"),
+    role_id: UUID = Query(..., description="Role ID"),
+    removed_by: UUID = Query(..., description="User ID performing the removal"),
+    role_use_case: RoleUseCase = Depends(get_role_use_case),
+):
+    """Remove a role from a user (simplified for 1:N User-Organization)."""
+    try:
+        success = role_use_case.remove_role_from_user(user_id, role_id, removed_by)
+        if not success:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Role removal failed",
+            )
+        return {"message": "Role removed successfully"}
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)

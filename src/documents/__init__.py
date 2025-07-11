@@ -1,9 +1,9 @@
 # Documents Context
 # Responsible for document access control, folder hierarchy, and area-based permissions
-#  Preciso criar um sistema de permissões que:
+#  Preciso criar um sistema de permissões no bounded context dentro de @src/modules/iam que:
 # - Existem Roles(Funções) de gerenciamento da aplicação
 # - Cada role terá uma hierarquia maior
-# - As roles default serão: Administrador, Gerenciador, Especialista e Analista
+# - As roles globais serão: Administrador, Gerenciador, Especialista e Analista
 # - Administrador:
 #  - Terá permissão para usar tudo
 # - Gerenciador:
@@ -26,9 +26,7 @@
 #     - Configurações: não tem permissão nenhuma
 
 # Com base nisso:
-# - confira em @src/iam se será capaz de criar essas Roles(Funções) com o atual codebase.
-# - se sim, faça essas roles e permissões default.
-# - se não, implemente o que falta para poder.
+# - crie os modelos sqlalchemy em @src/modules/iam/infrastructuredatabase/models.py
 
 
 # Um perfil também será criado para cada usuário.

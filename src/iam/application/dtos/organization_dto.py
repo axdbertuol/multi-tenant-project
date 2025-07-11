@@ -14,6 +14,7 @@ class OrganizationCreateDTO(BaseModel):
         None, max_length=500, description="Organization description"
     )
     max_users: int = Field(10, ge=1, le=1000, description="Maximum users allowed")
+    owner_id: UUID
 
     @field_validator("name")
     @classmethod
@@ -71,6 +72,7 @@ class OrganizationResponseDTO(BaseModel):
     name: str
     description: Optional[str] = None
     owner_id: UUID
+    owner_name: Optional[str] = None
     max_users: int
     current_user_count: int
     settings: Dict[str, Any]

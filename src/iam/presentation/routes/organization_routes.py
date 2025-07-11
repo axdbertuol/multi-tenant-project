@@ -4,7 +4,10 @@ from fastapi import APIRouter, Depends, HTTPException, status, Query
 from typing import Optional, List
 from uuid import UUID
 
-from ...presentation.dependencies import get_organization_use_case, get_membership_use_case
+from ...presentation.dependencies import (
+    get_organization_use_case,
+    get_membership_use_case,
+)
 from ...application.dtos.organization_dto import (
     OrganizationCreateDTO,
     OrganizationUpdateDTO,
@@ -22,14 +25,16 @@ from ...application.use_cases.membership_use_cases import MembershipUseCase
 router = APIRouter(tags=["Organizations"])
 
 
-@router.post("/", response_model=OrganizationResponseDTO, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/", response_model=OrganizationResponseDTO, status_code=status.HTTP_201_CREATED
+)
 def create_organization(
     dto: OrganizationCreateDTO,
     use_case: OrganizationUseCase = Depends(get_organization_use_case),
 ):
     """Create a new organization (tenant)."""
     try:
-        return use_case.create_organization(dto)
+        return use_case.create_organization(dto, dto.owner_id)
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
@@ -63,10 +68,7 @@ def list_organizations(
     """List organizations with pagination."""
     try:
         return use_case.list_organizations(
-            page=page, 
-            page_size=page_size, 
-            owner_id=owner_id,
-            active_only=active_only
+            page=page, page_size=page_size, owner_id=owner_id, active_only=active_only
         )
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
@@ -124,17 +126,21 @@ def activate_organization(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
 
-# Membership management routes
-@router.post("/{organization_id}/members", response_model=MembershipResponseDTO, status_code=status.HTTP_201_CREATED)
+# Membership management routes (simplified for 1:N relationship)
+@router.post(
+    "/{organization_id}/members",
+    response_model=MembershipResponseDTO,
+    status_code=status.HTTP_201_CREATED,
+)
 def add_organization_member(
     organization_id: UUID,
     dto: MembershipCreateDTO,
+    assigned_by: UUID = Query(..., description="User ID performing the assignment"),
     use_case: MembershipUseCase = Depends(get_membership_use_case),
 ):
-    """Add a member to organization."""
+    """Add a member to organization with role assignment."""
     try:
-        dto.organization_id = organization_id
-        return use_case.add_member(dto)
+        return use_case.add_member(organization_id, dto.user_id, dto.role, assigned_by)
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
@@ -161,7 +167,7 @@ def remove_organization_member(
 ):
     """Remove a member from organization."""
     try:
-        success = use_case.remove_member(organization_id, user_id, removed_by)
+        success = use_case.remove_member(user_id, removed_by)
         if not success:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -176,13 +182,13 @@ def remove_organization_member(
 def change_member_role(
     organization_id: UUID,
     user_id: UUID,
-    new_role_id: UUID = Query(..., description="New role ID"),
+    new_role: str = Query(..., description="New role name"),
     changed_by: UUID = Query(..., description="User ID performing the change"),
     use_case: MembershipUseCase = Depends(get_membership_use_case),
 ):
     """Change member's role in organization."""
     try:
-        success = use_case.change_member_role(organization_id, user_id, new_role_id, changed_by)
+        success = use_case.change_member_role(user_id, new_role, changed_by)
         if not success:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,

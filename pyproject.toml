@@ -7,13 +7,13 @@ readme = "README.md"
 license = "MIT"
 packages = [
     { include = "iam", from = "src" },
-    { include = "organization", from = "src" },
+    { include = "documents", from = "src" },
     { include = "plans", from = "src" },
 ]
 
 [tool.poetry.dependencies]
 python = "^3.11"
-fastapi = "^0.115.13"
+fastapi = {extras = ["standard"], version = "^0.116.0"}
 sqlalchemy = "^2.0.41"
 uvicorn = {extras = ["standard"], version = "^0.34.3"}
 psycopg2-binary = "^2.9.0"

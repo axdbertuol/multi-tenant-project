@@ -12,6 +12,9 @@ class UserCreateDTO(BaseModel):
         ..., min_length=2, max_length=100, description="Nome completo do usuário"
     )
     password: str = Field(..., min_length=8, description="Senha do usuário")
+    organization_id: Optional[UUID] = Field(
+        None, description="ID da organização à qual o usuário pertence"
+    )
 
     @field_validator("email")
     @classmethod
@@ -59,6 +62,8 @@ class UserResponseDTO(BaseModel):
     id: UUID
     email: str
     name: str
+    organization_id: Optional[UUID] = None
+    organization_name: Optional[str] = None
     is_active: bool
     created_at: datetime
     updated_at: Optional[datetime] = None
@@ -66,12 +71,14 @@ class UserResponseDTO(BaseModel):
     model_config = {"from_attributes": True}
 
     @classmethod
-    def from_user(cls, user) -> "UserResponseDTO":
+    def from_user(cls, user, organization=None) -> "UserResponseDTO":
         """Create UserResponseDTO from User entity."""
         return cls(
             id=user.id,
             email=user.email.value if hasattr(user.email, "value") else str(user.email),
             name=user.name,
+            organization_id=user.organization_id,
+            organization_name=organization.name.value if organization else None,
             is_active=user.is_active,
             created_at=user.created_at,
             updated_at=user.updated_at,

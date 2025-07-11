@@ -3,8 +3,6 @@ from fastapi.middleware.cors import CORSMiddleware
 import logging
 import time
 
-from shared.infrastructure.database.connection import engine, Base
-from src.iam.presentation.routers import router as iam_router
 
 # Configurar logging
 logging.basicConfig(level=logging.INFO)
@@ -12,6 +10,9 @@ logger = logging.getLogger(__name__)
 
 
 def create_tables():
+    from src.shared.infrastructure.database.connection import engine, Base
+
+    Base.metada.drop_all(bind=engine)
     Base.metadata.create_all(bind=engine)
 
 
@@ -20,7 +21,7 @@ def create_app() -> FastAPI:
         title="DDD FastAPI Application",
         description="A FastAPI application following Domain Driven Design principles",
         version="1.0.0",
-        redirect_slashes=False,  # Desabilita redirecionamento automático de trailing slash
+        # redirect_slashes=False,  # Desabilita redirecionamento automático de trailing slash
     )
 
     @app.middleware("http")
@@ -65,6 +66,9 @@ def create_app() -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
+    # create_tables()
+
+    from src.iam.presentation.routers import router as iam_router
 
     app.include_router(iam_router)
 
@@ -74,9 +78,8 @@ def create_app() -> FastAPI:
 app = create_app()
 
 
-@app.on_event("startup")
-def startup_event():
-    create_tables()
+# @app.on_event("startup")
+# def startup_event():
 
 
 @app.get("/")

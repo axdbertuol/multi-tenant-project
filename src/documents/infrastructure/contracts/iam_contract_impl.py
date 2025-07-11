@@ -5,7 +5,7 @@ from uuid import UUID
 from datetime import datetime
 
 from ...application.contracts.iam_contract import (
-    IAMContract, 
+    IAMContract,
     UserInfo,
     ManagementFunctionInfo,
     UserManagementAssignment,
@@ -16,7 +16,7 @@ from src.iam.infrastructure.iam_unit_of_work import IAMUnitOfWork
 class IAMContractImpl(IAMContract):
     """
     Implementation of IAM Contract that integrates with the existing IAM context.
-    
+
     This implementation provides real integration with the IAM bounded context
     through its Unit of Work and repositories.
     """
@@ -30,14 +30,14 @@ class IAMContractImpl(IAMContract):
             with self.iam_uow:
                 user_repo = self.iam_uow.get_repository("user")
                 user = user_repo.get_by_id(user_id)
-                
+
                 if not user:
                     return None
 
                 # Get user's primary organization (first active membership)
-                user_org_role_repo = self.iam_uow.get_repository("user_organization_role")
+                user_org_role_repo = self.iam_uow.get_repository("user")
                 user_org_roles = user_org_role_repo.get_by_user(user_id)
-                
+
                 primary_org_id = None
                 if user_org_roles:
                     active_roles = [role for role in user_org_roles if role.is_active]
@@ -58,18 +58,20 @@ class IAMContractImpl(IAMContract):
         """Verify if user is active in the organization."""
         try:
             with self.iam_uow:
-                user_org_role_repo = self.iam_uow.get_repository("user_organization_role")
+                user_org_role_repo = self.iam_uow.get_repository("user")
                 user_org_roles = user_org_role_repo.get_by_user_and_organization(
                     user_id, organization_id
                 )
-                
+
                 # Check if user has any active role in the organization
                 active_roles = [role for role in user_org_roles if role.is_active]
                 return len(active_roles) > 0
         except Exception:
             return False
 
-    def get_management_function_info(self, function_id: UUID) -> Optional[ManagementFunctionInfo]:
+    def get_management_function_info(
+        self, function_id: UUID
+    ) -> Optional[ManagementFunctionInfo]:
         """Get management function information by ID."""
         # TODO: Implement when management functions are defined in IAM context
         # For now, return a placeholder
@@ -81,11 +83,11 @@ class IAMContractImpl(IAMContract):
         """Get user's management function assignment for an organization."""
         try:
             with self.iam_uow:
-                user_org_role_repo = self.iam_uow.get_repository("user_organization_role")
+                user_org_role_repo = self.iam_uow.get_repository("user")
                 user_org_roles = user_org_role_repo.get_by_user_and_organization(
                     user_id, organization_id
                 )
-                
+
                 if not user_org_roles:
                     return None
 
@@ -98,14 +100,14 @@ class IAMContractImpl(IAMContract):
                 role_repo = self.iam_uow.get_repository("role")
                 primary_role = active_roles[0]
                 role = role_repo.get_by_id(primary_role.role_id)
-                
+
                 if not role:
                     return None
 
                 # Get role permissions
                 permissions = []
                 # TODO: Implement permission retrieval when role-permission mapping is available
-                
+
                 return UserManagementAssignment(
                     user_id=user_id,
                     organization_id=organization_id,
@@ -124,13 +126,13 @@ class IAMContractImpl(IAMContract):
         """Verify if user has a specific management permission."""
         try:
             with self.iam_uow:
-                user_org_role_repo = self.iam_uow.get_repository("user_organization_role")
+                user_org_role_repo = self.iam_uow.get_repository("user")
                 role_repo = self.iam_uow.get_repository("role")
-                
+
                 user_org_roles = user_org_role_repo.get_by_user_and_organization(
                     user_id, organization_id
                 )
-                
+
                 active_roles = [role for role in user_org_roles if role.is_active]
                 if not active_roles:
                     return False
@@ -141,9 +143,9 @@ class IAMContractImpl(IAMContract):
                     if role and role.name.value in ["admin", "owner", "manager"]:
                         # Grant broad permissions to administrative roles
                         return True
-                    
+
                     # TODO: Implement detailed permission checking when role-permission system is available
-                    
+
                 return False
         except Exception:
             return False
@@ -152,29 +154,31 @@ class IAMContractImpl(IAMContract):
         """Get all users in an organization."""
         try:
             with self.iam_uow:
-                user_org_role_repo = self.iam_uow.get_repository("user_organization_role")
+                user_org_role_repo = self.iam_uow.get_repository("user")
                 user_repo = self.iam_uow.get_repository("user")
-                
+
                 user_org_roles = user_org_role_repo.get_by_organization(organization_id)
-                
+
                 users = []
                 seen_user_ids = set()
-                
+
                 for user_role in user_org_roles:
                     if not user_role.is_active or user_role.user_id in seen_user_ids:
                         continue
-                        
+
                     user = user_repo.get_by_id(user_role.user_id)
                     if user and user.is_active:
-                        users.append(UserInfo(
-                            id=user.id,
-                            email=user.email.value,
-                            name=user.full_name,
-                            organization_id=organization_id,
-                            is_active=user.is_active,
-                        ))
+                        users.append(
+                            UserInfo(
+                                id=user.id,
+                                email=user.email.value,
+                                name=user.full_name,
+                                organization_id=organization_id,
+                                is_active=user.is_active,
+                            )
+                        )
                         seen_user_ids.add(user.id)
-                
+
                 return users
         except Exception:
             return []

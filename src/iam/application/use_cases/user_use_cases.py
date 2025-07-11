@@ -36,7 +36,12 @@ class UserUseCase:
                 raise ValueError(f"Email {dto.email} is already in use")
 
             # Create user entity
-            user = User.create(email=dto.email, name=dto.name, password=dto.password)
+            user = User.create(
+                email=dto.email,
+                name=dto.name,
+                password=dto.password,
+                organization_id=dto.organization_id,
+            )
 
             # Save user
             saved_user = self._user_repository.save(user)

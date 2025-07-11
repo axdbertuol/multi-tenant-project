@@ -1,26 +1,21 @@
-from typing import Optional, List
+from typing import Optional
 from uuid import UUID
 
-from ..entities.organization import Organization
-from ..entities.user_organization_role import UserOrganizationRole
 from ..value_objects.organization_name import OrganizationName
-from ..constants.default_roles import DefaultOrganizationRoles
 from ..repositories.organization_repository import OrganizationRepository
-from ..repositories.user_organization_role_repository import (
-    UserOrganizationRoleRepository,
-)
+from ..repositories.user_repository import UserRepository
+from shared.domain.repositories.unit_of_work import UnitOfWork
 
 
 class OrganizationDomainService:
     """Domain service for organization-specific business logic."""
 
-    def __init__(
-        self,
-        organization_repository: OrganizationRepository,
-        role_repository: UserOrganizationRoleRepository,
-    ):
-        self._organization_repository = organization_repository
-        self._role_repository = role_repository
+    def __init__(self, uow: UnitOfWork):
+        self._organization_repository: OrganizationRepository = uow.get_repository(
+            "organization"
+        )
+        self._user_repository: UserRepository = uow.get_repository("user")
+        self._uow = uow
 
     def is_organization_name_available(
         self, name: OrganizationName, excluding_org_id: Optional[UUID] = None
@@ -45,7 +40,7 @@ class OrganizationDomainService:
             return False, "Organization not found"
 
         # Check if organization has active members
-        user_count = self._role_repository.count_organization_users(organization_id)
+        user_count = self._user_repository.count_users_by_organization(organization_id)
 
         if user_count > 1:  # Owner + other members
             return (
@@ -68,11 +63,8 @@ class OrganizationDomainService:
         if organization.is_owner(user_id):
             return False, "Organization owner cannot leave. Transfer ownership first."
 
-        user_role = self._role_repository.get_by_user_and_organization(
-            user_id, organization_id
-        )
-
-        if not user_role:
+        user = self._user_repository.get_by_id(user_id)
+        if not user or user.organization_id != organization_id:
             return False, "User is not a member of this organization"
 
         return True, "User can leave organization"
@@ -90,17 +82,14 @@ class OrganizationDomainService:
             return False, "Only organization owner can transfer ownership"
 
         # Check if new owner is a member of the organization
-        new_owner_role = self._role_repository.get_by_user_and_organization(
-            new_owner_id, organization_id
-        )
-
-        if not new_owner_role or not new_owner_role.is_valid():
+        new_owner = self._user_repository.get_by_id(new_owner_id)
+        if not new_owner or new_owner.organization_id != organization_id:
             return False, "New owner must be an active member of the organization"
 
         return True, "Ownership can be transferred"
 
     def validate_user_addition(
-        self, organization_id: UUID, role_id: UUID
+        self, organization_id: UUID, role: str
     ) -> tuple[bool, str]:
         """Validate if a new user can be added to organization."""
         organization = self._organization_repository.get_by_id(organization_id)
@@ -111,7 +100,7 @@ class OrganizationDomainService:
         if not organization.is_active:
             return False, "Cannot add users to inactive organization"
 
-        current_user_count = self._role_repository.count_organization_users(
+        current_user_count = self._user_repository.count_users_by_organization(
             organization_id
         )
 

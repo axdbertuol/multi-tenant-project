@@ -54,16 +54,25 @@ def db_session() -> Generator:
 def unit_of_work(db_session):
     """Create a Unit of Work instance for testing."""
     from src.iam.infrastructure.iam_unit_of_work import IAMUnitOfWork
-    
+
     # Create unit of work with all available repositories
-    repositories = ["user", "user_session", "organization", "user_organization_role", "role", "permission", "policy", "resource"]
+    repositories = [
+        "user",
+        "user_session",
+        "organization",
+        "user",
+        "role",
+        "permission",
+        "policy",
+        "resource",
+    ]
     uow = IAMUnitOfWork(db_session, repositories)
-    
+
     # Add convenient properties for test compatibility
     uow.users = uow.get_repository("user")
     uow.organizations = uow.get_repository("organization")
     uow.user_sessions = uow.get_repository("user_session")
-    
+
     return uow
 
 

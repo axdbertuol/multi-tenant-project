@@ -142,14 +142,30 @@ class RoleRepository(ABC):
         self,
         user_id: UUID,
         role_id: UUID,
-        organization_id: Optional[UUID],
         assigned_by: UUID,
-        expires_at: Optional[datetime],
-    ) -> None:
+        expires_at: Optional[datetime] = None,
+    ) -> bool:
+        """Assign a role to a user."""
         pass
 
     @abstractmethod
     def remove_role_from_user(
-        self, user_id: UUID, role_id: UUID, organization_id: Optional[UUID]
+        self, user_id: UUID, role_id: UUID
     ) -> bool:
+        """Remove a role from a user."""
+        pass
+
+    @abstractmethod
+    def get_user_roles_in_organization(self, user_id: UUID, organization_id: UUID) -> List[Role]:
+        """Get roles assigned to a user that belong to a specific organization."""
+        pass
+
+    @abstractmethod
+    def get_users_with_role_in_organization(self, role_id: UUID, organization_id: UUID) -> List[UUID]:
+        """Get all users that have a specific role and belong to a specific organization."""
+        pass
+
+    @abstractmethod
+    def remove_all_user_roles(self, user_id: UUID) -> bool:
+        """Remove all roles from a user (typically when user leaves organization)."""
         pass

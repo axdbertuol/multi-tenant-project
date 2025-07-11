@@ -16,17 +16,15 @@ class MembershipCreateDTO(BaseModel):
     """DTO for adding a user to an organization."""
 
     user_id: UUID = Field(..., description="User ID to add")
-    role: OrganizationRoleEnum = Field(
-        OrganizationRoleEnum.MEMBER, description="Role to assign"
+    role: str = Field(
+        "member", description="Role to assign"
     )
-    expires_at: Optional[datetime] = Field(None, description="Role expiration date")
 
 
 class MembershipUpdateDTO(BaseModel):
     """DTO for updating a user's role in an organization."""
 
-    role: OrganizationRoleEnum = Field(..., description="New role to assign")
-    expires_at: Optional[datetime] = Field(None, description="Role expiration date")
+    role: str = Field(..., description="New role to assign")
 
 
 class MembershipResponseDTO(BaseModel):
@@ -36,9 +34,7 @@ class MembershipResponseDTO(BaseModel):
     user_id: UUID
     organization_id: UUID
     role: str
-    assigned_by: UUID
     assigned_at: datetime
-    expires_at: Optional[datetime] = None
     is_active: bool
     user_name: str
     user_email: str
@@ -74,8 +70,8 @@ class MembershipInviteDTO(BaseModel):
     """DTO for inviting a user to an organization."""
 
     email: str = Field(..., description="Email of user to invite")
-    role: OrganizationRoleEnum = Field(
-        OrganizationRoleEnum.MEMBER, description="Role to assign"
+    role: str = Field(
+        "member", description="Role to assign"
     )
     message: Optional[str] = Field(
         None, max_length=500, description="Invitation message"
@@ -83,7 +79,7 @@ class MembershipInviteDTO(BaseModel):
 
 
 class UserOrganizationSummaryDTO(BaseModel):
-    """DTO for user's organization summary."""
+    """DTO for user's organization summary (simplified for 1:N relationship)."""
 
     organization_id: UUID
     organization_name: str
@@ -95,9 +91,7 @@ class UserOrganizationSummaryDTO(BaseModel):
 
 
 class UserOrganizationsResponseDTO(BaseModel):
-    """DTO for user's organizations list."""
+    """DTO for user's organization (single organization for 1:N relationship)."""
 
-    organizations: list[UserOrganizationSummaryDTO]
-    total: int
-    owned_count: int
-    member_count: int
+    organization: Optional[UserOrganizationSummaryDTO] = None
+    has_organization: bool = False

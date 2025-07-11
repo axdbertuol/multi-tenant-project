@@ -14,16 +14,9 @@ from ..dtos.organization_dto import (
     OrganizationMemberSummaryDTO,
 )
 from ...domain.entities.organization import Organization
-from ...domain.entities.user_organization_role import (
-    UserOrganizationRole,
-    OrganizationRole,
-)
 from ...domain.repositories.organization_repository import OrganizationRepository
-from ...domain.repositories.user_organization_role_repository import (
-    UserOrganizationRoleRepository,
-)
+from ...domain.repositories.user_repository import UserRepository
 from ...domain.services.organization_domain_service import OrganizationDomainService
-from ...domain.services.membership_service import MembershipService
 from ...domain.value_objects.organization_name import OrganizationName
 
 
@@ -31,17 +24,18 @@ class OrganizationUseCase:
     """Use cases for organization management."""
 
     def __init__(self, uow: UnitOfWork):
-        uor_rep = uow.get_repository("user_organization_role")
-        o_rep = uow.get_repository("organization")
-
-        self._organization_repository: OrganizationRepository = o_rep
-        self._role_repository: UserOrganizationRoleRepository = uor_rep
-        self._organization_domain_service = OrganizationDomainService(
-            o_rep,
-            uor_rep,
+        self._organization_repository: OrganizationRepository = uow.get_repository(
+            "organization"
         )
-        self._membership_service = MembershipService(uor_rep, o_rep)
+        self._user_repository: UserRepository = uow.get_repository("user")
+        self._organization_domain_service = OrganizationDomainService(
+            uow,
+        )
         self._uow = uow
+
+    def _count_organization_users(self, organization_id: UUID) -> int:
+        """Count users in an organization using direct organization_id relationship."""
+        return self._user_repository.count_users_by_organization(organization_id)
 
     def create_organization(
         self, dto: OrganizationCreateDTO, owner_id: UUID
@@ -70,23 +64,26 @@ class OrganizationUseCase:
             # Save organization
             saved_org = self._organization_repository.save(organization)
 
-            # Create owner role
-            self._membership_service.add_user_to_organization(
-                user_id=owner_id,
-                organization_id=saved_org.id,
-                role=OrganizationRole.OWNER,
-                assigned_by=owner_id,
+            # Assign owner to organization
+            owner_user = self._user_repository.get_by_id(owner_id)
+            if not owner_user:
+                raise ValueError("Owner user not found")
+
+            if owner_user.organization_id is not None:
+                raise ValueError("Owner user is already assigned to an organization")
+
+            updated_owner = owner_user.join_organization(saved_org.id)
+            self._user_repository.save(updated_owner)
+
+            # Get current user count - just the owner for now since it's a new org
+            user_count = 1
+
+            return OrganizationResponseDTO(
+                **saved_org.model_dump(exclude="settings"),
+                current_user_count=user_count,
+                max_users=dto.max_users,
+                settings=saved_org.settings.model_dump(),
             )
-
-            # Get current user count
-            user_count = self._role_repository.count_organization_users(saved_org.id)
-
-        return OrganizationResponseDTO(
-            **saved_org.model_dump(),
-            current_user_count=user_count,
-            max_users=dto.max_users,
-            settings=saved_org.settings.model_dump(),
-        )
 
     def get_organization_by_id(
         self, organization_id: UUID
@@ -98,7 +95,7 @@ class OrganizationUseCase:
             return None
 
         # Get current user count
-        user_count = self._role_repository.count_organization_users(organization_id)
+        user_count = self._count_organization_users(organization_id)
 
         return OrganizationResponseDTO(
             **organization.model_dump(),
@@ -117,30 +114,29 @@ class OrganizationUseCase:
             return None
 
         # Get organization members
-        user_roles = self._role_repository.get_user_roles_in_organization(
+        organization_users = self._user_repository.get_users_by_organization(
             organization_id
         )
 
         # Convert to member summary DTOs
         members = []
-        roles_distribution = {}
+        roles_distribution = {"member": 0, "owner": 0}
 
-        for role in user_roles:
-            if role.is_valid():
-                # This would typically require joining with user data
+        for user in organization_users:
+            if user.is_active:
+                # Determine role based on organization ownership
+                user_role = "owner" if organization.owner_id == user.id else "member"
+
                 member = OrganizationMemberSummaryDTO(
-                    user_id=role.user_id,
-                    user_name="User Name",  # Would fetch from iam service
-                    user_email="user@example.com",  # Would fetch from iam service
-                    role=role.role.value,
-                    joined_at=role.assigned_at,
-                    is_active=role.is_active,
+                    user_id=user.id,
+                    user_name=user.name,
+                    user_email=user.email.value,
+                    role=user_role,
+                    joined_at=user.created_at,  # Using user creation as join date
+                    is_active=user.is_active,
                 )
                 members.append(member)
-
-                # Count roles
-                role_name = role.role.value
-                roles_distribution[role_name] = roles_distribution.get(role_name, 0) + 1
+                roles_distribution[user_role] += 1
 
         return OrganizationDetailResponseDTO(
             **organization.model_dump(),
@@ -162,13 +158,9 @@ class OrganizationUseCase:
             if not organization:
                 raise ValueError("Organization not found")
 
-            # Check if user can modify organization
-            user_role = self._role_repository.get_by_user_and_organization(
-                updated_by, organization_id
-            )
-
-            if not user_role or not user_role.can_modify_organization():
-                raise ValueError("User does not have permission to modify organization")
+            # Check if user can modify organization (only owner can modify)
+            if organization.owner_id != updated_by:
+                raise ValueError("Only organization owner can modify organization")
 
             updated_org = organization
 
@@ -195,7 +187,7 @@ class OrganizationUseCase:
             saved_org = self._organization_repository.save(updated_org)
 
             # Get current user count
-            user_count = self._role_repository.count_organization_users(organization_id)
+            user_count = self._count_organization_users(organization_id)
 
         return OrganizationResponseDTO(
             **saved_org.model_dump(),
@@ -217,14 +209,10 @@ class OrganizationUseCase:
             if not organization:
                 raise ValueError("Organization not found")
 
-            # Check permissions
-            user_role = self._role_repository.get_by_user_and_organization(
-                updated_by, organization_id
-            )
-
-            if not user_role or not user_role.can_modify_organization():
+            # Check permissions (only owner can modify settings)
+            if organization.owner_id != updated_by:
                 raise ValueError(
-                    "User does not have permission to modify organization settings"
+                    "Only organization owner can modify organization settings"
                 )
 
             # Update settings
@@ -232,9 +220,7 @@ class OrganizationUseCase:
 
             if dto.max_users is not None:
                 # Validate new max_users doesn't violate current user count
-                current_user_count = self._role_repository.count_organization_users(
-                    organization_id
-                )
+                current_user_count = self._count_organization_users(organization_id)
                 if dto.max_users < current_user_count:
                     raise ValueError(
                         f"Cannot reduce max users below current count: {current_user_count}"
@@ -275,7 +261,7 @@ class OrganizationUseCase:
             saved_org = self._organization_repository.save(updated_org)
 
             # Get current user count
-            user_count = self._role_repository.count_organization_users(organization_id)
+            user_count = self._count_organization_users(organization_id)
 
         return OrganizationResponseDTO(
             **saved_org.model_dump(),
@@ -322,6 +308,11 @@ class OrganizationUseCase:
     ) -> OrganizationResponseDTO:
         """Transfer organization ownership."""
         with self._uow:
+            # Get the organization first
+            organization = self._organization_repository.get_by_id(organization_id)
+            if not organization:
+                raise ValueError("Organization not found")
+
             # Validate transfer
             (
                 can_transfer,
@@ -333,10 +324,20 @@ class OrganizationUseCase:
             if not can_transfer:
                 raise ValueError(f"Cannot transfer ownership: {reason}")
 
-            # Perform transfer
-            self._membership_service.transfer_ownership(
-                organization_id, current_owner_id, new_owner_id
-            )
+            # Get current and new owner users
+            current_owner = self._user_repository.get_by_id(current_owner_id)
+            new_owner = self._user_repository.get_by_id(new_owner_id)
+
+            if not current_owner or not new_owner:
+                raise ValueError("Owner user(s) not found")
+
+            # Verify new owner is already a member of the organization
+            if new_owner.organization_id != organization_id:
+                raise ValueError("New owner must be a member of the organization")
+
+            # Update organization ownership
+            updated_org = organization.transfer_ownership(new_owner_id)
+            self._organization_repository.save(updated_org)
 
         # Return updated organization
         return self.get_organization_by_id(organization_id)
@@ -355,17 +356,23 @@ class OrganizationUseCase:
         offset = (page - 1) * page_size
 
         # Get organizations
-        organizations = self._organization_repository.list_active_organizations(
-            limit=page_size, offset=offset
-        )
-
-        # Get total count
-        total = self._organization_repository.count_active_organizations()
+        if active_only:
+            organizations = self._organization_repository.list_active_organizations(
+                limit=page_size, offset=offset
+            )
+            # Get total count
+            total = self._organization_repository.count_active_organizations()
+        else:
+            organizations = self._organization_repository.list_organizations(
+                limit=page_size, offset=offset
+            )
+            # Get total count
+            total = self._organization_repository.count_organizations()
 
         # Convert to DTOs
         org_dtos = []
         for org in organizations:
-            user_count = self._role_repository.count_organization_users(org.id)
+            user_count = self._count_organization_users(org.id)
             org_dto = OrganizationResponseDTO(
                 **org.model_dump(),
                 current_user_count=user_count,
@@ -384,19 +391,63 @@ class OrganizationUseCase:
             total_pages=total_pages,
         )
 
-    def get_user_organizations(self, user_id: UUID) -> list[OrganizationResponseDTO]:
-        """Get all organizations where user is a member."""
-        organizations = self._organization_repository.get_user_organizations(user_id)
+    def get_user_organization(self, user_id: UUID) -> Optional[OrganizationResponseDTO]:
+        """Get the organization where user is a member (N:1 relationship)."""
+        user = self._user_repository.get_by_id(user_id)
 
-        org_dtos = []
-        for org in organizations:
-            user_count = self._role_repository.count_organization_users(org.id)
-            org_dto = OrganizationResponseDTO(
-                **org.model_dump(),
-                current_user_count=user_count,
-                max_users=org.settings.max_users,
-                settings=org.settings.model_dump(),
-            )
-            org_dtos.append(org_dto)
+        if not user or not user.organization_id:
+            return None
 
-        return org_dtos
+        return self.get_organization_by_id(user.organization_id)
+
+    def add_user_to_organization(self, user_id: UUID, organization_id: UUID) -> bool:
+        """Add a user to an organization (N:1 relationship)."""
+        with self._uow:
+            user = self._user_repository.get_by_id(user_id)
+            organization = self._organization_repository.get_by_id(organization_id)
+
+            if not user or not organization:
+                raise ValueError("User or organization not found")
+
+            if user.organization_id is not None:
+                raise ValueError("User is already assigned to an organization")
+
+            # Check if organization has space for new user
+            current_count = self._count_organization_users(organization_id)
+            if (
+                organization.settings.max_users is not None
+                and current_count >= organization.settings.max_users
+            ):
+                raise ValueError("Organization has reached maximum user capacity")
+
+            # Add user to organization
+            updated_user = user.join_organization(organization_id)
+            self._user_repository.save(updated_user)
+
+        return True
+
+    def remove_user_from_organization(
+        self, user_id: UUID, organization_id: UUID
+    ) -> bool:
+        """Remove a user from an organization (N:1 relationship)."""
+        with self._uow:
+            user = self._user_repository.get_by_id(user_id)
+            organization = self._organization_repository.get_by_id(organization_id)
+
+            if not user or not organization:
+                raise ValueError("User or organization not found")
+
+            if user.organization_id != organization_id:
+                raise ValueError("User is not a member of this organization")
+
+            # Prevent removing organization owner
+            if organization.owner_id == user_id:
+                raise ValueError(
+                    "Cannot remove organization owner. Transfer ownership first."
+                )
+
+            # Remove user from organization
+            updated_user = user.leave_organization()
+            self._user_repository.save(updated_user)
+
+        return True

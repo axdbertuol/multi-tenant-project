@@ -12,19 +12,7 @@ from ...application.dtos.user_dto import (
 )
 from ...application.use_cases.user_use_cases import UserUseCase
 
-router = APIRouter(tags=["Usuários"])
-
-
-@router.post("/", response_model=UserResponseDTO, status_code=status.HTTP_201_CREATED)
-def create_user(
-    dto: UserCreateDTO,
-    use_case: UserUseCase = Depends(get_user_use_case),
-):
-    """Cria um novo usuário."""
-    try:
-        return use_case.create_user(dto)
-    except ValueError as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+router = APIRouter()
 
 
 @router.get("/{user_id}", response_model=UserResponseDTO)
@@ -50,12 +38,16 @@ def list_users(
     page: int = Query(1, ge=1, description="Page number"),
     page_size: int = Query(100, ge=1, le=1000, description="Items per page"),
     active_only: bool = Query(True, description="Show only active users"),
+    organization_id: Optional[UUID] = Query(None, description="Filter by organization"),
     use_case: UserUseCase = Depends(get_user_use_case),
 ):
     """Lista usuários com paginação."""
     try:
         return use_case.list_users(
-            page=page, page_size=page_size, active_only=active_only
+            page=page,
+            page_size=page_size,
+            active_only=active_only,
+            organization_id=organization_id,
         )
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
@@ -185,5 +177,74 @@ def check_email_availability(
     try:
         available = use_case.check_email_availability(email, excluding_user_id)
         return {"email": email, "available": available}
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+
+
+@router.get("/organization/{organization_id}", response_model=UserListResponseDTO)
+def get_users_by_organization(
+    organization_id: UUID,
+    page: int = Query(1, ge=1, description="Page number"),
+    page_size: int = Query(100, ge=1, le=1000, description="Items per page"),
+    active_only: bool = Query(True, description="Show only active users"),
+    use_case: UserUseCase = Depends(get_user_use_case),
+):
+    """Lista usuários de uma organização específica."""
+    try:
+        return use_case.list_users(
+            page=page,
+            page_size=page_size,
+            active_only=active_only,
+            organization_id=organization_id,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+
+
+@router.post(
+    "/{user_id}/join-organization/{organization_id}", response_model=UserResponseDTO
+)
+def join_organization(
+    user_id: UUID,
+    organization_id: UUID,
+    use_case: UserUseCase = Depends(get_user_use_case),
+):
+    """Adiciona usuário a uma organização."""
+    try:
+        return use_case.join_organization(user_id, organization_id)
+    except ValueError as e:
+        if "not found" in str(e).lower():
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=str(e),
+            )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+
+
+@router.post("/{user_id}/leave-organization", response_model=UserResponseDTO)
+def leave_organization(
+    user_id: UUID,
+    use_case: UserUseCase = Depends(get_user_use_case),
+):
+    """Remove usuário de sua organização."""
+    try:
+        return use_case.leave_organization(user_id)
+    except ValueError as e:
+        if "not found" in str(e).lower():
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=str(e),
+            )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+
+
+@router.post("/", response_model=UserResponseDTO, status_code=status.HTTP_201_CREATED)
+def create_user(
+    dto: UserCreateDTO,
+    use_case: UserUseCase = Depends(get_user_use_case),
+):
+    """Cria um novo usuário."""
+    try:
+        return use_case.create_user(dto)
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))

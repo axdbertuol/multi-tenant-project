@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, Request, status, Query
-from typing import List
+from typing import List, Optional
 from uuid import UUID
 
 from ...presentation.dependencies import get_session_use_case
@@ -87,11 +87,12 @@ def get_session_by_token(
 @router.get("/user/{user_id}", response_model=SessionListResponseDTO)
 def get_user_sessions(
     user_id: UUID,
+    organization_id: Optional[UUID] = Query(None, description="Filter by organization"),
     use_case: SessionUseCase = Depends(get_session_use_case),
 ):
     """Obtém todas as sessões de um usuário."""
     try:
-        return use_case.get_user_sessions(user_id)
+        return use_case.get_user_sessions(user_id, organization_id)
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
@@ -172,6 +173,19 @@ def cleanup_expired_sessions(
     try:
         count = use_case.cleanup_expired_sessions()
         return {"message": f"Cleaned up {count} expired sessions"}
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+
+
+@router.get("/organization/{organization_id}", response_model=SessionListResponseDTO)
+def get_organization_sessions(
+    organization_id: UUID,
+    active_only: bool = Query(True, description="Show only active sessions"),
+    use_case: SessionUseCase = Depends(get_session_use_case),
+):
+    """Obtém todas as sessões de uma organização."""
+    try:
+        return use_case.get_organization_sessions(organization_id, active_only)
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 

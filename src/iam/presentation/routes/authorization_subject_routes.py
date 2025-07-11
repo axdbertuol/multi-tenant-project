@@ -2,8 +2,11 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from typing import Optional, List
 from uuid import UUID
 
-from ..dependencies import get_authorization_subject_use_case, get_current_user
-from ...application.use_cases.authorization_subject_use_cases import AuthorizationSubjectUseCase
+from ..dependencies import get_authorization_subject_use_case
+from ..auth_dependencies import get_current_user_from_jwt
+from ...application.use_cases.authorization_subject_use_cases import (
+    AuthorizationSubjectUseCase,
+)
 from ...application.dtos.authorization_subject_dto import (
     AuthorizationSubjectCreateDTO,
     AuthorizationSubjectUpdateDTO,
@@ -23,11 +26,15 @@ from ...application.dtos.authorization_subject_dto import (
 router = APIRouter(prefix="/authorization-subjects", tags=["Authorization Subjects"])
 
 
-@router.post("/", response_model=AuthorizationSubjectResponseDTO, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/",
+    response_model=AuthorizationSubjectResponseDTO,
+    status_code=status.HTTP_201_CREATED,
+)
 def create_authorization_subject(
     dto: AuthorizationSubjectCreateDTO,
     use_case: AuthorizationSubjectUseCase = Depends(get_authorization_subject_use_case),
-    current_user = Depends(get_current_user),
+    current_user=Depends(get_current_user_from_jwt),
 ):
     """Create a new authorization subject."""
     try:
@@ -40,7 +47,7 @@ def create_authorization_subject(
 def get_authorization_subject(
     subject_id: UUID,
     use_case: AuthorizationSubjectUseCase = Depends(get_authorization_subject_use_case),
-    current_user = Depends(get_current_user),
+    current_user=Depends(get_current_user_from_jwt),
 ):
     """Get authorization subject by ID."""
     try:
@@ -60,7 +67,7 @@ def update_authorization_subject(
     subject_id: UUID,
     dto: AuthorizationSubjectUpdateDTO,
     use_case: AuthorizationSubjectUseCase = Depends(get_authorization_subject_use_case),
-    current_user = Depends(get_current_user),
+    current_user=Depends(get_current_user_from_jwt),
 ):
     """Update an authorization subject."""
     try:
@@ -69,12 +76,14 @@ def update_authorization_subject(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
 
-@router.post("/{subject_id}/transfer-ownership", response_model=AuthorizationSubjectResponseDTO)
+@router.post(
+    "/{subject_id}/transfer-ownership", response_model=AuthorizationSubjectResponseDTO
+)
 def transfer_ownership(
     subject_id: UUID,
     dto: AuthorizationSubjectTransferOwnershipDTO,
     use_case: AuthorizationSubjectUseCase = Depends(get_authorization_subject_use_case),
-    current_user = Depends(get_current_user),
+    current_user=Depends(get_current_user_from_jwt),
 ):
     """Transfer ownership of an authorization subject."""
     try:
@@ -83,12 +92,14 @@ def transfer_ownership(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
 
-@router.post("/{subject_id}/move-organization", response_model=AuthorizationSubjectResponseDTO)
+@router.post(
+    "/{subject_id}/move-organization", response_model=AuthorizationSubjectResponseDTO
+)
 def move_to_organization(
     subject_id: UUID,
     dto: AuthorizationSubjectMoveOrganizationDTO,
     use_case: AuthorizationSubjectUseCase = Depends(get_authorization_subject_use_case),
-    current_user = Depends(get_current_user),
+    current_user=Depends(get_current_user_from_jwt),
 ):
     """Move authorization subject to different organization."""
     try:
@@ -101,7 +112,7 @@ def move_to_organization(
 def activate_subject(
     subject_id: UUID,
     use_case: AuthorizationSubjectUseCase = Depends(get_authorization_subject_use_case),
-    current_user = Depends(get_current_user),
+    current_user=Depends(get_current_user_from_jwt),
 ):
     """Activate an authorization subject."""
     try:
@@ -114,7 +125,7 @@ def activate_subject(
 def deactivate_subject(
     subject_id: UUID,
     use_case: AuthorizationSubjectUseCase = Depends(get_authorization_subject_use_case),
-    current_user = Depends(get_current_user),
+    current_user=Depends(get_current_user_from_jwt),
 ):
     """Deactivate an authorization subject."""
     try:
@@ -127,7 +138,7 @@ def deactivate_subject(
 def delete_authorization_subject(
     subject_id: UUID,
     use_case: AuthorizationSubjectUseCase = Depends(get_authorization_subject_use_case),
-    current_user = Depends(get_current_user),
+    current_user=Depends(get_current_user_from_jwt),
 ):
     """Delete an authorization subject."""
     try:
@@ -144,14 +155,16 @@ def delete_authorization_subject(
 
 @router.get("/", response_model=AuthorizationSubjectListResponseDTO)
 def list_authorization_subjects(
-    organization_id: Optional[UUID] = Query(None, description="Filter by organization ID"),
+    organization_id: Optional[UUID] = Query(
+        None, description="Filter by organization ID"
+    ),
     subject_type: Optional[str] = Query(None, description="Filter by subject type"),
     owner_id: Optional[UUID] = Query(None, description="Filter by owner ID"),
     is_active: Optional[bool] = Query(None, description="Filter by active status"),
     page: int = Query(1, ge=1, description="Page number"),
     page_size: int = Query(20, ge=1, le=100, description="Items per page"),
     use_case: AuthorizationSubjectUseCase = Depends(get_authorization_subject_use_case),
-    current_user = Depends(get_current_user),
+    current_user=Depends(get_current_user_from_jwt),
 ):
     """List authorization subjects with pagination and filters."""
     try:
@@ -172,7 +185,7 @@ def list_authorization_subjects(
 def find_subject_by_reference(
     dto: AuthorizationSubjectSearchDTO,
     use_case: AuthorizationSubjectUseCase = Depends(get_authorization_subject_use_case),
-    current_user = Depends(get_current_user),
+    current_user=Depends(get_current_user_from_jwt),
 ):
     """Find authorization subject by external reference."""
     try:
@@ -190,9 +203,11 @@ def find_subject_by_reference(
 @router.get("/users/{user_id}", response_model=List[AuthorizationSubjectResponseDTO])
 def get_user_subjects(
     user_id: UUID,
-    organization_id: Optional[UUID] = Query(None, description="Filter by organization ID"),
+    organization_id: Optional[UUID] = Query(
+        None, description="Filter by organization ID"
+    ),
     use_case: AuthorizationSubjectUseCase = Depends(get_authorization_subject_use_case),
-    current_user = Depends(get_current_user),
+    current_user=Depends(get_current_user_from_jwt),
 ):
     """Get all subjects owned by a user."""
     try:
@@ -201,12 +216,15 @@ def get_user_subjects(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
 
-@router.get("/organizations/{organization_id}", response_model=List[AuthorizationSubjectResponseDTO])
+@router.get(
+    "/organizations/{organization_id}",
+    response_model=List[AuthorizationSubjectResponseDTO],
+)
 def get_organization_subjects(
     organization_id: UUID,
     subject_type: Optional[str] = Query(None, description="Filter by subject type"),
     use_case: AuthorizationSubjectUseCase = Depends(get_authorization_subject_use_case),
-    current_user = Depends(get_current_user),
+    current_user=Depends(get_current_user_from_jwt),
 ):
     """Get all subjects in an organization."""
     try:
@@ -215,11 +233,14 @@ def get_organization_subjects(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
 
-@router.get("/organizations/{organization_id}/active", response_model=List[AuthorizationSubjectResponseDTO])
+@router.get(
+    "/organizations/{organization_id}/active",
+    response_model=List[AuthorizationSubjectResponseDTO],
+)
 def get_active_organization_subjects(
     organization_id: UUID,
     use_case: AuthorizationSubjectUseCase = Depends(get_authorization_subject_use_case),
-    current_user = Depends(get_current_user),
+    current_user=Depends(get_current_user_from_jwt),
 ):
     """Get all active subjects in an organization."""
     try:
@@ -232,7 +253,7 @@ def get_active_organization_subjects(
 def bulk_transfer_ownership(
     dto: BulkTransferOwnershipDTO,
     use_case: AuthorizationSubjectUseCase = Depends(get_authorization_subject_use_case),
-    current_user = Depends(get_current_user),
+    current_user=Depends(get_current_user_from_jwt),
 ):
     """Bulk transfer ownership of multiple subjects."""
     try:
@@ -245,7 +266,7 @@ def bulk_transfer_ownership(
 def bulk_move_to_organization(
     dto: BulkMoveOrganizationDTO,
     use_case: AuthorizationSubjectUseCase = Depends(get_authorization_subject_use_case),
-    current_user = Depends(get_current_user),
+    current_user=Depends(get_current_user_from_jwt),
 ):
     """Bulk move subjects to different organization."""
     try:
@@ -258,7 +279,7 @@ def bulk_move_to_organization(
 def bulk_activate_subjects(
     dto: BulkAuthorizationSubjectOperationDTO,
     use_case: AuthorizationSubjectUseCase = Depends(get_authorization_subject_use_case),
-    current_user = Depends(get_current_user),
+    current_user=Depends(get_current_user_from_jwt),
 ):
     """Bulk activate multiple subjects."""
     try:
@@ -271,7 +292,7 @@ def bulk_activate_subjects(
 def bulk_deactivate_subjects(
     dto: BulkAuthorizationSubjectOperationDTO,
     use_case: AuthorizationSubjectUseCase = Depends(get_authorization_subject_use_case),
-    current_user = Depends(get_current_user),
+    current_user=Depends(get_current_user_from_jwt),
 ):
     """Bulk deactivate multiple subjects."""
     try:
@@ -282,9 +303,11 @@ def bulk_deactivate_subjects(
 
 @router.get("/statistics", response_model=AuthorizationSubjectStatisticsDTO)
 def get_subject_statistics(
-    organization_id: Optional[UUID] = Query(None, description="Organization ID for scoped statistics"),
+    organization_id: Optional[UUID] = Query(
+        None, description="Organization ID for scoped statistics"
+    ),
     use_case: AuthorizationSubjectUseCase = Depends(get_authorization_subject_use_case),
-    current_user = Depends(get_current_user),
+    current_user=Depends(get_current_user_from_jwt),
 ):
     """Get statistics about authorization subjects."""
     try:

@@ -7,7 +7,9 @@ from ...domain.repositories.user_profile_repository import UserProfileRepository
 from ...domain.repositories.profile_repository import ProfileRepository
 from ...domain.repositories.user_repository import UserRepository
 from ...domain.repositories.organization_repository import OrganizationRepository
-from ...domain.repositories.profile_folder_permission_repository import ProfileFolderPermissionRepository
+from ...domain.repositories.profile_folder_permission_repository import (
+    ProfileFolderPermissionRepository,
+)
 from ..dtos.user_profile_dto import (
     UserProfileCreateDTO,
     UserProfileUpdateDTO,
@@ -100,7 +102,9 @@ class UserProfileUseCase:
 
         return self._build_assignment_response(saved_assignment)
 
-    def get_assignment_by_id(self, assignment_id: UUID) -> Optional[UserProfileDetailResponseDTO]:
+    def get_assignment_by_id(
+        self, assignment_id: UUID
+    ) -> Optional[UserProfileDetailResponseDTO]:
         """Get assignment by ID with full details."""
         assignment = self.user_profile_repository.get_by_id(assignment_id)
         if not assignment:
@@ -108,7 +112,9 @@ class UserProfileUseCase:
 
         return self._build_assignment_detail_response(assignment)
 
-    def update_assignment(self, assignment_id: UUID, dto: UserProfileUpdateDTO) -> Optional[UserProfileResponseDTO]:
+    def update_assignment(
+        self, assignment_id: UUID, dto: UserProfileUpdateDTO
+    ) -> Optional[UserProfileResponseDTO]:
         """Update an existing user profile assignment."""
         assignment = self.user_profile_repository.get_by_id(assignment_id)
         if not assignment:
@@ -136,10 +142,16 @@ class UserProfileUseCase:
             existing_assignment = self.user_profile_repository.get_by_user_and_profile(
                 assignment.user_id, dto.profile_id
             )
-            if existing_assignment and existing_assignment.id != assignment_id and existing_assignment.is_active:
+            if (
+                existing_assignment
+                and existing_assignment.id != assignment_id
+                and existing_assignment.is_active
+            ):
                 raise ValueError("User already has this profile assigned")
 
-            updated_assignment = updated_assignment.change_profile(dto.profile_id, assignment.assigned_by)
+            updated_assignment = updated_assignment.change_profile(
+                dto.profile_id, assignment.assigned_by
+            )
 
         if dto.expires_at is not None:
             updated_assignment = updated_assignment.extend_expiration(dto.expires_at)
@@ -166,7 +178,9 @@ class UserProfileUseCase:
 
         return self._build_assignment_response(saved_assignment)
 
-    def extend_assignment(self, assignment_id: UUID, dto: UserProfileExtendDTO) -> Optional[UserProfileResponseDTO]:
+    def extend_assignment(
+        self, assignment_id: UUID, dto: UserProfileExtendDTO
+    ) -> Optional[UserProfileResponseDTO]:
         """Extend user profile assignment expiration."""
         assignment = self.user_profile_repository.get_by_id(assignment_id)
         if not assignment:
@@ -194,7 +208,9 @@ class UserProfileUseCase:
 
         return self._build_assignment_response(saved_assignment)
 
-    def revoke_assignment(self, assignment_id: UUID, dto: UserProfileRevokeDTO) -> Optional[UserProfileResponseDTO]:
+    def revoke_assignment(
+        self, assignment_id: UUID, dto: UserProfileRevokeDTO
+    ) -> Optional[UserProfileResponseDTO]:
         """Revoke user profile assignment."""
         assignment = self.user_profile_repository.get_by_id(assignment_id)
         if not assignment:
@@ -241,9 +257,13 @@ class UserProfileUseCase:
             elif filters.user_id:
                 assignments = self.user_profile_repository.get_by_user(filters.user_id)
             elif filters.profile_id:
-                assignments = self.user_profile_repository.get_by_profile(filters.profile_id)
+                assignments = self.user_profile_repository.get_by_profile(
+                    filters.profile_id
+                )
             elif filters.organization_id:
-                assignments = self.user_profile_repository.get_by_organization(filters.organization_id)
+                assignments = self.user_profile_repository.get_by_organization(
+                    filters.organization_id
+                )
             elif filters.assigned_by:
                 assignments = self.user_profile_repository.get_by_assigned_by(
                     filters.assigned_by, filters.organization_id
@@ -254,22 +274,38 @@ class UserProfileUseCase:
         # Apply additional filters
         if filters and assignments:
             if filters.is_active is not None:
-                assignments = [a for a in assignments if a.is_active == filters.is_active]
+                assignments = [
+                    a for a in assignments if a.is_active == filters.is_active
+                ]
             if filters.is_expired is not None:
-                assignments = [a for a in assignments if a.is_expired() == filters.is_expired]
+                assignments = [
+                    a for a in assignments if a.is_expired() == filters.is_expired
+                ]
             if filters.is_revoked is not None:
-                assignments = [a for a in assignments if a.is_revoked() == filters.is_revoked]
+                assignments = [
+                    a for a in assignments if a.is_revoked() == filters.is_revoked
+                ]
             if filters.assignment_type:
-                assignments = [a for a in assignments if a.get_assignment_type() == filters.assignment_type]
+                assignments = [
+                    a
+                    for a in assignments
+                    if a.get_assignment_type() == filters.assignment_type
+                ]
             if filters.status:
-                assignments = [a for a in assignments if a.get_status() == filters.status]
+                assignments = [
+                    a for a in assignments if a.get_status() == filters.status
+                ]
             if filters.expiring_within_days is not None:
-                assignments = [a for a in assignments if a.is_expiring_soon(filters.expiring_within_days)]
+                assignments = [
+                    a
+                    for a in assignments
+                    if a.is_expiring_soon(filters.expiring_within_days)
+                ]
 
         # Apply pagination
         total = len(assignments)
         offset = (page - 1) * page_size
-        paginated_assignments = assignments[offset:offset + page_size]
+        paginated_assignments = assignments[offset : offset + page_size]
 
         assignment_responses = []
         for assignment in paginated_assignments:
@@ -287,21 +323,29 @@ class UserProfileUseCase:
 
     def get_assignment_stats(self, organization_id: UUID) -> UserProfileStatsDTO:
         """Get user profile assignment statistics."""
-        all_assignments = self.user_profile_repository.get_by_organization(organization_id)
+        all_assignments = self.user_profile_repository.get_by_organization(
+            organization_id
+        )
         active_assignments = [a for a in all_assignments if a.is_active]
         inactive_assignments = [a for a in all_assignments if not a.is_active]
         expired_assignments = [a for a in all_assignments if a.is_expired()]
         expiring_soon_assignments = [a for a in all_assignments if a.is_expiring_soon()]
         revoked_assignments = [a for a in all_assignments if a.is_revoked()]
-        temporary_assignments = [a for a in all_assignments if a.is_temporary_assignment()]
-        permanent_assignments = [a for a in all_assignments if a.is_permanent_assignment()]
+        temporary_assignments = [
+            a for a in all_assignments if a.is_temporary_assignment()
+        ]
+        permanent_assignments = [
+            a for a in all_assignments if a.is_permanent_assignment()
+        ]
 
         # Count by profile
         assignments_by_profile = {}
         for assignment in all_assignments:
             profile = self.profile_repository.get_by_id(assignment.profile_id)
             profile_name = profile.name if profile else "Unknown"
-            assignments_by_profile[profile_name] = assignments_by_profile.get(profile_name, 0) + 1
+            assignments_by_profile[profile_name] = (
+                assignments_by_profile.get(profile_name, 0) + 1
+            )
 
         # Count by user
         assignments_by_user = {}
@@ -315,14 +359,22 @@ class UserProfileUseCase:
         for assignment in all_assignments:
             assigner = self.user_repository.get_by_id(assignment.assigned_by)
             assigner_name = assigner.name if assigner else "Unknown"
-            assignments_by_assigner[assigner_name] = assignments_by_assigner.get(assigner_name, 0) + 1
+            assignments_by_assigner[assigner_name] = (
+                assignments_by_assigner.get(assigner_name, 0) + 1
+            )
 
         # Recent assignments
-        recent_assignments = sorted(all_assignments, key=lambda x: x.assigned_at, reverse=True)[:10]
-        recent_assignment_responses = [self._build_assignment_response(a) for a in recent_assignments]
+        recent_assignments = sorted(
+            all_assignments, key=lambda x: x.assigned_at, reverse=True
+        )[:10]
+        recent_assignment_responses = [
+            self._build_assignment_response(a) for a in recent_assignments
+        ]
 
         # Expiring assignments
-        expiring_assignment_responses = [self._build_assignment_response(a) for a in expiring_soon_assignments]
+        expiring_assignment_responses = [
+            self._build_assignment_response(a) for a in expiring_soon_assignments
+        ]
 
         return UserProfileStatsDTO(
             total_assignments=len(all_assignments),
@@ -340,7 +392,9 @@ class UserProfileUseCase:
             expiring_assignments=expiring_assignment_responses,
         )
 
-    def batch_create_assignments(self, dto: UserProfileBatchCreateDTO) -> UserProfileBatchCreateResponseDTO:
+    def batch_create_assignments(
+        self, dto: UserProfileBatchCreateDTO
+    ) -> UserProfileBatchCreateResponseDTO:
         """Create multiple user profile assignments."""
         created_count = 0
         skipped_count = 0
@@ -366,7 +420,9 @@ class UserProfileUseCase:
                     )
                     if existing and existing.is_active:
                         skipped_count += 1
-                        skipped_assignments.append(f"User {assignment_dto.user_id} already has profile {assignment_dto.profile_id}")
+                        skipped_assignments.append(
+                            f"User {assignment_dto.user_id} already has profile {assignment_dto.profile_id}"
+                        )
                         continue
 
                 # Create assignment
@@ -376,10 +432,14 @@ class UserProfileUseCase:
 
             except ValueError as e:
                 error_count += 1
-                errors.append(f"Error creating assignment for user {assignment_dto.user_id}: {str(e)}")
+                errors.append(
+                    f"Error creating assignment for user {assignment_dto.user_id}: {str(e)}"
+                )
             except Exception as e:
                 error_count += 1
-                errors.append(f"Unexpected error for user {assignment_dto.user_id}: {str(e)}")
+                errors.append(
+                    f"Unexpected error for user {assignment_dto.user_id}: {str(e)}"
+                )
 
         return UserProfileBatchCreateResponseDTO(
             created_count=created_count,
@@ -390,7 +450,9 @@ class UserProfileUseCase:
             errors=errors,
         )
 
-    def transfer_assignments(self, dto: UserProfileTransferDTO) -> UserProfileTransferResponseDTO:
+    def transfer_assignments(
+        self, dto: UserProfileTransferDTO
+    ) -> UserProfileTransferResponseDTO:
         """Transfer user assignments from one profile to another."""
         transferred_count = 0
         skipped_count = 0
@@ -414,13 +476,17 @@ class UserProfileUseCase:
         for user_id in dto.user_ids:
             try:
                 # Get current assignment
-                current_assignment = self.user_profile_repository.get_by_user_and_profile(
-                    user_id, dto.source_profile_id
+                current_assignment = (
+                    self.user_profile_repository.get_by_user_and_profile(
+                        user_id, dto.source_profile_id
+                    )
                 )
 
                 if not current_assignment or not current_assignment.is_active:
                     skipped_count += 1
-                    skipped_users.append(f"User {user_id} has no active assignment to source profile")
+                    skipped_users.append(
+                        f"User {user_id} has no active assignment to source profile"
+                    )
                     continue
 
                 # Check if user already has target profile
@@ -429,7 +495,9 @@ class UserProfileUseCase:
                 )
                 if existing_target and existing_target.is_active:
                     skipped_count += 1
-                    skipped_users.append(f"User {user_id} already has target profile assigned")
+                    skipped_users.append(
+                        f"User {user_id} already has target profile assigned"
+                    )
                     continue
 
                 # Deactivate current assignment
@@ -442,13 +510,17 @@ class UserProfileUseCase:
                     profile_id=dto.target_profile_id,
                     organization_id=dto.organization_id,
                     assigned_by=dto.transferred_by,
-                    expires_at=current_assignment.expires_at if dto.preserve_expiration else None,
+                    expires_at=current_assignment.expires_at
+                    if dto.preserve_expiration
+                    else None,
                     notes=f"Transferred from {source_profile.name}. {dto.transfer_reason or ''}",
                     extra_data=current_assignment.extra_data,
                 )
 
                 saved_assignment = self.user_profile_repository.save(new_assignment)
-                transferred_assignments.append(self._build_assignment_response(saved_assignment))
+                transferred_assignments.append(
+                    self._build_assignment_response(saved_assignment)
+                )
                 transferred_count += 1
 
             except Exception as e:
@@ -464,10 +536,14 @@ class UserProfileUseCase:
             errors=errors,
         )
 
-    def get_assignment_history(self, dto: UserProfileHistoryDTO) -> UserProfileHistoryResponseDTO:
+    def get_assignment_history(
+        self, dto: UserProfileHistoryDTO
+    ) -> UserProfileHistoryResponseDTO:
         """Get assignment history for a user and profile."""
-        history = self.user_profile_repository.get_assignment_history(dto.user_id, dto.profile_id)
-        
+        history = self.user_profile_repository.get_assignment_history(
+            dto.user_id, dto.profile_id
+        )
+
         # Apply filters
         if not dto.include_revoked:
             history = [h for h in history if not h.is_revoked()]
@@ -483,16 +559,16 @@ class UserProfileUseCase:
 
         # Build response
         history_responses = [self._build_assignment_response(h) for h in history]
-        
+
         # Find current and last active assignments
         current_assignment = None
         last_active_assignment = None
-        
+
         for assignment in history:
             if assignment.is_active:
                 current_assignment = self._build_assignment_response(assignment)
                 break
-        
+
         for assignment in history:
             if assignment.is_active or assignment.is_revoked():
                 last_active_assignment = self._build_assignment_response(assignment)
@@ -501,21 +577,27 @@ class UserProfileUseCase:
         # Build timeline
         timeline = []
         for assignment in history:
-            timeline.append({
-                "date": assignment.assigned_at.isoformat(),
-                "action": "assigned",
-                "status": assignment.get_status(),
-                "assigned_by": assignment.assigned_by,
-                "expires_at": assignment.expires_at.isoformat() if assignment.expires_at else None,
-            })
-            
+            timeline.append(
+                {
+                    "date": assignment.assigned_at.isoformat(),
+                    "action": "assigned",
+                    "status": assignment.get_status(),
+                    "assigned_by": assignment.assigned_by,
+                    "expires_at": assignment.expires_at.isoformat()
+                    if assignment.expires_at
+                    else None,
+                }
+            )
+
             if assignment.is_revoked():
-                timeline.append({
-                    "date": assignment.revoked_at.isoformat(),
-                    "action": "revoked",
-                    "status": "revoked",
-                    "revoked_by": assignment.revoked_by,
-                })
+                timeline.append(
+                    {
+                        "date": assignment.revoked_at.isoformat(),
+                        "action": "revoked",
+                        "status": "revoked",
+                        "revoked_by": assignment.revoked_by,
+                    }
+                )
 
         return UserProfileHistoryResponseDTO(
             user_id=dto.user_id,
@@ -530,8 +612,10 @@ class UserProfileUseCase:
     def get_user_context(self, user_id: UUID, organization_id: UUID) -> UserContextDTO:
         """Get user context with all profile information."""
         # Get active assignments
-        active_assignments = self.user_profile_repository.get_active_by_user_and_organization(
-            user_id, organization_id
+        active_assignments = (
+            self.user_profile_repository.get_active_by_user_and_organization(
+                user_id, organization_id
+            )
         )
 
         assignment_responses = []
@@ -543,20 +627,24 @@ class UserProfileUseCase:
             assignment_responses.append(self._build_assignment_response(assignment))
 
             # Get profile permissions
-            profile_permissions = self.profile_folder_permission_repository.get_active_by_profile(
-                assignment.profile_id
+            profile_permissions = (
+                self.profile_folder_permission_repository.get_active_by_profile(
+                    assignment.profile_id
+                )
             )
 
             for perm in profile_permissions:
                 # Add to effective permissions
                 effective_permissions.update(perm.get_allowed_actions())
-                
+
                 # Add to accessible folders
                 accessible_folders.add(perm.folder_path)
-                
+
                 # Track highest permission level for each folder
                 current_level = folder_permissions.get(perm.folder_path)
-                if not current_level or perm.permission_level.is_higher_than(current_level):
+                if not current_level or perm.permission_level.is_higher_than(
+                    current_level
+                ):
                     folder_permissions[perm.folder_path] = perm.permission_level.value
 
         # Validate context
@@ -564,7 +652,7 @@ class UserProfileUseCase:
         for assignment in active_assignments:
             if assignment.is_expired():
                 validation_errors.append(f"Assignment {assignment.id} is expired")
-            
+
             profile = self.profile_repository.get_by_id(assignment.profile_id)
             if not profile or not profile.is_active:
                 validation_errors.append(f"Profile {assignment.profile_id} is inactive")
@@ -581,7 +669,9 @@ class UserProfileUseCase:
             last_updated=datetime.now(timezone.utc),
         )
 
-    def bulk_action(self, dto: UserProfileBulkActionDTO) -> UserProfileBulkActionResponseDTO:
+    def bulk_action(
+        self, dto: UserProfileBulkActionDTO
+    ) -> UserProfileBulkActionResponseDTO:
         """Perform bulk action on user profile assignments."""
         success_count = 0
         failure_count = 0
@@ -608,7 +698,9 @@ class UserProfileUseCase:
 
                 elif dto.action == "deactivate":
                     if not assignment.is_active:
-                        warnings.append(f"Assignment {assignment_id} is already inactive")
+                        warnings.append(
+                            f"Assignment {assignment_id} is already inactive"
+                        )
                     else:
                         deactivated_assignment = assignment.deactivate()
                         self.user_profile_repository.save(deactivated_assignment)
@@ -620,23 +712,31 @@ class UserProfileUseCase:
                         failure_count += 1
                         errors.append(f"New expiration date required for extend action")
                         continue
-                    
+
                     can_modify, reason = assignment.can_be_modified()
                     if not can_modify:
                         failure_count += 1
-                        errors.append(f"Assignment {assignment_id} cannot be extended: {reason}")
+                        errors.append(
+                            f"Assignment {assignment_id} cannot be extended: {reason}"
+                        )
                         continue
 
-                    extended_assignment = assignment.extend_expiration(dto.new_expires_at)
+                    extended_assignment = assignment.extend_expiration(
+                        dto.new_expires_at
+                    )
                     self.user_profile_repository.save(extended_assignment)
                     success_count += 1
                     affected_assignments.append(assignment_id)
 
                 elif dto.action == "revoke":
                     if not assignment.is_active:
-                        warnings.append(f"Assignment {assignment_id} is already inactive")
+                        warnings.append(
+                            f"Assignment {assignment_id} is already inactive"
+                        )
                     else:
-                        revoked_assignment = assignment.revoke(dto.performed_by, dto.reason)
+                        revoked_assignment = assignment.revoke(
+                            dto.performed_by, dto.reason
+                        )
                         self.user_profile_repository.save(revoked_assignment)
                         success_count += 1
                         affected_assignments.append(assignment_id)
@@ -645,7 +745,9 @@ class UserProfileUseCase:
                     can_delete, reason = assignment.can_be_deleted()
                     if not can_delete:
                         failure_count += 1
-                        errors.append(f"Assignment {assignment_id} cannot be deleted: {reason}")
+                        errors.append(
+                            f"Assignment {assignment_id} cannot be deleted: {reason}"
+                        )
                         continue
 
                     if self.user_profile_repository.delete(assignment_id):
@@ -671,13 +773,17 @@ class UserProfileUseCase:
             warnings=warnings,
         )
 
-    def _build_assignment_response(self, assignment: UserProfile) -> UserProfileResponseDTO:
+    def _build_assignment_response(
+        self, assignment: UserProfile
+    ) -> UserProfileResponseDTO:
         """Build assignment response DTO."""
         # Get related data
         user = self.user_repository.get_by_id(assignment.user_id)
         profile = self.profile_repository.get_by_id(assignment.profile_id)
         assigned_by_user = self.user_repository.get_by_id(assignment.assigned_by)
-        organization = self.organization_repository.get_by_id(assignment.organization_id)
+        organization = self.organization_repository.get_by_id(
+            assignment.organization_id
+        )
 
         return UserProfileResponseDTO(
             id=assignment.id,
@@ -706,7 +812,9 @@ class UserProfileUseCase:
             assignment_duration_days=assignment.get_assignment_duration(),
         )
 
-    def _build_assignment_detail_response(self, assignment: UserProfile) -> UserProfileDetailResponseDTO:
+    def _build_assignment_detail_response(
+        self, assignment: UserProfile
+    ) -> UserProfileDetailResponseDTO:
         """Build detailed assignment response DTO."""
         assignment_response = self._build_assignment_response(assignment)
 
@@ -714,23 +822,33 @@ class UserProfileUseCase:
         user = self.user_repository.get_by_id(assignment.user_id)
         profile = self.profile_repository.get_by_id(assignment.profile_id)
         assigned_by_user = self.user_repository.get_by_id(assignment.assigned_by)
-        revoked_by_user = self.user_repository.get_by_id(assignment.revoked_by) if assignment.revoked_by else None
+        revoked_by_user = (
+            self.user_repository.get_by_id(assignment.revoked_by)
+            if assignment.revoked_by
+            else None
+        )
 
         # Get effective permissions
         effective_permissions = []
         accessible_folders = []
         folder_permissions = []
-        
+
         if profile:
-            profile_permissions = self.profile_folder_permission_repository.get_active_by_profile(profile.id)
+            profile_permissions = (
+                self.profile_folder_permission_repository.get_active_by_profile(
+                    profile.id
+                )
+            )
             for perm in profile_permissions:
                 effective_permissions.extend(perm.get_allowed_actions())
                 accessible_folders.append(perm.folder_path)
-                folder_permissions.append({
-                    "id": perm.id,
-                    "folder_path": perm.folder_path,
-                    "permission_level": perm.permission_level.value,
-                })
+                folder_permissions.append(
+                    {
+                        "id": perm.id,
+                        "folder_path": perm.folder_path,
+                        "permission_level": perm.permission_level.value,
+                    }
+                )
 
         # Validation
         is_valid, validation_errors = assignment.validate_assignment()
@@ -744,25 +862,33 @@ class UserProfileUseCase:
                 "name": profile.name,
                 "description": profile.description,
                 "is_active": profile.is_active,
-            } if profile else None,
+            }
+            if profile
+            else None,
             user={
                 "id": user.id,
                 "name": user.name,
                 "email": user.email,
                 "is_active": user.is_active,
-            } if user else None,
+            }
+            if user
+            else None,
             assigned_by_user={
                 "id": assigned_by_user.id,
                 "name": assigned_by_user.name,
                 "email": assigned_by_user.email,
                 "is_active": assigned_by_user.is_active,
-            } if assigned_by_user else None,
+            }
+            if assigned_by_user
+            else None,
             revoked_by_user={
                 "id": revoked_by_user.id,
                 "name": revoked_by_user.name,
                 "email": revoked_by_user.email,
                 "is_active": revoked_by_user.is_active,
-            } if revoked_by_user else None,
+            }
+            if revoked_by_user
+            else None,
             effective_permissions=list(set(effective_permissions)),
             accessible_folders=accessible_folders,
             folder_permissions=folder_permissions,

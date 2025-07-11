@@ -21,7 +21,9 @@ from ..dtos.authorization_subject_dto import (
     bulk_result_to_response_dto,
 )
 from ...domain.entities.authorization_subject import AuthorizationSubject
-from ...domain.repositories.authorization_subject_repository import AuthorizationSubjectRepository
+from ...domain.repositories.authorization_subject_repository import (
+    AuthorizationSubjectRepository,
+)
 from ...domain.services.authorization_subject_service import AuthorizationSubjectService
 
 
@@ -30,7 +32,9 @@ class AuthorizationSubjectUseCase:
 
     def __init__(self, uow: UnitOfWork):
         self._uow = uow
-        self._repository: AuthorizationSubjectRepository = uow.get_repository("authorization_subject")
+        self._repository: AuthorizationSubjectRepository = uow.get_repository(
+            "authorization_subject"
+        )
         self._service = AuthorizationSubjectService(self._repository)
 
     def create_subject(
@@ -45,13 +49,15 @@ class AuthorizationSubjectUseCase:
                     owner_id=dto.owner_id,
                     organization_id=dto.organization_id,
                 )
-                
+
                 return entity_to_response_dto(subject)
-                
+
         except ValueError as e:
             raise ValueError(f"Failed to create authorization subject: {str(e)}")
 
-    def get_subject_by_id(self, subject_id: UUID) -> Optional[AuthorizationSubjectResponseDTO]:
+    def get_subject_by_id(
+        self, subject_id: UUID
+    ) -> Optional[AuthorizationSubjectResponseDTO]:
         """Get authorization subject by ID."""
         subject = self._repository.find_by_id(subject_id)
         return entity_to_response_dto(subject) if subject else None
@@ -71,23 +77,26 @@ class AuthorizationSubjectUseCase:
         try:
             with self._uow:
                 updated_subject = subject
-                
+
                 if dto.is_active is not None:
                     if dto.is_active and not subject.is_active:
                         updated_subject = subject.activate()
                     elif not dto.is_active and subject.is_active:
                         updated_subject = subject.deactivate()
-                
+
                 if updated_subject != subject:
                     updated_subject = self._repository.save(updated_subject)
-                
+
                 return entity_to_response_dto(updated_subject)
-                
+
         except Exception as e:
             raise ValueError(f"Failed to update authorization subject: {str(e)}")
 
     def transfer_ownership(
-        self, subject_id: UUID, dto: AuthorizationSubjectTransferOwnershipDTO, requester_id: UUID
+        self,
+        subject_id: UUID,
+        dto: AuthorizationSubjectTransferOwnershipDTO,
+        requester_id: UUID,
     ) -> AuthorizationSubjectResponseDTO:
         """Transfer ownership of an authorization subject."""
         try:
@@ -97,14 +106,17 @@ class AuthorizationSubjectUseCase:
                     new_owner_id=dto.new_owner_id,
                     current_owner_id=requester_id,
                 )
-                
+
                 return entity_to_response_dto(updated_subject)
-                
+
         except ValueError as e:
             raise ValueError(f"Failed to transfer ownership: {str(e)}")
 
     def move_to_organization(
-        self, subject_id: UUID, dto: AuthorizationSubjectMoveOrganizationDTO, requester_id: UUID
+        self,
+        subject_id: UUID,
+        dto: AuthorizationSubjectMoveOrganizationDTO,
+        requester_id: UUID,
     ) -> AuthorizationSubjectResponseDTO:
         """Move authorization subject to different organization."""
         try:
@@ -114,13 +126,15 @@ class AuthorizationSubjectUseCase:
                     organization_id=dto.organization_id,
                     requester_id=requester_id,
                 )
-                
+
                 return entity_to_response_dto(updated_subject)
-                
+
         except ValueError as e:
             raise ValueError(f"Failed to move subject to organization: {str(e)}")
 
-    def activate_subject(self, subject_id: UUID, requester_id: UUID) -> AuthorizationSubjectResponseDTO:
+    def activate_subject(
+        self, subject_id: UUID, requester_id: UUID
+    ) -> AuthorizationSubjectResponseDTO:
         """Activate an authorization subject."""
         try:
             with self._uow:
@@ -128,13 +142,15 @@ class AuthorizationSubjectUseCase:
                     subject_id=subject_id,
                     requester_id=requester_id,
                 )
-                
+
                 return entity_to_response_dto(updated_subject)
-                
+
         except ValueError as e:
             raise ValueError(f"Failed to activate subject: {str(e)}")
 
-    def deactivate_subject(self, subject_id: UUID, requester_id: UUID) -> AuthorizationSubjectResponseDTO:
+    def deactivate_subject(
+        self, subject_id: UUID, requester_id: UUID
+    ) -> AuthorizationSubjectResponseDTO:
         """Deactivate an authorization subject."""
         try:
             with self._uow:
@@ -142,9 +158,9 @@ class AuthorizationSubjectUseCase:
                     subject_id=subject_id,
                     requester_id=requester_id,
                 )
-                
+
                 return entity_to_response_dto(updated_subject)
-                
+
         except ValueError as e:
             raise ValueError(f"Failed to deactivate subject: {str(e)}")
 
@@ -161,7 +177,7 @@ class AuthorizationSubjectUseCase:
         try:
             with self._uow:
                 return self._repository.delete(subject)
-                
+
         except Exception as e:
             raise ValueError(f"Failed to delete authorization subject: {str(e)}")
 
@@ -176,7 +192,9 @@ class AuthorizationSubjectUseCase:
         )
         return entity_to_response_dto(subject) if subject else None
 
-    def list_subjects(self, filters: AuthorizationSubjectFilterDTO) -> AuthorizationSubjectListResponseDTO:
+    def list_subjects(
+        self, filters: AuthorizationSubjectFilterDTO
+    ) -> AuthorizationSubjectListResponseDTO:
         """List authorization subjects with pagination and filters."""
         subjects = self._repository.find_all(
             skip=(filters.page - 1) * filters.page_size,
@@ -185,7 +203,7 @@ class AuthorizationSubjectUseCase:
             subject_type=filters.subject_type,
             is_active=filters.is_active,
         )
-        
+
         # Get total count for pagination
         # Note: This is a simplified approach. In production, you might want a separate count method
         all_subjects = self._repository.find_all(
@@ -196,8 +214,10 @@ class AuthorizationSubjectUseCase:
             is_active=filters.is_active,
         )
         total = len(all_subjects)
-        
-        return entities_to_list_response_dto(subjects, total, filters.page, filters.page_size)
+
+        return entities_to_list_response_dto(
+            subjects, total, filters.page, filters.page_size
+        )
 
     def get_user_subjects(
         self, user_id: UUID, organization_id: Optional[UUID] = None
@@ -210,7 +230,9 @@ class AuthorizationSubjectUseCase:
         self, organization_id: UUID, subject_type: Optional[str] = None
     ) -> List[AuthorizationSubjectResponseDTO]:
         """Get all subjects in an organization."""
-        subjects = self._service.get_organization_subjects(organization_id, subject_type)
+        subjects = self._service.get_organization_subjects(
+            organization_id, subject_type
+        )
         return [entity_to_response_dto(subject) for subject in subjects]
 
     def get_active_organization_subjects(
@@ -231,9 +253,9 @@ class AuthorizationSubjectUseCase:
                     new_owner_id=dto.new_owner_id,
                     current_owner_id=requester_id,
                 )
-                
+
                 return bulk_result_to_response_dto(result, len(dto.subject_ids))
-                
+
         except Exception as e:
             return BulkOperationResponseDTO(
                 updated_count=0,
@@ -253,9 +275,9 @@ class AuthorizationSubjectUseCase:
                     organization_id=dto.organization_id,
                     requester_id=requester_id,
                 )
-                
+
                 return bulk_result_to_response_dto(result, len(dto.subject_ids))
-                
+
         except Exception as e:
             return BulkOperationResponseDTO(
                 updated_count=0,
@@ -274,9 +296,9 @@ class AuthorizationSubjectUseCase:
                     subject_ids=dto.subject_ids,
                     requester_id=requester_id,
                 )
-                
+
                 return bulk_result_to_response_dto(result, len(dto.subject_ids))
-                
+
         except Exception as e:
             return BulkOperationResponseDTO(
                 updated_count=0,
@@ -295,9 +317,9 @@ class AuthorizationSubjectUseCase:
                     subject_ids=dto.subject_ids,
                     requester_id=requester_id,
                 )
-                
+
                 return bulk_result_to_response_dto(result, len(dto.subject_ids))
-                
+
         except Exception as e:
             return BulkOperationResponseDTO(
                 updated_count=0,
@@ -311,7 +333,7 @@ class AuthorizationSubjectUseCase:
     ) -> AuthorizationSubjectStatisticsDTO:
         """Get statistics about authorization subjects."""
         stats = self._service.get_subject_statistics(organization_id)
-        
+
         return AuthorizationSubjectStatisticsDTO(
             total_subjects=stats["total_subjects"],
             active_subjects=stats["active_subjects"],

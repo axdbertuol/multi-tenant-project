@@ -4,7 +4,9 @@ from datetime import datetime, timezone
 
 from ...domain.entities.profile_folder_permission import ProfileFolderPermission
 from ...domain.value_objects.folder_permission_level import FolderPermissionLevel
-from ...domain.repositories.profile_folder_permission_repository import ProfileFolderPermissionRepository
+from ...domain.repositories.profile_folder_permission_repository import (
+    ProfileFolderPermissionRepository,
+)
 from ...domain.repositories.profile_repository import ProfileRepository
 from ...domain.repositories.user_profile_repository import UserProfileRepository
 from ...domain.repositories.user_repository import UserRepository
@@ -45,7 +47,9 @@ class ProfileFolderPermissionUseCase:
         self.user_repository = user_repository
         self.organization_repository = organization_repository
 
-    def create_permission(self, dto: ProfileFolderPermissionCreateDTO) -> ProfileFolderPermissionResponseDTO:
+    def create_permission(
+        self, dto: ProfileFolderPermissionCreateDTO
+    ) -> ProfileFolderPermissionResponseDTO:
         """Create a new profile folder permission."""
         # Validate profile exists
         profile = self.profile_repository.get_by_id(dto.profile_id)
@@ -66,18 +70,27 @@ class ProfileFolderPermissionUseCase:
             raise ValueError("Cannot create permission for inactive profile")
 
         # Check if permission already exists for this profile and folder
-        existing_permission = self.profile_folder_permission_repository.get_by_profile_and_folder(
-            dto.profile_id, dto.folder_path
+        existing_permission = (
+            self.profile_folder_permission_repository.get_by_profile_and_folder(
+                dto.profile_id, dto.folder_path
+            )
         )
         if existing_permission and existing_permission.is_active:
-            raise ValueError(f"Permission already exists for profile {dto.profile_id} and folder {dto.folder_path}")
+            raise ValueError(
+                f"Permission already exists for profile {dto.profile_id} and folder {dto.folder_path}"
+            )
 
         # Check for conflicting permissions
-        conflicting_permissions = self.profile_folder_permission_repository.get_conflicting_permissions(
-            dto.profile_id, dto.folder_path
+        conflicting_permissions = (
+            self.profile_folder_permission_repository.get_conflicting_permissions(
+                dto.profile_id, dto.folder_path
+            )
         )
         if conflicting_permissions:
-            conflicts = [f"{p.folder_path} ({p.permission_level.value})" for p in conflicting_permissions]
+            conflicts = [
+                f"{p.folder_path} ({p.permission_level.value})"
+                for p in conflicting_permissions
+            ]
             raise ValueError(f"Conflicting permissions found: {', '.join(conflicts)}")
 
         # Create permission entity
@@ -101,7 +114,9 @@ class ProfileFolderPermissionUseCase:
 
         return self._build_permission_response(saved_permission)
 
-    def get_permission_by_id(self, permission_id: UUID) -> Optional[ProfileFolderPermissionDetailResponseDTO]:
+    def get_permission_by_id(
+        self, permission_id: UUID
+    ) -> Optional[ProfileFolderPermissionDetailResponseDTO]:
         """Get permission by ID with full details."""
         permission = self.profile_folder_permission_repository.get_by_id(permission_id)
         if not permission:
@@ -109,7 +124,9 @@ class ProfileFolderPermissionUseCase:
 
         return self._build_permission_detail_response(permission)
 
-    def update_permission(self, permission_id: UUID, dto: ProfileFolderPermissionUpdateDTO) -> Optional[ProfileFolderPermissionResponseDTO]:
+    def update_permission(
+        self, permission_id: UUID, dto: ProfileFolderPermissionUpdateDTO
+    ) -> Optional[ProfileFolderPermissionResponseDTO]:
         """Update an existing profile folder permission."""
         permission = self.profile_folder_permission_repository.get_by_id(permission_id)
         if not permission:
@@ -119,16 +136,26 @@ class ProfileFolderPermissionUseCase:
         updated_permission = permission
 
         if dto.permission_level is not None:
-            updated_permission = updated_permission.update_permission_level(dto.permission_level)
+            updated_permission = updated_permission.update_permission_level(
+                dto.permission_level
+            )
 
         if dto.folder_path is not None:
             # Check if new folder path conflicts
             if dto.folder_path != permission.folder_path:
-                existing_permission = self.profile_folder_permission_repository.get_by_profile_and_folder(
-                    permission.profile_id, dto.folder_path
+                existing_permission = (
+                    self.profile_folder_permission_repository.get_by_profile_and_folder(
+                        permission.profile_id, dto.folder_path
+                    )
                 )
-                if existing_permission and existing_permission.is_active and existing_permission.id != permission_id:
-                    raise ValueError(f"Permission already exists for folder {dto.folder_path}")
+                if (
+                    existing_permission
+                    and existing_permission.is_active
+                    and existing_permission.id != permission_id
+                ):
+                    raise ValueError(
+                        f"Permission already exists for folder {dto.folder_path}"
+                    )
 
             updated_permission = updated_permission.update_folder_path(dto.folder_path)
 
@@ -150,7 +177,9 @@ class ProfileFolderPermissionUseCase:
             raise ValueError(f"Permission validation failed: {', '.join(errors)}")
 
         # Save updated permission
-        saved_permission = self.profile_folder_permission_repository.save(updated_permission)
+        saved_permission = self.profile_folder_permission_repository.save(
+            updated_permission
+        )
 
         return self._build_permission_response(saved_permission)
 
@@ -175,29 +204,57 @@ class ProfileFolderPermissionUseCase:
         if filters:
             if filters.profile_id:
                 if filters.is_active is not None:
-                    permissions = self.profile_folder_permission_repository.get_active_by_profile(filters.profile_id) if filters.is_active else []
+                    permissions = (
+                        self.profile_folder_permission_repository.get_active_by_profile(
+                            filters.profile_id
+                        )
+                        if filters.is_active
+                        else []
+                    )
                 else:
-                    permissions = self.profile_folder_permission_repository.get_by_profile(filters.profile_id)
+                    permissions = (
+                        self.profile_folder_permission_repository.get_by_profile(
+                            filters.profile_id
+                        )
+                    )
             elif filters.organization_id:
                 if filters.is_active is not None:
-                    permissions = self.profile_folder_permission_repository.get_active_by_organization(filters.organization_id) if filters.is_active else []
+                    permissions = (
+                        self.profile_folder_permission_repository.get_active_by_organization(
+                            filters.organization_id
+                        )
+                        if filters.is_active
+                        else []
+                    )
                 else:
-                    permissions = self.profile_folder_permission_repository.get_by_organization(filters.organization_id)
+                    permissions = (
+                        self.profile_folder_permission_repository.get_by_organization(
+                            filters.organization_id
+                        )
+                    )
             elif filters.folder_path:
-                permissions = self.profile_folder_permission_repository.get_by_folder_path(
-                    filters.folder_path, filters.organization_id
+                permissions = (
+                    self.profile_folder_permission_repository.get_by_folder_path(
+                        filters.folder_path, filters.organization_id
+                    )
                 )
             elif filters.folder_path_prefix:
-                permissions = self.profile_folder_permission_repository.get_by_folder_path_prefix(
-                    filters.folder_path_prefix, filters.organization_id
+                permissions = (
+                    self.profile_folder_permission_repository.get_by_folder_path_prefix(
+                        filters.folder_path_prefix, filters.organization_id
+                    )
                 )
             elif filters.permission_level:
-                permissions = self.profile_folder_permission_repository.get_by_permission_level(
-                    filters.permission_level, filters.organization_id
+                permissions = (
+                    self.profile_folder_permission_repository.get_by_permission_level(
+                        filters.permission_level, filters.organization_id
+                    )
                 )
             elif filters.created_by:
-                permissions = self.profile_folder_permission_repository.get_by_created_by(
-                    filters.created_by, filters.organization_id
+                permissions = (
+                    self.profile_folder_permission_repository.get_by_created_by(
+                        filters.created_by, filters.organization_id
+                    )
                 )
         else:
             permissions = []
@@ -205,16 +262,28 @@ class ProfileFolderPermissionUseCase:
         # Apply additional filters
         if filters and permissions:
             if filters.is_root_folder is not None:
-                permissions = [p for p in permissions if p.is_root_folder_permission() == filters.is_root_folder]
+                permissions = [
+                    p
+                    for p in permissions
+                    if p.is_root_folder_permission() == filters.is_root_folder
+                ]
             if filters.min_folder_depth is not None:
-                permissions = [p for p in permissions if p.get_folder_depth() >= filters.min_folder_depth]
+                permissions = [
+                    p
+                    for p in permissions
+                    if p.get_folder_depth() >= filters.min_folder_depth
+                ]
             if filters.max_folder_depth is not None:
-                permissions = [p for p in permissions if p.get_folder_depth() <= filters.max_folder_depth]
+                permissions = [
+                    p
+                    for p in permissions
+                    if p.get_folder_depth() <= filters.max_folder_depth
+                ]
 
         # Apply pagination
         total = len(permissions)
         offset = (page - 1) * page_size
-        paginated_permissions = permissions[offset:offset + page_size]
+        paginated_permissions = permissions[offset : offset + page_size]
 
         permission_responses = []
         for permission in paginated_permissions:
@@ -230,9 +299,13 @@ class ProfileFolderPermissionUseCase:
             total_pages=total_pages,
         )
 
-    def get_permission_stats(self, organization_id: UUID) -> ProfileFolderPermissionStatsDTO:
+    def get_permission_stats(
+        self, organization_id: UUID
+    ) -> ProfileFolderPermissionStatsDTO:
         """Get permission statistics for an organization."""
-        all_permissions = self.profile_folder_permission_repository.get_by_organization(organization_id)
+        all_permissions = self.profile_folder_permission_repository.get_by_organization(
+            organization_id
+        )
         active_permissions = [p for p in all_permissions if p.is_active]
         inactive_permissions = [p for p in all_permissions if not p.is_active]
 
@@ -253,25 +326,41 @@ class ProfileFolderPermissionUseCase:
         for permission in all_permissions:
             profile = self.profile_repository.get_by_id(permission.profile_id)
             profile_name = profile.name if profile else "Unknown"
-            permissions_by_profile[profile_name] = permissions_by_profile.get(profile_name, 0) + 1
+            permissions_by_profile[profile_name] = (
+                permissions_by_profile.get(profile_name, 0) + 1
+            )
 
         # Count by creator
         permissions_by_creator = {}
         for permission in all_permissions:
             creator = self.user_repository.get_by_id(permission.created_by)
             creator_name = creator.name if creator else "Unknown"
-            permissions_by_creator[creator_name] = permissions_by_creator.get(creator_name, 0) + 1
+            permissions_by_creator[creator_name] = (
+                permissions_by_creator.get(creator_name, 0) + 1
+            )
 
         # Count root and deep permissions
-        root_folder_permissions = len([p for p in all_permissions if p.is_root_folder_permission()])
-        deep_folder_permissions = len([p for p in all_permissions if p.get_folder_depth() >= 3])
+        root_folder_permissions = len(
+            [p for p in all_permissions if p.is_root_folder_permission()]
+        )
+        deep_folder_permissions = len(
+            [p for p in all_permissions if p.get_folder_depth() >= 3]
+        )
 
         # Get recent permissions
-        recent_permissions = self.profile_folder_permission_repository.get_recently_created(organization_id, days=30)
-        recent_permission_responses = [self._build_permission_response(p) for p in recent_permissions]
+        recent_permissions = (
+            self.profile_folder_permission_repository.get_recently_created(
+                organization_id, days=30
+            )
+        )
+        recent_permission_responses = [
+            self._build_permission_response(p) for p in recent_permissions
+        ]
 
         # Get most used folders
-        most_used_folders = sorted(permissions_by_folder.items(), key=lambda x: x[1], reverse=True)[:10]
+        most_used_folders = sorted(
+            permissions_by_folder.items(), key=lambda x: x[1], reverse=True
+        )[:10]
 
         # Calculate permission level distribution
         total_permissions = len(all_permissions)
@@ -295,7 +384,9 @@ class ProfileFolderPermissionUseCase:
             permission_level_distribution=permission_level_distribution,
         )
 
-    def validate_permission(self, dto: ProfileFolderPermissionValidationDTO) -> ProfileFolderPermissionValidationResponseDTO:
+    def validate_permission(
+        self, dto: ProfileFolderPermissionValidationDTO
+    ) -> ProfileFolderPermissionValidationResponseDTO:
         """Validate a profile folder permission."""
         validation_errors = []
         validation_warnings = []
@@ -318,57 +409,86 @@ class ProfileFolderPermissionUseCase:
 
         # Check if profile belongs to organization
         if profile.organization_id != dto.organization_id:
-            validation_errors.append("Profile does not belong to the specified organization")
+            validation_errors.append(
+                "Profile does not belong to the specified organization"
+            )
 
         # Validate folder path format
         if not ProfileFolderPermission._validate_folder_path(dto.folder_path):
             validation_errors.append(f"Invalid folder path format: {dto.folder_path}")
 
         # Check for existing permission
-        existing_permission = self.profile_folder_permission_repository.get_by_profile_and_folder(
-            dto.profile_id, dto.folder_path
+        existing_permission = (
+            self.profile_folder_permission_repository.get_by_profile_and_folder(
+                dto.profile_id, dto.folder_path
+            )
         )
         if existing_permission and existing_permission.is_active:
-            validation_errors.append("Permission already exists for this profile and folder")
+            validation_errors.append(
+                "Permission already exists for this profile and folder"
+            )
 
         # Check for conflicts
         if dto.check_conflicts:
-            conflicting_permissions = self.profile_folder_permission_repository.get_conflicting_permissions(
-                dto.profile_id, dto.folder_path
+            conflicting_permissions = (
+                self.profile_folder_permission_repository.get_conflicting_permissions(
+                    dto.profile_id, dto.folder_path
+                )
             )
             if conflicting_permissions:
                 conflicts = [p.id for p in conflicting_permissions]
-                validation_warnings.append(f"Found {len(conflicting_permissions)} conflicting permissions")
+                validation_warnings.append(
+                    f"Found {len(conflicting_permissions)} conflicting permissions"
+                )
 
         # Check hierarchy
         if dto.check_hierarchy:
             # Check if this is a reasonable folder structure
-            folder_depth = dto.folder_path.count('/') - 2  # Subtract 2 for /documents/
+            folder_depth = dto.folder_path.count("/") - 2  # Subtract 2 for /documents/
             if folder_depth > 5:
-                validation_warnings.append("Folder is very deep in hierarchy (> 5 levels)")
+                validation_warnings.append(
+                    "Folder is very deep in hierarchy (> 5 levels)"
+                )
                 recommendations.append("Consider flattening the folder structure")
 
             # Check for parent folder permissions
-            parent_path = '/'.join(dto.folder_path.split('/')[:-1])
+            parent_path = "/".join(dto.folder_path.split("/")[:-1])
             if parent_path != "/documents":
-                parent_permissions = self.profile_folder_permission_repository.get_by_folder_path(
-                    parent_path, dto.organization_id
+                parent_permissions = (
+                    self.profile_folder_permission_repository.get_by_folder_path(
+                        parent_path, dto.organization_id
+                    )
                 )
                 if parent_permissions:
-                    parent_permission = next((p for p in parent_permissions if p.profile_id == dto.profile_id), None)
+                    parent_permission = next(
+                        (
+                            p
+                            for p in parent_permissions
+                            if p.profile_id == dto.profile_id
+                        ),
+                        None,
+                    )
                     if parent_permission:
-                        if parent_permission.permission_level.is_higher_than(dto.permission_level):
+                        if parent_permission.permission_level.is_higher_than(
+                            dto.permission_level
+                        ):
                             validation_warnings.append(
                                 f"Parent folder has higher permission level ({parent_permission.permission_level.value})"
                             )
-                            recommendations.append("Consider using the parent folder permission instead")
+                            recommendations.append(
+                                "Consider using the parent folder permission instead"
+                            )
 
         # Generate recommendations
         if dto.permission_level == FolderPermissionLevel.FULL:
-            recommendations.append("FULL permission grants extensive access - ensure this is necessary")
-        
-        if dto.folder_path.endswith('/temp') or dto.folder_path.endswith('/tmp'):
-            recommendations.append("Temporary folders may not need persistent permissions")
+            recommendations.append(
+                "FULL permission grants extensive access - ensure this is necessary"
+            )
+
+        if dto.folder_path.endswith("/temp") or dto.folder_path.endswith("/tmp"):
+            recommendations.append(
+                "Temporary folders may not need persistent permissions"
+            )
 
         return ProfileFolderPermissionValidationResponseDTO(
             is_valid=len(validation_errors) == 0,
@@ -379,11 +499,15 @@ class ProfileFolderPermissionUseCase:
             recommendations=recommendations,
         )
 
-    def check_user_folder_access(self, dto: UserFolderAccessDTO) -> UserFolderAccessResponseDTO:
+    def check_user_folder_access(
+        self, dto: UserFolderAccessDTO
+    ) -> UserFolderAccessResponseDTO:
         """Check if a user can access a specific folder."""
         # Get user's active profile assignments
-        user_assignments = self.user_profile_repository.get_active_by_user_and_organization(
-            dto.user_id, dto.organization_id
+        user_assignments = (
+            self.user_profile_repository.get_active_by_user_and_organization(
+                dto.user_id, dto.organization_id
+            )
         )
 
         can_access = False
@@ -395,28 +519,37 @@ class ProfileFolderPermissionUseCase:
 
         # Check each profile assignment
         for assignment in user_assignments:
-            profile_permissions = self.profile_folder_permission_repository.get_active_by_profile(assignment.profile_id)
-            
+            profile_permissions = (
+                self.profile_folder_permission_repository.get_active_by_profile(
+                    assignment.profile_id
+                )
+            )
+
             for permission in profile_permissions:
                 if permission.can_access_folder(dto.folder_path):
                     can_access = True
-                    
+
                     # Use the highest permission level found
-                    if permission_level is None or permission.permission_level.is_higher_than(permission_level):
+                    if (
+                        permission_level is None
+                        or permission.permission_level.is_higher_than(permission_level)
+                    ):
                         permission_level = permission.permission_level
                         allowed_actions = permission.get_allowed_actions()
-                    
+
                     # Track which profile and permission grants access
                     profile = self.profile_repository.get_by_id(assignment.profile_id)
                     if profile:
                         applicable_profiles.append(profile.name)
                     applicable_permissions.append(permission.id)
-                    
+
                     access_reason = f"Access granted through profile '{profile.name}' with {permission.permission_level.value} permission on {permission.folder_path}"
 
         # Check specific action if requested
         if dto.requested_action and can_access:
-            if permission_level and not permission_level.can_perform_action(dto.requested_action):
+            if permission_level and not permission_level.can_perform_action(
+                dto.requested_action
+            ):
                 can_access = False
                 access_reason = f"User can access folder but cannot perform action '{dto.requested_action}'"
 
@@ -431,22 +564,36 @@ class ProfileFolderPermissionUseCase:
             applicable_permissions=list(set(applicable_permissions)),
         )
 
-    def get_folder_permission_matrix(self, dto: FolderPermissionMatrixDTO) -> FolderPermissionMatrixResponseDTO:
+    def get_folder_permission_matrix(
+        self, dto: FolderPermissionMatrixDTO
+    ) -> FolderPermissionMatrixResponseDTO:
         """Get folder permission matrix for an organization."""
         # Get all permissions for organization
-        all_permissions = self.profile_folder_permission_repository.get_active_by_organization(dto.organization_id)
-        
+        all_permissions = (
+            self.profile_folder_permission_repository.get_active_by_organization(
+                dto.organization_id
+            )
+        )
+
         # Filter by specific folders if requested
         if dto.folder_paths:
-            all_permissions = [p for p in all_permissions if p.folder_path in dto.folder_paths]
-        
+            all_permissions = [
+                p for p in all_permissions if p.folder_path in dto.folder_paths
+            ]
+
         # Filter by specific profiles if requested
         if dto.profile_ids:
-            all_permissions = [p for p in all_permissions if p.profile_id in dto.profile_ids]
-        
+            all_permissions = [
+                p for p in all_permissions if p.profile_id in dto.profile_ids
+            ]
+
         # Include inactive permissions if requested
         if dto.include_inactive:
-            inactive_permissions = self.profile_folder_permission_repository.get_by_organization(dto.organization_id)
+            inactive_permissions = (
+                self.profile_folder_permission_repository.get_by_organization(
+                    dto.organization_id
+                )
+            )
             inactive_permissions = [p for p in inactive_permissions if not p.is_active]
             all_permissions.extend(inactive_permissions)
 
@@ -454,15 +601,17 @@ class ProfileFolderPermissionUseCase:
         matrix = {}
         folder_paths = set()
         profile_names = set()
-        
+
         for permission in all_permissions:
             folder_path = permission.folder_path
             profile = self.profile_repository.get_by_id(permission.profile_id)
-            profile_name = profile.name if profile else f"Profile-{permission.profile_id}"
-            
+            profile_name = (
+                profile.name if profile else f"Profile-{permission.profile_id}"
+            )
+
             if folder_path not in matrix:
                 matrix[folder_path] = {}
-            
+
             matrix[folder_path][profile_name] = permission.permission_level.value
             folder_paths.add(folder_path)
             profile_names.add(profile_name)
@@ -482,7 +631,9 @@ class ProfileFolderPermissionUseCase:
             generated_at=datetime.now(timezone.utc),
         )
 
-    def bulk_action(self, dto: ProfileFolderPermissionBulkActionDTO) -> ProfileFolderPermissionBulkActionResponseDTO:
+    def bulk_action(
+        self, dto: ProfileFolderPermissionBulkActionDTO
+    ) -> ProfileFolderPermissionBulkActionResponseDTO:
         """Perform bulk action on profile folder permissions."""
         success_count = 0
         failure_count = 0
@@ -492,7 +643,9 @@ class ProfileFolderPermissionUseCase:
 
         for permission_id in dto.permission_ids:
             try:
-                permission = self.profile_folder_permission_repository.get_by_id(permission_id)
+                permission = self.profile_folder_permission_repository.get_by_id(
+                    permission_id
+                )
                 if not permission:
                     failure_count += 1
                     errors.append(f"Permission {permission_id} not found")
@@ -503,30 +656,44 @@ class ProfileFolderPermissionUseCase:
                         warnings.append(f"Permission {permission_id} is already active")
                     else:
                         activated_permission = permission.activate()
-                        self.profile_folder_permission_repository.save(activated_permission)
+                        self.profile_folder_permission_repository.save(
+                            activated_permission
+                        )
                         success_count += 1
                         affected_permissions.append(permission_id)
 
                 elif dto.action == "deactivate":
                     if not permission.is_active:
-                        warnings.append(f"Permission {permission_id} is already inactive")
+                        warnings.append(
+                            f"Permission {permission_id} is already inactive"
+                        )
                     else:
                         deactivated_permission = permission.deactivate()
-                        self.profile_folder_permission_repository.save(deactivated_permission)
+                        self.profile_folder_permission_repository.save(
+                            deactivated_permission
+                        )
                         success_count += 1
                         affected_permissions.append(permission_id)
 
                 elif dto.action == "update_level":
                     if not dto.new_permission_level:
                         failure_count += 1
-                        errors.append("New permission level required for update_level action")
+                        errors.append(
+                            "New permission level required for update_level action"
+                        )
                         continue
-                    
+
                     if permission.permission_level == dto.new_permission_level:
-                        warnings.append(f"Permission {permission_id} already has level {dto.new_permission_level.value}")
+                        warnings.append(
+                            f"Permission {permission_id} already has level {dto.new_permission_level.value}"
+                        )
                     else:
-                        updated_permission = permission.update_permission_level(dto.new_permission_level)
-                        self.profile_folder_permission_repository.save(updated_permission)
+                        updated_permission = permission.update_permission_level(
+                            dto.new_permission_level
+                        )
+                        self.profile_folder_permission_repository.save(
+                            updated_permission
+                        )
                         success_count += 1
                         affected_permissions.append(permission_id)
 
@@ -554,12 +721,16 @@ class ProfileFolderPermissionUseCase:
             warnings=warnings,
         )
 
-    def _build_permission_response(self, permission: ProfileFolderPermission) -> ProfileFolderPermissionResponseDTO:
+    def _build_permission_response(
+        self, permission: ProfileFolderPermission
+    ) -> ProfileFolderPermissionResponseDTO:
         """Build permission response DTO."""
         # Get related data
         profile = self.profile_repository.get_by_id(permission.profile_id)
         creator = self.user_repository.get_by_id(permission.created_by)
-        organization = self.organization_repository.get_by_id(permission.organization_id)
+        organization = self.organization_repository.get_by_id(
+            permission.organization_id
+        )
 
         return ProfileFolderPermissionResponseDTO(
             id=permission.id,
@@ -591,7 +762,9 @@ class ProfileFolderPermissionUseCase:
             can_train_rag=permission.can_train_rag(),
         )
 
-    def _build_permission_detail_response(self, permission: ProfileFolderPermission) -> ProfileFolderPermissionDetailResponseDTO:
+    def _build_permission_detail_response(
+        self, permission: ProfileFolderPermission
+    ) -> ProfileFolderPermissionDetailResponseDTO:
         """Build detailed permission response DTO."""
         permission_response = self._build_permission_response(permission)
 
@@ -601,19 +774,23 @@ class ProfileFolderPermissionUseCase:
 
         # Get hierarchical information
         parent_folder_path = permission.get_parent_folder_path()
-        
+
         # Get child folders (simplified - would need proper implementation)
         child_folders = []
-        
+
         # Get conflicting permissions
-        conflicting_permissions = self.profile_folder_permission_repository.get_conflicting_permissions(
-            permission.profile_id, permission.folder_path
+        conflicting_permissions = (
+            self.profile_folder_permission_repository.get_conflicting_permissions(
+                permission.profile_id, permission.folder_path
+            )
         )
-        conflicting_permission_ids = [p.id for p in conflicting_permissions if p.id != permission.id]
+        conflicting_permission_ids = [
+            p.id for p in conflicting_permissions if p.id != permission.id
+        ]
 
         # Get hierarchical permissions
         hierarchical_permissions = []
-        
+
         # Validation
         is_valid, validation_errors = permission.validate_permission()
 
@@ -624,13 +801,17 @@ class ProfileFolderPermissionUseCase:
                 "name": profile.name,
                 "description": profile.description,
                 "is_active": profile.is_active,
-            } if profile else None,
+            }
+            if profile
+            else None,
             created_by_user={
                 "id": creator.id,
                 "name": creator.name,
                 "email": creator.email,
                 "is_active": creator.is_active,
-            } if creator else None,
+            }
+            if creator
+            else None,
             parent_folder_path=parent_folder_path,
             child_folders=child_folders,
             conflicting_permissions=conflicting_permission_ids,

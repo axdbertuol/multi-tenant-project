@@ -15,9 +15,6 @@ from ..value_objects.permission_name import PermissionName
 from ..repositories.role_repository import RoleRepository
 from ..repositories.permission_repository import PermissionRepository
 from ..repositories.role_permission_repository import RolePermissionRepository
-from ..repositories.user_organization_role_repository import (
-    UserOrganizationRoleRepository,
-)
 
 
 class OrganizationRoleSetupService:
@@ -31,9 +28,6 @@ class OrganizationRoleSetupService:
         )
         self._role_permission_repository: RolePermissionRepository = uow.get_repository(
             "role_permission"
-        )
-        self._user_org_role_repository: UserOrganizationRoleRepository = (
-            uow.get_repository("user_organization_role")
         )
 
     def setup_default_roles_for_organization(
@@ -126,8 +120,8 @@ class OrganizationRoleSetupService:
         self, user_id: UUID, organization_id: UUID, role_id: UUID
     ) -> None:
         """Assign a role to a user in an organization."""
-        self._user_org_role_repository.assign_role_to_user(
-            user_id=user_id, organization_id=organization_id, role_id=role_id
+        self._role_repository.assign_role_to_user(
+            user_id=user_id, role_id=role_id, assigned_by=user_id
         )
 
     def get_organization_roles(self, organization_id: UUID) -> List[Role]:

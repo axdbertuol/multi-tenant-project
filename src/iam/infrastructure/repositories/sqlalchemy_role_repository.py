@@ -11,6 +11,7 @@ from ...domain.repositories.role_repository import RoleRepository
 from ...infrastructure.database.models import (
     RoleModel,
     PermissionModel,
+    UserModel,
     role_permission_association,
     user_role_assignment,
 )
@@ -125,10 +126,9 @@ class SqlAlchemyRoleRepository(RoleRepository):
             )
         )
 
+        # If organization_id is specified, filter by role's organization_id
         if organization_id:
-            query = query.where(
-                user_role_assignment.c.organization_id == organization_id
-            )
+            query = query.where(RoleModel.organization_id == organization_id)
 
         result = self.session.execute(query)
         role_models = result.scalars().all()
@@ -261,7 +261,6 @@ class SqlAlchemyRoleRepository(RoleRepository):
         self,
         user_id: UUID,
         role_id: UUID,
-        organization_id: Optional[UUID],
         assigned_by: UUID,
         expires_at: Optional[datetime] = None,
     ) -> bool:
@@ -269,12 +268,11 @@ class SqlAlchemyRoleRepository(RoleRepository):
         self.session.execute(
             text("""
                 INSERT INTO user_role_assignments 
-                (user_id, role_id, organization_id, assigned_by, expires_at) 
-                VALUES (:user_id, :role_id, :organization_id, :assigned_by, :expires_at)
+                (user_id, role_id, assigned_by, expires_at) 
+                VALUES (:user_id, :role_id, :assigned_by, :expires_at)
             """).bindparam(
                 user_id=user_id,
                 role_id=role_id,
-                organization_id=organization_id,
                 assigned_by=assigned_by,
                 expires_at=expires_at,
             )
@@ -282,7 +280,7 @@ class SqlAlchemyRoleRepository(RoleRepository):
         return True
 
     def remove_role_from_user(
-        self, user_id: UUID, role_id: UUID, organization_id: Optional[UUID] = None
+        self, user_id: UUID, role_id: UUID
     ) -> bool:
         """Remove a role from a user."""
         query = """
@@ -291,10 +289,6 @@ class SqlAlchemyRoleRepository(RoleRepository):
             WHERE user_id = :user_id AND role_id = :role_id
         """
         params = {"user_id": user_id, "role_id": role_id}
-
-        if organization_id:
-            query += " AND organization_id = :organization_id"
-            params["organization_id"] = organization_id
 
         result = self.session.execute(text(query).bindparam(**params))
         return result.rowcount > 0
@@ -386,6 +380,73 @@ class SqlAlchemyRoleRepository(RoleRepository):
         result = self.session.execute(query)
         role_models = result.scalars().all()
         return [self._to_domain_entity(model) for model in role_models]
+
+    def get_user_roles_in_organization(self, user_id: UUID, organization_id: UUID) -> List[Role]:
+        """Get roles assigned to a user that belong to a specific organization."""
+        # First verify user is member of the organization
+        user_query = select(UserModel).where(
+            and_(
+                UserModel.id == user_id,
+                UserModel.organization_id == organization_id
+            )
+        )
+        user_result = self.session.execute(user_query)
+        user = user_result.scalar_one_or_none()
+        
+        if not user:
+            return []  # User is not a member of this organization
+        
+        # Get user's roles that belong to this organization
+        query = (
+            select(RoleModel)
+            .select_from(RoleModel.join(user_role_assignment))
+            .where(
+                and_(
+                    user_role_assignment.c.user_id == user_id,
+                    user_role_assignment.c.is_active,
+                    RoleModel.is_active,
+                    RoleModel.organization_id == organization_id,
+                )
+            )
+        )
+        
+        result = self.session.execute(query)
+        role_models = result.scalars().all()
+        
+        return [self._to_domain_entity(model) for model in role_models]
+
+    def get_users_with_role_in_organization(self, role_id: UUID, organization_id: UUID) -> List[UUID]:
+        """Get all users that have a specific role and belong to a specific organization."""
+        query = (
+            select(UserModel.id)
+            .select_from(
+                UserModel.join(user_role_assignment, UserModel.id == user_role_assignment.c.user_id)
+            )
+            .where(
+                and_(
+                    user_role_assignment.c.role_id == role_id,
+                    user_role_assignment.c.is_active,
+                    UserModel.organization_id == organization_id,
+                    UserModel.is_active,
+                )
+            )
+        )
+        
+        result = self.session.execute(query)
+        user_ids = result.scalars().all()
+        
+        return list(user_ids)
+
+    def remove_all_user_roles(self, user_id: UUID) -> bool:
+        """Remove all roles from a user (typically when user leaves organization)."""
+        query = """
+            UPDATE user_role_assignments 
+            SET is_active = false 
+            WHERE user_id = :user_id
+        """
+        
+        result = self.session.execute(text(query).bindparam(user_id=user_id))
+        return result.rowcount > 0
 
     def _to_domain_entity(self, role_model: RoleModel) -> Role:
         """Convert SQLAlchemy model to domain entity."""

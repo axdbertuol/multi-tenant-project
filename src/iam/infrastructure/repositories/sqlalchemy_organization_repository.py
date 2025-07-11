@@ -219,14 +219,14 @@ class SqlAlchemyOrganizationRepository(OrganizationRepository):
     def get_user_organizations(self, user_id: UUID) -> List[Organization]:
         """Get organizations where user is a member (interface method)."""
         # For now, this returns organizations owned by the user
-        # In a full implementation, this would join with user_organization_role table
+        # In a full implementation, this would join with user table
         return self.find_by_owner(user_id)
 
     def _to_domain_entity(self, org_model: OrganizationModel) -> Organization:
         """Convert SQLAlchemy model to domain entity."""
         return Organization(
             id=org_model.id,
-            name=OrganizationName(org_model.name),
+            name=OrganizationName(value=org_model.name),
             description=org_model.description,
             owner_id=org_model.owner_id,
             is_active=org_model.is_active,

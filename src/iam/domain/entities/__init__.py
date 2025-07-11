@@ -5,7 +5,6 @@ from .permission import Permission
 from .policy import Policy
 from .role import Role
 from .user import User
-from .user_organization_role import UserOrganizationRole
 from .user_session import UserSession
 
 __all__ = [
@@ -18,6 +17,5 @@ __all__ = [
     "Role",
     "User",
     "UserManagementFunction",
-    "UserOrganizationRole",
     "UserSession",
 ]

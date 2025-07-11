@@ -4,7 +4,9 @@ from sqlalchemy.orm import Session
 from shared.infrastructure.database.connection import get_db
 from ..application.use_cases.document_area_use_cases import DocumentAreaUseCase
 from ..application.use_cases.document_folder_use_cases import DocumentFolderUseCase
-from ..application.use_cases.user_document_access_use_cases import UserDocumentAccessUseCase
+from ..application.use_cases.user_document_access_use_cases import (
+    UserDocumentAccessUseCase,
+)
 from ..infrastructure.documents_unit_of_work import DocumentsUnitOfWork
 from ..domain.services.document_area_service import DocumentAreaService
 from ..domain.services.document_access_service import DocumentAccessService
@@ -24,7 +26,7 @@ def get_iam_uow(db: Session = Depends(get_db)) -> IAMUnitOfWork:
         db,
         [
             "user",
-            "user_organization_role", 
+            "user",
             "organization",
             "role",
         ],
@@ -79,7 +81,9 @@ def get_document_area_use_case(
 
 def get_document_folder_use_case(
     uow: DocumentsUnitOfWork = Depends(get_documents_uow),
-    document_access_service: DocumentAccessService = Depends(get_document_access_service),
+    document_access_service: DocumentAccessService = Depends(
+        get_document_access_service
+    ),
     iam_contract: IAMContract = Depends(get_iam_contract),
 ) -> DocumentFolderUseCase:
     """Obtém DocumentFolderUseCase com as dependências apropriadas."""

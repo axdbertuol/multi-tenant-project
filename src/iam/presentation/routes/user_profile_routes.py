@@ -35,10 +35,15 @@ def create_user_profile_assignment(
     dto: UserProfileCreateDTO,
     use_case: UserProfileUseCase = Depends(get_user_profile_use_case),
 ):
-    """Create a new user profile assignment."""
+    """Create a new user profile assignment (validates user belongs to organization)."""
     try:
         return use_case.create_assignment(dto)
     except ValueError as e:
+        if "organization" in str(e).lower():
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="User must belong to the profile's organization",
+            )
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
 
